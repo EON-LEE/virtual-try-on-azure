@@ -27,12 +27,12 @@ shows that Azure generation is disconnected. There is no mock mode in the
 application. `ENABLE_AZURE_INFERENCE=false` prevents all inference even if keys
 are present. Do not enable it without explicit account and cost approval.
 
-After approval, set these values in the ignored `.env` or hosting secrets:
+After generation approval, set these values in the ignored `.env` or hosting secrets:
 
 | Model | Required settings |
 | --- | --- |
-| Sunburst | `AZURE_SUNBURST_ENDPOINT` (resource root `https://NAME.openai.azure.com`), `AZURE_SUNBURST_DEPLOYMENT`, `AZURE_SUNBURST_API_KEY`, `AZURE_SUNBURST_API_VERSION` |
-| MAI | `AZURE_MAI_ENDPOINT` (resource root `https://NAME.services.ai.azure.com`), `AZURE_MAI_DEPLOYMENT`, `AZURE_MAI_API_KEY`, `AZURE_MAI_MODEL=MAI-Image-2.6` |
+| Sunburst | `AZURE_SUNBURST_ENDPOINT` (resource root `https://NAME.openai.azure.com`), `AZURE_SUNBURST_DEPLOYMENT`, `AZURE_SUNBURST_API_VERSION`, selected authentication mode below |
+| MAI | `AZURE_MAI_ENDPOINT` (resource root `https://NAME.services.ai.azure.com`), `AZURE_MAI_DEPLOYMENT`, `AZURE_MAI_MODEL=MAI-Image-2.6`, selected authentication mode below |
 | Paid-call gate | `ENABLE_AZURE_INFERENCE=true`, only after authorization |
 
 ### Provisioned model configuration
@@ -53,8 +53,55 @@ were reported from Azure's service-specific `properties.endpoints`; the generic
 `cognitiveservices.azure.com` endpoint is not compatible with these adapters.
 The **model version is not the HTTP API version**. Provisioning success does
 not validate the configured Sunburst `2025-04-01-preview` edits contract.
-The approval covers only two model resources/deployments, not app hosting or
-generation. Do not obtain keys or enable inference as part of this setup.
+Both resources have `disableLocalAuth=true`; API-key mode cannot authenticate
+to them. The first approved research smoke call to each model returned HTTP 401,
+with no outputs and no retries. Control-plane Owner access did not provide the
+required inference DataActions. The experiment track subsequently reported
+resource-scoped OpenAI User (Sunburst) and Cognitive Services User (MAI)
+assignments for the approved admin principal. Their effective data-plane access,
+API compatibility and output quality have not been tested after the assignments.
+Those permission changes do not authorize additional generation or app hosting.
+Keep inference disabled until another explicit generation approval.
+
+### Authentication modes
+
+`AZURE_AUTH_MODE=key` preserves the API-key integration for resources where
+local authentication is allowed. It requires the selected model's
+`AZURE_SUNBURST_API_KEY` or `AZURE_MAI_API_KEY`. It never falls back to Entra.
+
+`AZURE_AUTH_MODE=entra-cli` uses only the official `AzureCliCredential`, with
+explicit `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID` and
+`AZURE_EXPECTED_PRINCIPAL_ID` (the approved admin user's object ID). Set these
+UUIDs privately in `.env`; the example leaves identity values blank and
+inference disabled. Enabled inference refuses incomplete identity configuration.
+Run the backend in the same OS/CLI environment containing the existing approved
+admin authentication. A WSL CLI cache is not automatically visible to the Windows
+backend; do not compensate by changing the shared login or default subscription.
+
+Before acquiring or refreshing a token, the backend reads
+`az account show --subscription <explicit-id>` and checks subscription, tenant,
+Enabled state and user credential type. `AzureCliCredential` is pinned to that
+subscription/tenant. The SDK-acquired token's tenant, principal, Cognitive
+Services audience and expiration must match before sending any image request.
+JWT claim inspection is an identity guard, not independent signature validation;
+Azure validates the token. Any mismatch or CLI/SDK failure returns a sanitized
+error before inference, without switching accounts or falling back to keys.
+
+The official `getBearerTokenProvider` builds the bearer header for
+`https://cognitiveservices.azure.com/.default`. The backend caches the validated
+token in process memory and synchronously refreshes within two minutes of
+expiration, coalescing concurrent refreshes. A refresh failure blocks the request
+rather than using the helper's background-refresh behavior or retrying silently.
+No bearer token reaches the browser, `.env`, application logs or committed files.
+Reusing a cached verified token does not follow later shared CLI identity changes;
+refresh verifies the pinned identity again. Readiness means configuration is
+present, not that credentials/RBAC have been live-validated. Disabled inference
+does not run the account check or acquire a token. Tests use stub credentials and
+stub HTTP only; no live authentication or inference is performed by the tests.
+
+References:
+[AzureCliCredential options](https://learn.microsoft.com/en-us/javascript/api/@azure/identity/azureclicredentialoptions)
+and [Azure Identity bearer token helper](https://learn.microsoft.com/en-us/javascript/api/@azure/identity/?view=azure-node-latest).
 
 MAI Image 2.6 basic is the **user-confirmed quality-first variant** and is shown
 as Preview. Flash and other variants are rejected rather than substituted.
@@ -155,6 +202,14 @@ by default, or install Fabric. The minimum of one replica incurs hosting costs
 even when inference is disabled. The template requires an existing publicly
 pullable immutable container image reference; private-registry wiring is not
 included. Never publish photos, keys, or `.env` in the image.
+
+The current container/template retains the original **key-mode hosting
+configuration** and does not install Azure CLI, provision managed identity or
+assign roles. It cannot authenticate to the currently key-disabled resources.
+Entra CLI mode is a local development connection, not a cloud hosting solution.
+Identity-based hosting requires a separate approved design/provisioning change;
+do not package personal CLI caches into a container or enable local auth to
+work around this limitation.
 
 Compile without resource changes:
 
