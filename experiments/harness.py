@@ -122,7 +122,7 @@ def validate_config(config):
             raise ExperimentError("Duplicate identifiers.")
     for model in config["models"]:
         if set(model) - {"id", "family", "catalog_model", "model_version", "deployment",
-                         "endpoint", "api_version", "api_key_env", "options", "option_evidence"}:
+                         "endpoint", "api_version", "api_key_env", "auth_mode", "options", "option_evidence"}:
             raise ExperimentError("Unknown model fields; credentials belong only in the environment.")
         if model["family"] not in {"gpt", "mai"}:
             raise ExperimentError("Only GPT Sunburst and MAI Azure adapters allowed.")
@@ -132,6 +132,8 @@ def validate_config(config):
             raise ExperimentError("MAI comparison requires the selected MAI-Image-2.6 basic variant.")
         if not model.get("model_version") or not model.get("api_key_env"):
             raise ExperimentError("Model version and explicit credential environment required.")
+        if model.get("auth_mode", "api_key") not in {"api_key", "bearer"}:
+            raise ExperimentError("Only explicit api_key or bearer credential modes allowed.")
         endpoint_url(model)
         options = model.get("options", {})
         if config["track"] == "baseline" and options:
@@ -247,7 +249,24 @@ def check_approval(approval, plan):
     count = approval["max_requests"]
     if type(count) is not int or count <= 0:
         raise ExperimentError("Approval must cap request count.")
-    positive_decimal(approval["max_cost"])
+    unknown_cost = approval.get("cost_mode") == "explicit_unknown_cost"
+    if unknown_cost:
+        if (approval.get("unknown_cost_accepted") is not True
+                or approval.get("max_cost") is not None
+                or not approval.get("cost_risk_acknowledgment")
+                or not isinstance(approval.get("request_limits"), dict)
+                or any(type(v) is not int or v != 1 for v in approval["request_limits"].values())
+                or sum(approval["request_limits"].values()) != count):
+            raise ExperimentError("Unknown-cost mode requires explicit risk acceptance and exact request limits.")
+        expected = {f"{m['id']}:{c['id']}" for m in plan["scope"]["models"]
+                    for c in plan["scope"]["cases"]}
+        if set(approval["request_limits"]) != expected or any(
+                type(v) is not int or v != 1 for v in approval["request_limits"].values()):
+            raise ExperimentError("Unknown-cost exception allows one request per exact model/case only.")
+    elif approval.get("cost_mode", "verified_bound") == "verified_bound":
+        positive_decimal(approval["max_cost"])
+    else:
+        raise ExperimentError("Unknown cost approval mode.")
     if not re.fullmatch(r"[A-Z]{3}", approval["currency"]):
         raise ExperimentError("Currency must be an explicit three-letter code.")
     for case in plan["scope"]["cases"]:
@@ -256,13 +275,14 @@ def check_approval(approval, plan):
     for model in plan["scope"]["models"]:
         if any("REQUIRES" in str(v) or "REPLACE" in str(v) for v in model.values()):
             raise ExperimentError("Deployment metadata still contains placeholders.")
-        price = approval["models"][model["id"]]
-        positive_decimal(price["reservation_per_request"])
-        if not price.get("price_source") or "REQUIRES" in price["price_source"]:
-            raise ExperimentError("A verified conservative Azure price bound is required.")
+        if not unknown_cost:
+            price = approval["models"][model["id"]]
+            positive_decimal(price["reservation_per_request"])
+            if not price.get("price_source") or "REQUIRES" in price["price_source"]:
+                raise ExperimentError("A verified conservative Azure price bound is required.")
 
 
-def reserve(approval_path, approval, model_id):
+def reserve(approval_path, approval, model_id, case_id=None):
     ledger_path = approval_path.with_suffix(".ledger.json")
     ledger = read_json(ledger_path) if ledger_path.exists() else {
         "approval_sha256": digest(canonical(approval)), "attempts": 0, "reserved_cost": "0"}
@@ -270,6 +290,16 @@ def reserve(approval_path, approval, model_id):
         raise ExperimentError("Approval changed; reconcile existing reservations before continuing.")
     if type(ledger["attempts"]) is not int or ledger["attempts"] < 0:
         raise ExperimentError("Invalid budget ledger; reconcile before continuing.")
+    if approval.get("cost_mode") == "explicit_unknown_cost":
+        key = f"{model_id}:{case_id}"
+        counts = ledger.get("request_counts", {})
+        limit = approval["request_limits"].get(key, 0)
+        if ledger["attempts"] >= approval["max_requests"] or counts.get(key, 0) >= limit:
+            raise ExperimentError("Exact approved model/case request count exhausted.")
+        counts[key] = counts.get(key, 0) + 1
+        ledger.update(attempts=ledger["attempts"] + 1, request_counts=counts, reserved_cost=None)
+        write_json(ledger_path, ledger)
+        return None
     try:
         previous_cost = Decimal(ledger["reserved_cost"])
     except InvalidOperation as exc:
@@ -294,7 +324,7 @@ def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
         raise ExperimentError("Unknown model or case.")
     key = os.environ.get(model["api_key_env"])
     if not key:
-        raise ExperimentError("Explicit model API key environment is missing; no cached login fallback.")
+        raise ExperimentError("Explicit model credential environment is missing; no cached login fallback.")
     body, content_type = multipart(model, inputs[(case_id, "person")], inputs[(case_id, "garment")])
     run_id = uuid.uuid4().hex
     directory = output_root / run_id
@@ -310,18 +340,23 @@ def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
     except FileExistsError as exc:
         raise ExperimentError("Approval ledger is locked; inspect interrupted work before reuse.") from exc
     try:
-        record["reserved_cost_bound"] = reserve(approval_path, approval, model_id)
+        record["cost_mode"] = approval.get("cost_mode", "verified_bound")
+        record["reserved_cost_bound"] = reserve(approval_path, approval, model_id, case_id)
         record.update(status="submitted", attempts=1)
         write_json(directory / "result.json", record)
         write_json(directory / "plan.json", plan)
         started = time.perf_counter()
         try:
             response_metadata = {}
+            credential_header = {"Authorization": f"Bearer {key}"} if model.get(
+                "auth_mode") == "bearer" else {"api-key": key}
             payload = fetch(endpoint_url(model), body,
-                            {"api-key": key, "Content-Type": content_type,
+                            {**credential_header, "Content-Type": content_type,
                              "x-ms-client-request-id": run_id}, response_metadata=response_metadata)
             record["response_metadata"] = response_metadata
             response = json.loads(payload)
+            if isinstance(response.get("usage"), dict):
+                record["usage"] = sanitize_usage(response["usage"])
             if "error" in response:
                 raise ExperimentError("Azure returned an error; raw response is deliberately not persisted.")
             images = response.get("data", [])
@@ -341,6 +376,13 @@ def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
                           output_dimensions=dimensions)
         except error.HTTPError as exc:
             record.update(status="failed", error_kind="http", http_status=exc.code)
+            try:
+                detail = json.loads(exc.read(1024 * 1024))
+                code = detail.get("error", {}).get("code")
+                if isinstance(code, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", code):
+                    record["provider_error_code"] = code
+            except (ValueError, AttributeError, TypeError):
+                record["error_body_unparseable"] = True
         except (error.URLError, TimeoutError, OSError) as exc:
             record.update(status="failed", error_kind=type(exc).__name__,
                           completion_uncertain=True)
@@ -358,6 +400,18 @@ def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
     if record["status"] != "succeeded":
         raise ExperimentError("Live attempt failed. Inspect sanitized result.json; no automatic retry.")
     return record
+
+
+def sanitize_usage(usage):
+    clean = {}
+    for key, value in usage.items():
+        if not re.fullmatch(r"[a-z_]{1,80}", key):
+            continue
+        if type(value) is int and value >= 0:
+            clean[key] = value
+        elif isinstance(value, dict):
+            clean[key] = sanitize_usage(value)
+    return clean
 
 
 def acquire(destination):

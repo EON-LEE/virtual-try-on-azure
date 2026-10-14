@@ -174,6 +174,8 @@ class ExperimentsTest(unittest.TestCase):
         with self.assertRaises(h.ExperimentError):
             self.run_mock(payload=b'{"data":[{"url":"https://untrusted.test/x"}]}')
         self.assertFalse(list((self.root / "runs").glob("*\\output.png")))
+        self.assertEqual(evaluate.summarize(self.root / "runs", {})["quality_conclusion"],
+                         "no live outputs")
 
     def test_locked_ledger_never_submits(self):
         self.approval_path.with_suffix(".lock").touch()
@@ -186,6 +188,43 @@ class ExperimentsTest(unittest.TestCase):
             "reserved_cost": "-1"})
         with self.assertRaises(h.ExperimentError):
             self.run_mock()
+
+    def test_explicit_unknown_cost_requires_acceptance_and_caps_exact_pair(self):
+        self.config["cases"] = self.config["cases"][:1]
+        self.plan, self.inputs = h.build_plan(self.config, self.root)
+        case = self.config["cases"][0]["id"]
+        self.approval.update(
+            scope_sha256=self.plan["scope_sha256"], cost_mode="explicit_unknown_cost",
+            unknown_cost_accepted=True, max_cost=None, cost_risk_acknowledgment="User accepts no hard amount cap",
+            request_limits={f"sunburst:{case}": 1, f"mai:{case}": 1})
+        h.check_approval(self.approval, self.plan)
+        with self.assertRaises(h.ExperimentError):
+            h.check_approval({**self.approval, "unknown_cost_accepted": False}, self.plan)
+        h.write_json(self.approval_path, self.approval)
+        result, _ = self.run_mock()
+        self.assertIsNone(result["reserved_cost_bound"])
+        with self.assertRaises(h.ExperimentError):
+            self.run_mock()
+        self.assertIsNone(h.reserve(self.approval_path, self.approval, "mai", case))
+        with self.assertRaises(h.ExperimentError):
+            h.reserve(self.approval_path, self.approval, "mai", case)
+        report = evaluate.summarize(self.root / "runs", {})
+        self.assertIsNone(report["groups"][0]["reserved_cost_bound"])
+
+    def test_usage_excludes_unknown_strings(self):
+        self.assertEqual(h.sanitize_usage({"input_tokens": 5, "secret": "key",
+                                          "details": {"image_tokens": 3}}),
+                         {"input_tokens": 5, "details": {"image_tokens": 3}})
+
+    def test_bearer_auth_explicit_header_no_api_key(self):
+        self.config["models"][0]["auth_mode"] = "bearer"
+        self.plan, self.inputs = h.build_plan(self.config, self.root)
+        self.approval["scope_sha256"] = self.plan["scope_sha256"]
+        h.write_json(self.approval_path, self.approval)
+        _, network = self.run_mock()
+        headers = network.call_args.args[2]
+        self.assertEqual(headers["Authorization"], "Bearer test-secret")
+        self.assertNotIn("api-key", headers)
 
     def test_no_logo_na_requires_explanation(self):
         result, _ = self.run_mock()

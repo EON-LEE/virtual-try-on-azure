@@ -57,7 +57,11 @@ def summarize(root, reviews):
             "latencies": [], "reserved_cost_bound": Decimal(0), "runs": []})
         group["attempted"] += 1
         group["retries"] += result["retries"]
-        group["reserved_cost_bound"] += Decimal(result["reserved_cost_bound"])
+        bound = result["reserved_cost_bound"]
+        if bound is None:
+            group["reserved_cost_bound"] = None
+        elif group["reserved_cost_bound"] is not None:
+            group["reserved_cost_bound"] += Decimal(bound)
         if "elapsed_seconds" in result:
             elapsed = result["elapsed_seconds"]
             if type(elapsed) not in {int, float} or not math.isfinite(elapsed) or elapsed < 0:
@@ -95,15 +99,19 @@ def summarize(root, reviews):
         group["latency_seconds"] = {
             "samples": len(durations), "median": statistics.median(durations) if durations else None,
             "p95_nearest_rank": durations[math.ceil(len(durations) * .95) - 1] if durations else None}
-        group["reserved_cost_bound"] = str(group["reserved_cost_bound"])
+        if group["reserved_cost_bound"] is not None:
+            group["reserved_cost_bound"] = str(group["reserved_cost_bound"])
         group["billed_cost"] = None
         group["cost_per_accepted_result"] = None
         group["acceptance_rate_all_attempts"] = group["accepted"] / group["attempted"]
         group["dimension_scores"] = {
             d: {"reviewed_applicable": len(scores), "mean": statistics.mean(scores) if scores else None}
             for d, scores in group["dimension_scores"].items()}
+    conclusion = "no live outputs"
+    if any(group["succeeded"] for group in groups.values()):
+        conclusion = "human pilot only"
     return {"schema_version": 1, "groups": list(groups.values()),
-            "quality_conclusion": "no live outputs" if not groups else "human pilot only",
+            "quality_conclusion": conclusion,
             "billing_note": "Reserved bounds are not charges. Reconcile Azure billing separately.",
             "fit_size_claim": False}
 
