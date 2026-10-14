@@ -14,6 +14,10 @@ approval ledger is exhausted; further inference requires a new exact approval.
 This is a separate experiment track, not the application or evidence that
 virtual try-on works generally.
 
+Official-brand link candidates and a primary-paper-grounded next-case
+evaluation matrix are in `next-case-research.md`. These are research only:
+brand-photo rights and new Azure transfer/call approvals remain unresolved.
+
 ## Reproduce the offline work
 
 Python 3.12 and Pillow 12.3.0 are used. No cloud SDK, Azure login, external
