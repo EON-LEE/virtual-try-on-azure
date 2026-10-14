@@ -65,10 +65,11 @@ pixels, for a strict paired comparison.
 | Adapter | Request contract |
 | --- | --- |
 | Sunburst | Azure dated deployment `images/edits`, repeated `image[]`, `model`, fixed `prompt`, `n=1` |
-| MAI Image 2.6 | Azure `/mai/v1/images/edits`, repeated `image`, `model`, fixed `prompt` |
+| MAI Image 2.6 | Azure `/mai/v1/images/edits`, repeated `image`, `model`, fixed `prompt`, `web_grounding=false` |
 
-No mask, fidelity, size, quality, seed or web-grounding fields are guessed or
-sent. `2025-04-01-preview` comes from the official GPT Image family example and
+No mask, fidelity, size, quality, seed or aspect-ratio fields are guessed or
+sent. MAI's documented Image 2.6 edits control `web_grounding=false` explicitly
+disables additional Bing context. `2025-04-01-preview` comes from the official GPT Image family example and
 is configurable; **that example is not proof of Sunburst deployment compatibility**.
 Provider response must contain one base64 image; arbitrary returned URLs are
 not fetched. Requests time out after 180 seconds, with no paid retry or fallback.

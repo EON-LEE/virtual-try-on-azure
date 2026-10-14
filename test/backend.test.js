@@ -42,7 +42,7 @@ test('provider contract keeps image roles ordered and sends only documented cont
     if (id === 'mai') {
       assert.equal(options.body.get('quality'), null);
       assert.equal(options.body.get('width'), null);
-      assert.equal(options.body.get('web_grounding'), null);
+      assert.equal(options.body.get('web_grounding'), 'false');
     } else {
       assert.equal(options.body.get('n'), '1');
       assert.equal(options.body.get('quality'), null);
