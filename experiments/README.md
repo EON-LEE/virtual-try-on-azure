@@ -17,6 +17,10 @@ virtual try-on works generally.
 Official-brand link candidates and a primary-paper-grounded next-case
 evaluation matrix are in `next-case-research.md`. These are research only:
 brand-photo rights and new Azure transfer/call approvals remain unresolved.
+`brand-cases.json` and `brand-candidate-review.md` extend that list to six
+combinations across three domestic brands/two companies; photos are not licensed
+for inference yet. `python .\experiments\report.py` creates the ignored,
+self-contained `local\report\index.html` with all actual attempts and candidates.
 
 ## Reproduce the offline work
 
