@@ -1,6 +1,7 @@
 import { AppError } from './errors.js';
 import { sanitizeOutput } from './images.js';
 import { TRY_ON_PROMPT } from './prompt.js';
+import { authHeaders } from './auth.js';
 
 export function buildRequest(model, person, garment) {
   const body = new FormData();
@@ -19,7 +20,7 @@ export function buildRequest(model, person, garment) {
   } else {
     throw new AppError(400, 'invalid-model', 'Unsupported model.');
   }
-  return { url, options: { method: 'POST', headers: { 'api-key': model.key }, body, redirect: 'error' } };
+  return { url, options: { method: 'POST', body, redirect: 'error' } };
 }
 
 const providerMessages = {
@@ -30,12 +31,17 @@ const providerMessages = {
   429: 'Azure quota or rate limit reached. No automatic retry was made.'
 };
 
-export async function editImage(model, person, garment, { fetchImpl = fetch, signal } = {}) {
+export async function editImage(model, person, garment, { fetchImpl = fetch, signal, getAuthHeaders = authHeaders } = {}) {
+  if (!model.ready) throw new AppError(503, 'model-unavailable', 'Inference is disabled or this model is not configured.');
+  signal?.throwIfAborted();
+  const headers = await getAuthHeaders(model);
+  signal?.throwIfAborted();
   const request = buildRequest(model, person, garment);
   let response;
   try {
     response = await fetchImpl(request.url, {
       ...request.options,
+      headers,
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(180_000)]) : AbortSignal.timeout(180_000)
     });
   } catch (error) {

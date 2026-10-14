@@ -10,6 +10,6 @@
     "test:e2e": "playwright test",
     "check": "node --check src/server.js && node --check public/app.js"
   },
-  "dependencies": { "sharp": "^0.34.4" },
+  "dependencies": { "@azure/identity": "^4.13.0", "sharp": "^0.34.4" },
   "devDependencies": { "@playwright/test": "^1.56.0" }
 }

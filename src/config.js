@@ -2,6 +2,7 @@ import { AppError } from './errors.js';
 
 export const MODEL_IDS = ['sunburst', 'mai'];
 export const MAI_MODEL = 'MAI-Image-2.6';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function endpoint(value, suffixes) {
   if (!value) return null;
@@ -32,6 +33,20 @@ export function loadConfig(env = process.env) {
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT.');
   const enabled = env.ENABLE_AZURE_INFERENCE === 'true';
+  const auth = {
+    mode: env.AZURE_AUTH_MODE || 'key',
+    subscriptionId: env.AZURE_SUBSCRIPTION_ID || '',
+    tenantId: env.AZURE_TENANT_ID || '',
+    principalId: env.AZURE_EXPECTED_PRINCIPAL_ID || ''
+  };
+  if (!['key', 'entra-cli'].includes(auth.mode)) throw new Error('AZURE_AUTH_MODE must be key or entra-cli.');
+  const identityConfigured = [auth.subscriptionId, auth.tenantId, auth.principalId].every(value => UUID.test(value));
+  if ([auth.subscriptionId, auth.tenantId, auth.principalId].some(value => value && !UUID.test(value))) {
+    throw new Error('Azure subscription, tenant and expected principal IDs must be UUIDs.');
+  }
+  if (enabled && auth.mode === 'entra-cli' && !identityConfigured) {
+    throw new Error('Entra CLI inference requires explicit subscription, tenant and expected principal IDs.');
+  }
   const version = env.AZURE_SUNBURST_API_VERSION || '2025-04-01-preview';
   if (!/^\d{4}-\d{2}-\d{2}(-preview)?$/.test(version)) throw new Error('Invalid Azure API version.');
   const models = {
@@ -52,10 +67,12 @@ export function loadConfig(env = process.env) {
     throw new Error('This adapter supports only MAI-Image-2.6 edits. Do not silently substitute a variant.');
   }
   for (const model of Object.values(models)) {
-    model.ready = enabled && Boolean(model.endpoint && model.deployment && model.key && model.model);
+    model.auth = auth;
+    model.ready = enabled && Boolean(model.endpoint && model.deployment && model.model &&
+      (auth.mode === 'key' ? model.key : identityConfigured));
     model.reason = !enabled ? 'inference-disabled' : model.ready ? null : 'not-configured';
   }
-  return { host, port, token, origin, models };
+  return { host, port, token, origin, models, auth };
 }
 
 export function selectModels(value, config) {
