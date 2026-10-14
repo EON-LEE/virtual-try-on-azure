@@ -26,7 +26,7 @@ export class JobStore {
       if (previous.fingerprint !== fingerprint) throw new AppError(409, 'duplicate-conflict', 'This request ID was already used with different inputs.');
       return previous;
     }
-    if (this.jobs.size >= 32 || [...this.jobs.values()].some(j => j.owner === owner && j.status === 'running')) {
+    if (this.jobs.size >= 8 || [...this.jobs.values()].some(j => j.owner === owner && j.status === 'running')) {
       throw new AppError(429, 'busy', 'A generation is already running, or the studio is at capacity.');
     }
     const job = {

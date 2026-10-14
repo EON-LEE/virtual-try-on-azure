@@ -42,7 +42,7 @@ export function loadConfig(env = process.env) {
       key: env.AZURE_SUNBURST_API_KEY || '', version, preview: false
     },
     mai: {
-      id: 'mai', label: 'MAI', model: env.AZURE_MAI_MODEL || '',
+      id: 'mai', label: 'MAI Image 2.6', model: env.AZURE_MAI_MODEL || MAI_MODEL,
       endpoint: endpoint(env.AZURE_MAI_ENDPOINT, ['.services.ai.azure.com']),
       deployment: env.AZURE_MAI_DEPLOYMENT || '',
       key: env.AZURE_MAI_API_KEY || '', preview: true

@@ -13,12 +13,8 @@ export function buildRequest(model, person, garment) {
   if (model.id === 'sunburst') {
     url = `${model.endpoint}/openai/deployments/${encodeURIComponent(model.deployment)}/images/edits?api-version=${model.version}`;
     body.set('n', '1');
-    body.set('size', '1024x1024');
-    body.set('quality', 'high');
   } else if (model.id === 'mai') {
     url = `${model.endpoint}/mai/v1/images/edits`;
-    // MAI edits do not document mask, fidelity, quality, width or height controls.
-    body.set('web_grounding', 'false');
   } else {
     throw new AppError(400, 'invalid-model', 'Unsupported model.');
   }

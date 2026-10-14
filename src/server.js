@@ -54,6 +54,7 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
     if (secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     const cookie = value => `studio=${value}; Path=/; HttpOnly; SameSite=Strict; ${secure ? 'Secure; ' : ''}Max-Age=${value ? SESSION_TTL / 1000 : 0}`;
     try {
+      if (req.method === 'GET' && req.url === '/healthz') return json(res, 200, { status: 'ok' });
       const host = req.headers.host;
       let origin;
       try {
@@ -69,7 +70,6 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
       const expectedOrigin = config.origin || origin.origin;
       if (req.headers.origin && req.headers.origin !== expectedOrigin) throw new AppError(403, 'cross-origin', 'Cross-origin requests are not allowed.');
       const path = new URL(req.url, expectedOrigin).pathname;
-      if (req.method === 'GET' && path === '/healthz') return json(res, 200, { status: 'ok' });
       if (req.method === 'GET' && staticFiles[path]) {
         const [name, type] = staticFiles[path];
         res.setHeader('Content-Type', type);
@@ -89,6 +89,7 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
           if (error instanceof AppError) throw error;
           throw new AppError(400, 'invalid-request', 'Invalid access request.');
         }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppError(400, 'invalid-request', 'Invalid access request.');
         const digest = value => createHash('sha256').update(value).digest();
         if (config.token && (typeof data.token !== 'string' || !timingSafeEqual(digest(data.token), digest(config.token)))) {
           throw new AppError(401, 'unauthorized', 'Incorrect studio access token.');

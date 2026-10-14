@@ -42,14 +42,15 @@ test('provider contract keeps image roles ordered and sends only documented cont
     if (id === 'mai') {
       assert.equal(options.body.get('quality'), null);
       assert.equal(options.body.get('width'), null);
-      assert.equal(options.body.get('web_grounding'), 'false');
+      assert.equal(options.body.get('web_grounding'), null);
     } else {
       assert.equal(options.body.get('n'), '1');
-      assert.equal(options.body.get('quality'), 'high');
+      assert.equal(options.body.get('quality'), null);
+      assert.equal(options.body.get('size'), null);
       assert.match(url, /2025-04-01-preview$/);
     }
   }
-  assert.match(TRY_ON_PROMPT, /exact pose/);
+  assert.match(TRY_ON_PROMPT, /pose, hand and finger positions/);
   assert.match(TRY_ON_PROMPT, /logos/);
 });
 
@@ -149,4 +150,59 @@ test('HTTP upload-to-result flow enforces consent, origin, session and exact sel
   assert.deepEqual(calls, ['sunburst']);
   await fetch(`${origin}/api/jobs/${job.id}`, { method: 'DELETE', headers });
   assert.equal((await fetch(`${origin}/api/jobs/${job.id}`, { headers: { cookie } })).status, 404);
+});
+
+test('access token is exchanged for a session; no key leaks; disabled calls never execute', async t => {
+  const config = loadConfig({ APP_ACCESS_TOKEN: 'test-access-token', AZURE_SUNBURST_API_KEY: 'private-test-key' });
+  let calls = 0;
+  const jobs = new JobStore({ provider: async () => { calls++; throw new Error('should not run'); } });
+  const server = createServer(config, { jobs });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const initial = await fetch(`${origin}/api/config`);
+  assert.equal(initial.headers.get('set-cookie'), null);
+  const publicConfig = await initial.json();
+  assert.equal(publicConfig.authenticated, false);
+  assert.doesNotMatch(JSON.stringify(publicConfig), /private-test-key|test-access-token/);
+  const headers = { 'content-type': 'application/json', 'x-studio-request': '1', origin };
+  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: 'null' })).status, 400);
+  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'wrong' }) })).status, 401);
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'test-access-token' }) });
+  assert.equal(login.status, 200);
+  const cookieHeader = login.headers.get('set-cookie');
+  assert.match(cookieHeader, /HttpOnly/);
+  assert.match(cookieHeader, /SameSite=Strict/);
+  const cookie = cookieHeader.split(';')[0];
+  const form = new FormData();
+  form.set('models', '["sunburst"]'); form.set('consent', 'true');
+  form.set('person', new Blob([await png()], { type: 'image/png' }), 'person.png');
+  form.set('garment', new Blob([await png()], { type: 'image/png' }), 'garment.png');
+  const requestHeaders = { cookie, origin, 'x-studio-request': '1', 'x-request-id': 'request-abcdefghij' };
+  assert.equal((await fetch(`${origin}/api/jobs`, { method: 'POST', headers: requestHeaders, body: form })).status, 503);
+  form.set('prompt', 'override fixed instruction');
+  assert.equal((await fetch(`${origin}/api/jobs`, { method: 'POST', headers: requestHeaders, body: form })).status, 400);
+  assert.equal(calls, 0);
+  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'a'.repeat(3000) }) })).status, 413);
+  await fetch(`${origin}/api/session`, { method: 'DELETE', headers: { cookie, 'x-studio-request': '1' } });
+  assert.equal((await (await fetch(`${origin}/api/config`, { headers: { cookie } })).json()).authenticated, false);
+});
+
+test('image size/frame limits, malicious payloads and multiple provider images fail explicitly', async () => {
+  const huge = await sharp({ create: { width: 4097, height: 1, channels: 3, background: 'white' } }).png().toBuffer();
+  await assert.rejects(() => sanitizeImage(new File([huge], 'wide.png', { type: 'image/png' }), 'person'), /4096 pixels/);
+  const rotated = await sharp({ create: { width: 12, height: 24, channels: 3, background: 'white' } }).jpeg().withMetadata({ orientation: 6 }).toBuffer();
+  const normalized = await sanitizeImage(new File([rotated], 'rotated.jpg', { type: 'image/jpeg' }), 'person');
+  const metadata = await sharp(normalized).metadata();
+  assert.equal(metadata.width, 24);
+  assert.equal(metadata.height, 12);
+  assert.equal(metadata.orientation, undefined);
+  await assert.rejects(() => editImage(configured().models.sunburst, normalized, normalized, {
+    fetchImpl: async () => Response.json({ data: [{ b64_json: 'AAAA' }, { b64_json: 'AAAA' }] })
+  }), /invalid response/);
+  let attempts = 0;
+  await assert.rejects(() => editImage(configured().models.sunburst, normalized, normalized, {
+    fetchImpl: async () => { attempts++; throw new DOMException('test', 'TimeoutError'); }
+  }), /may still be billed/);
+  assert.equal(attempts, 1);
 });

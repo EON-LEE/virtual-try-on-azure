@@ -41,7 +41,9 @@ export async function sanitizeOutput(base64) {
     if (!['png', 'jpeg', 'webp'].includes(metadata.format) || (metadata.pages || 1) !== 1) {
       throw new Error('Invalid output format');
     }
-    return await input.png().toBuffer();
+    const output = await input.png().toBuffer();
+    if (output.length > 24 * 1024 * 1024) throw new Error('Output too large');
+    return output;
   } catch {
     throw new AppError(502, 'invalid-provider-image', 'Azure returned an undecodable image.');
   }
