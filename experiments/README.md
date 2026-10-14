@@ -1,7 +1,8 @@
 # Azure-only try-on experiments
 
 Status, 2026-10-14: **six licensed archival inputs downloaded and inspected;
-offline harness implemented; zero live image-edit requests and zero generated
+offline harness implemented; dedicated resources/model deployments provisioned;
+zero live image-edit requests and zero generated
 try-on outputs. Quality is not evaluated.** This is a separate experiment track,
 not the application or evidence that virtual try-on works.
 
@@ -30,7 +31,9 @@ never be committed. `experiments\local\` is ignored.
 `plan` is offline, requires actual input files, and records the exact input
 order/bytes, prompt digest, model versions, options, case labels, and an approval
 scope hash. Placeholder deployments/endpoints are acceptable **only for an
-offline plan**. They prevent live execution. The example models are the
+offline plan**. They prevent live execution. Verified non-secret deployment
+metadata is in `deployments.json`; replace local config placeholders from that
+file only after checking the approved scope. The example models are the
 user-selected Sunburst and **MAI-Image-2.6 basic**, not Flash or an automatic
 fallback. The catalog versions are verified; API compatibility is not.
 
@@ -108,8 +111,10 @@ reviewed pairs and tags before assessing those requirements.
 
 ## Paid execution gate
 
-The user authorized read-only investigation in the selected admin subscription,
-not deployment, existing-project resource reuse, or paid inference. The runner
+The user subsequently authorized a dedicated resource group, two AI resources,
+and the exact model deployments. Those have been provisioned; **paid inference
+and existing-project resource reuse remain unauthorized**. See the provisioning
+procedure below. The experiment runner
 never uses `az login`, changes a shared default, acquires cached credentials, or
 deploys anything. Azure public resource origins only; redirects and image-URL
 responses are rejected. Credentials come solely from the explicitly named
@@ -139,6 +144,49 @@ manually; do not delete/reissue approvals to reset the budget. This is local
 admission control, not an Azure billing hard limit. A guessed per-request price
 cannot supply a reliable upper bound. Azure budgets also are not hard spending
 limits.
+
+## Approved control-plane provisioning
+
+`provision.ps1` creates/checks `rg-virtual-try-on`, then the dedicated
+`vto-sunburst-eus2-<subscription-prefix>` and `vto-mai26-eus-<subscription-prefix>`
+AIServices S0 resources. Custom subdomains are explicit; project management is
+disabled because no Foundry project or app hosting was requested. Deployments
+are exactly `tryon-sunburst` / `tryon-mai26`, GlobalStandard capacity 1, using
+OpenAI Sunburst `2026-09-08` / Microsoft MAI-Image-2.6 basic `2026-07-31`.
+Public authenticated service origins are provisioned; no roles, keys, login,
+network overrides, app hosting, or inference calls are created by the script.
+
+```powershell
+.\experiments\provision.ps1 -Subscription <explicit-approved-subscription> -ApprovedProvisioning
+```
+
+On the current machine direct `.ps1` execution is restricted. The reviewed
+repository script was run as a script block without changing execution policy:
+
+```powershell
+$provision = [scriptblock]::Create((Get-Content -LiteralPath .\experiments\provision.ps1 -Raw))
+& $provision -Subscription <explicit-approved-subscription> -ApprovedProvisioning
+```
+
+The script invokes only Ubuntu's Azure CLI (`wsl -d Ubuntu -- sh -lc`),
+explicitly scopes every command to the passed subscription, and requires the
+caller to have obtained specific provisioning approval first. It never
+switches shared accounts/defaults. Repeated execution checks project ownership
+tags and exact account/model specifications; successful existing deployments
+are read, not recreated or modified. Unexpected existing resources, provider
+errors, version/SKU/capacity mismatches, or non-Succeeded state stop execution
+without fallback. It is deliberately sequential and not transactional: if a
+later step fails, earlier provisioned resources remain for explicit review;
+there is no unapproved rollback/deletion.
+
+The 2026-10-14 approved run verified **both resources and both deployments
+Succeeded**, capacity 1, exact versions, and family-specific endpoints via
+control-plane reads. Sunburst quota consumption is now 1 of 2; MAI is 1 of 6.
+The generic account `cognitiveservices.azure.com` origin is not the app's image
+API origin: use the provider-published `openai.azure.com` (Sunburst) and
+`services.ai.azure.com` (MAI) endpoints in `deployments.json`.
+This resolves capacity-one **provisioning**, not data-plane API compatibility,
+authorization for paid probes, billing ceilings, or try-on quality.
 
 Results contain request attempts/retries, elapsed request+decode+save duration,
 input/prompt scope hash, actual PNG hash/dimensions, sanitized HTTP failures,

@@ -4,8 +4,10 @@
 The following distinguishes public documentation, read-only control-plane
 observations, list prices, and untested inference. It is not a success case.
 MAI-Image-2.6 **basic** was subsequently confirmed by the user; Flash is excluded.
-The admin subscription is authorized for investigation. Resource creation,
-reuse, deployment, paid probes, and experiment budget remain unapproved.
+The admin subscription was authorized for investigation, then the user approved
+the dedicated resource group, two AI resources, and the exact model deployments.
+Provisioning succeeded as documented below. Existing-project reuse, paid probes,
+and experiment budget remain unapproved.
 
 ## Official API documentation
 
@@ -35,12 +37,14 @@ reuse, deployment, paid probes, and experiment budget remain unapproved.
   GlobalStandard may process inference in other Azure regions. Azure-managed
   does not mean processing remains in Korea or in the resource's region.
 
-## Actual read-only catalog and quota observations
+## Initial read-only catalog and quota observations
 
 No keys or tokens were read/printed. Linux Azure CLI was invoked through
 `wsl -d Ubuntu`; every Azure command explicitly scoped the user-authorized
-subscription. Shared login/default was not changed. No deployment was attempted.
-Resource names/subscription identifiers are deliberately not published here.
+subscription. Shared login/default was not changed. No deployment was attempted
+during this initial investigation.
+The initial other-project resource names/subscription identifiers are not
+published here; approved dedicated resources are recorded in `deployments.json`.
 
 | Observation | Sunburst | MAI-Image-2.6 basic |
 | --- | --- | --- |
@@ -59,19 +63,69 @@ are scoped to this subscription/date/query; they are not a global impossibility
 claim. Catalog appearance/quota do not prove access or successful deployment.
 `Count` quota is not itself a latency or sustained RPM guarantee.
 
-Sunburst's **default capacity 3 exceeds current quota 2**. Capacity 1 is a
+At initial investigation, Sunburst's **default capacity 3 exceeded quota 2**. Capacity 1 was a
 candidate to investigate, **not a confirmed supported minimum**: provider
 metadata leaves minimum/step/allowedValues null; read-only `account list-skus`
 only returns account S0 and cannot establish model-deployment capacity 1.
-A quota request/default-capacity change is not authorized. Do not claim
-deployability until an approved exact deployment succeeds.
+The approved actual deployment below subsequently established capacity-one
+provisioning for this resource/date. No quota increase or alternate SKU was used.
 
 Existing resources belong to other projects. Prefer a separately approved
 try-on resource in eastus2 or westus3 for Sunburst and an eastus resource for
 MAI if these region observations remain valid. This is a **two-resource
 proposal**, not a command to deploy, and does not imply Fabric or external
-inference. A dedicated resource limits unrelated project coupling; actual
-access/quota/network/API validation remains necessary.
+inference. The proposal was subsequently approved and provisioned below.
+A dedicated resource limits unrelated project coupling; actual data-plane
+access/network/API validation remains necessary.
+
+## Approved actual provisioning, 2026-10-14
+
+User approval relayed by the coordinator: dedicated resources and model
+deployments only, **excluding image generation/edit calls**. Created
+`rg-virtual-try-on` with ownership tag `project=virtual-try-on`.
+
+| Verified field | Sunburst | MAI 2.6 basic |
+| --- | --- | --- |
+| Dedicated account | `vto-sunburst-eus2-b0af194e` | `vto-mai26-eus-b0af194e` |
+| Region / resource kind / account SKU | eastus2 / AIServices / S0 | eastus / AIServices / S0 |
+| Deployment | `tryon-sunburst` | `tryon-mai26` |
+| Actual model / format | `gpt-image-2.5-sunburst` / OpenAI | `MAI-Image-2.6` / Microsoft |
+| Actual model version | `2026-09-08` | `2026-07-31` |
+| Deployment SKU / capacity | GlobalStandard / **1** | GlobalStandard / **1** |
+| Resource / deployment state | Succeeded / Succeeded | Succeeded / Succeeded |
+| Post-deployment regional quota | current 1 / limit 2 | current 1 / limit 6 |
+| Image edits/generation requests | **0** | **0** |
+
+Family-specific API origins were read from **actual provider-published**
+`properties.endpoints`, not assumed from generic `properties.endpoint`:
+
+- Sunburst: `https://vto-sunburst-eus2-b0af194e.openai.azure.com/`
+- MAI: `https://vto-mai26-eus-b0af194e.services.ai.azure.com/`
+
+The generic origins are `cognitiveservices.azure.com` and are not substituted
+into the image adapters. `deployments.json` contains this non-secret metadata.
+Both endpoints/version/capacity/state were relayed to the development session.
+No keys were listed, no credentials were printed/committed, no existing other-
+project resources were modified, and the shared login/default was unchanged.
+No app hosting, projects, roles, paid inference, or quota changes were performed.
+
+Provider AIServices S0 availability was checked in both regions. A first
+resource-create invocation failed with `InvalidResourceLocation` because a
+PowerShell format placeholder `{2}` was not substituted; the string-expression
+precedence was corrected before retrying the **same approved specification**.
+No account/deployment was created by that failed command; the dedicated group
+already existed. The subsequent exact two accounts and deployments succeeded.
+No model, region, SKU, capacity, or quota fallback was used.
+
+`provision.ps1` preserves the repeatable procedure and fail-closed checks.
+An actual second execution completed by **reading existing matching resources/
+deployments**, without recreating or updating them. It verified both exact
+models, versions, capacity 1, Succeeded state, and family-specific origins.
+This proves capacity-one control-plane deployment here, **not that 1 is the
+global minimum**, that the dated image-edit API is compatible, that credentials
+are available to the app, or that any try-on output preserves the person/garment.
+Inference approval, case person-use review, and a reliable request-cost bound
+remain prerequisites for any image-edit probe.
 
 Read-only command families used:
 
