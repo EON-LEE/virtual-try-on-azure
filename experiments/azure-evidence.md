@@ -1,13 +1,15 @@
 # Verified Azure evidence, 2026-10-14
 
-**Live image-edit requests: 0. Generated try-on outputs: 0.**
+**Latest: live image-edit requests 2, both HTTP 401 PermissionDenied;
+generated try-on outputs 0.** Initial investigation/provisioning had zero calls.
 The following distinguishes public documentation, read-only control-plane
 observations, list prices, and untested inference. It is not a success case.
 MAI-Image-2.6 **basic** was subsequently confirmed by the user; Flash is excluded.
 The admin subscription was authorized for investigation, then the user approved
 the dedicated resource group, two AI resources, and the exact model deployments.
-Provisioning succeeded as documented below. Existing-project reuse, paid probes,
-and experiment budget remain unapproved.
+Provisioning succeeded as documented below. The user later approved exactly
+two private-research image edits, accepting unknown monetary ceiling; both
+failed and exhausted approval. Additional calls/permissions remain unapproved.
 
 ## Official API documentation
 
@@ -182,6 +184,10 @@ Do not equate list-price estimates with charges.
 
 ## Smallest proposed paid sequence
 
+This was the initial proposal. The subsequently approved two-request smoke
+failed with authorization errors; no quality outputs exist. Do not execute the
+four-request expansion or repeat failed requests without new approval.
+
 After exact resource/deployment/API/rights/budget authorization:
 
 1. One identical person/garment pair on each selected model: **2 requests**,
@@ -199,3 +205,106 @@ tail latency, or reliable identity preservation. A concrete dollar bound is
 blocked by unverified per-request token ceilings; an arbitrary USD budget
 cannot make those ceilings true. If no approved managed model meets the
 preservation requirement, report it as unmet rather than replacing it silently.
+
+## Two-request smoke, then read-only authorization diagnosis
+
+Actual sanitized metrics are in `smoke-results.json`. Sunburst/MAI each received
+one edit request using the same normalized Met 286070 / Met 84219 pair, exact
+`upper-body-v1` prompt, baseline controls, and process-only Bearer credentials.
+HTTP 401 `PermissionDenied` at 05:00:18/05:00:27 UTC (14:00 KST), elapsed
+5.097s/3.976s. Retries 0, outputs 0, response usage absent, billed cost unknown.
+Failed requests consumed approval; no further image requests were made.
+Approval was explicitly for private technical research and Azure transfer,
+not commercial/promotional publication or a blanket subject-rights grant.
+
+An initial control-plane key retrieval returned `BadRequest` because
+`disableLocalAuth=true`; it did not acquire a key or submit an image. The two
+approved image requests therefore used Entra authentication. Token contents,
+principal oid, and credentials were kept internal and not persisted/published.
+
+Read-only inspection after failure:
+
+- Token audience matches `https://cognitiveservices.azure.com`, token tenant
+  matches the approved subscription tenant, and token user matches the cached
+  admin principal. Only boolean matching facts were emitted, no claim dump.
+- Both resource `disableLocalAuth` values are **true**, unchanged.
+- Using the actual token oid internally, resource-scoped role assignment
+  queries included inherited and group assignments. On each resource, only
+  inherited Owner (two assignments) and User Access Administrator were found;
+  no inference-capable data-action role was found.
+- The actual Owner definition has `DataActions=[]`. Owning/provisioning Azure
+  resources does not grant Bearer data-plane inference access.
+- Actual provider-operation metadata lists data actions
+  `Microsoft.CognitiveServices/accounts/OpenAI/images/generations/action` and
+  `Microsoft.CognitiveServices/accounts/MAI/images/action`; no separately
+  named image-edit operation was found. Do not invent a custom edit action.
+
+This evidence is consistent with missing inference RBAC as the 401 cause.
+It does not prove a subsequent edit will succeed after permission changes;
+route/API-version compatibility and quality remain untested.
+
+Official Entra support:
+
+- [MAI image guide](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-mai-image)
+  gives Bearer auth using `https://cognitiveservices.azure.com/.default`;
+  its edits section refers to the same authentication method.
+- [Azure OpenAI RBAC](https://learn.microsoft.com/en-us/azure/foundry-classic/openai/how-to/role-based-access-control)
+  explicitly supports inference with Microsoft Entra ID under OpenAI User.
+  [GPT image guide](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/dall-e)
+  also supplies Entra-based examples. Family auth support is not proof of exact
+  Sunburst dated edit-route compatibility.
+- [Built-in AI roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/ai-machine-learning)
+  and actual Azure role definitions were checked.
+
+**Proposed sufficient common built-in role, not assigned:**
+`Cognitive Services User`, ID `a97b65f3-24c7-4388-baec-2e87135dc908`.
+Its verified data actions include `Microsoft.CognitiveServices/*`, excluding
+specific fine-tune deployment and impersonation actions. This covers both
+OpenAI image and MAI image operations. It also grants read/key-list actions and
+broad service data access **inside the assigned resource**; it is not claimed
+to be the smallest conceivable custom permission set.
+
+Scope proposal: only the two dedicated account resource IDs under
+`<approved-subscription>/resourceGroups/rg-virtual-try-on/providers/Microsoft.CognitiveServices/accounts/`:
+`vto-sunburst-eus2-b0af194e` and `vto-mai26-eus-b0af194e`.
+Target: the verified current admin user's actual oid, resolved privately.
+No group/subscription-wide assignment is necessary for this proposed remedy.
+
+For Sunburst alone, `Cognitive Services OpenAI User`,
+ID `5e0bd9bd-7b93-4f28-af87-19fc36ad61bd`, is narrower and officially supports
+OpenAI inference; its definition does **not** include MAI image data actions.
+It therefore cannot serve as the common two-model role. A custom role would
+require additional investigation and explicit creation approval, not an
+automatic fallback.
+
+No permission assignment, local-auth change, credential switch, or additional
+image request was performed. Prefer preserving `disableLocalAuth=true`.
+The coordinator must obtain separate permission-change and fresh two-call
+approval before applying a remedy or repeating the smoke. App hosting is
+still outside scope.
+
+### Subsequently approved resource-scoped assignments
+
+The user then approved **only** the following two assignments to the already
+verified cached admin user, whose oid remained private:
+
+| Dedicated account scope | Actual role / ID | Verification |
+| --- | --- | --- |
+| `vto-sunburst-eus2-b0af194e` | Cognitive Services OpenAI User / `5e0bd9bd-7b93-4f28-af87-19fc36ad61bd` | Created; exact resource scope, principal, and role re-read and matched |
+| `vto-mai26-eus-b0af194e` | Cognitive Services User / `a97b65f3-24c7-4388-baec-2e87135dc908` | Created; exact resource scope, principal, and role re-read and matched |
+
+Execution on 2026-10-14 resolved the current token oid internally after checking
+subscription-tenant/admin matching. It read each account ID and local-auth
+state, searched for the exact existing principal/scope/role tuple, created
+only if absent using `--assignee-object-id`, `--assignee-principal-type User`,
+the exact role ID and resource ID, and re-read the tuple to verify existence.
+All control-plane commands explicitly used the approved subscription.
+No role assignment ID, oid, token, or claims were published.
+
+Both exact assignments were absent before and present afterward.
+`disableLocalAuth=true` was read and preserved for both. No subscription-wide
+grant, custom role, other account/identity, hosting, deployment, or additional
+image/API compatibility request was made. Role propagation can take minutes;
+control-plane existence does not prove effective data-plane access or edit
+compatibility. **The original two-call approval is still exhausted.** Fresh
+generation approval is required before testing the assignments with images.

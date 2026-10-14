@@ -2,8 +2,8 @@
 
 Status, 2026-10-14: **six licensed archival inputs downloaded and inspected;
 offline harness implemented; dedicated resources/model deployments provisioned;
-zero live image-edit requests and zero generated
-try-on outputs. Quality is not evaluated.** This is a separate experiment track,
+two user-approved live image-edit requests returned HTTP 401 PermissionDenied;
+zero generated try-on outputs. Quality is not evaluated.** This is a separate experiment track,
 not the application or evidence that virtual try-on works.
 
 ## Reproduce the offline work
@@ -98,7 +98,7 @@ The example pairs use the frontal portrait/plain shirt and standing
 looking-left/lace jacket. Samples are non-explicit historical subjects, but
 **public-domain copyright is not a blanket consent/personality-rights grant**.
 These are archival research candidates, not approved marketing imagery.
-`rights_reviewed=false` blocks inference until the intended jurisdiction,
+By default, `rights_reviewed=false` blocks inference until the intended jurisdiction,
 person-use permission/ethical suitability, and permitted disclosure have been
 reviewed. Do not imply museum/subject endorsement; label any edit as generated.
 Use adult volunteers' specifically consented originals and owned/licensed
@@ -112,8 +112,11 @@ reviewed pairs and tags before assessing those requirements.
 ## Paid execution gate
 
 The user subsequently authorized a dedicated resource group, two AI resources,
-and the exact model deployments. Those have been provisioned; **paid inference
-and existing-project resource reuse remain unauthorized**. See the provisioning
+and the exact model deployments. Those have been provisioned. Subsequently,
+the user approved exactly two private-research image edits with the specified
+Met pair, accepting the unknown monetary ceiling. **Both requests failed with
+401 PermissionDenied and consumed that approval; additional inference remains
+unauthorized.** Existing-project resource reuse remains unauthorized. See the provisioning
 procedure below. The experiment runner
 never uses `az login`, changes a shared default, acquires cached credentials, or
 deploys anything. Azure public resource origins only; redirects and image-URL
@@ -123,7 +126,11 @@ process environment, never JSON or stdout.
 After the coordinator obtains approval for the **exact deployments, API
 compatibility probe, input rights, request count, conservative request-cost
 bound, and expiration**, fill a local copy of `approval.example.json` and set
-the API key in the command process through an approved secure mechanism.
+credential in the command process through an approved secure mechanism.
+`auth_mode` defaults to `api_key`; explicit `bearer` uses the same named
+environment variable as an Entra access token. The current dedicated resources
+have `disableLocalAuth=true`, so API keys cannot be used. The harness does not
+acquire or refresh tokens itself. Do not silently enable key authentication.
 The `deployment_api_verified` field covers verified deployment/version,
 documented route and controls, and authorization to make the first paid API
 compatibility probe; it is **not a claim that a successful edit was already
@@ -144,6 +151,51 @@ manually; do not delete/reissue approvals to reset the budget. This is local
 admission control, not an Azure billing hard limit. A guessed per-request price
 cannot supply a reliable upper bound. Azure budgets also are not hard spending
 limits.
+
+The default `verified_bound` mode still rejects missing/invalid price bounds.
+An exceptional `cost_mode=explicit_unknown_cost` is allowed **only** after a
+specific user risk decision: `unknown_cost_accepted=true`, explicit
+`cost_risk_acknowledgment`, `max_cost=null`, and `request_limits` containing
+exactly one request for each approved model/case combination. Their sum must
+equal `max_requests`. Scope hash/expiry/rights/deployment gates remain required.
+The ledger records exact combination counts before HTTP submission and blocks
+repeat calls even if the other model has not run. `reserved_cost_bound=null`
+means no monetary ceiling, never zero cost. Changing a failed request or
+auth mode does not replenish approval; new calls require new user approval.
+
+## Actual two-call smoke and authorization diagnosis
+
+At 2026-10-14 14:00 KST, the approved frontal-shirt pair was submitted once to
+Sunburst and once to MAI with the exact same prepared bytes and prompt.
+Both returned **HTTP 401 PermissionDenied** (5.097s and 3.976s respectively),
+no generated image and no usage object. Monetary cost remains unknown/null:
+failure is not recorded as free. Both count against the approved two requests.
+`smoke-results.json` preserves sanitized evidence. Local result/plan/ledger:
+`local\approved-smoke-runs\` and
+`local\approved-smoke-bearer-approval.ledger.json`.
+There is **no output image to inspect**; face/pose/body/background/garment
+quality cannot be evaluated.
+
+The user approved Azure transfer of Met 286070 and 84219 for private technical
+research, explicitly excluding commercial/promotional publication. Public-domain
+provenance and that specific use/transfer decision were documented in the
+private approval. This is not a blanket consent/personality-rights grant.
+
+Initial key retrieval was rejected by the control plane because local auth
+is disabled; no key was acquired or logged and that was not an image request.
+The approved image requests used process-only Entra tokens. Subsequent
+**read-only** checks verified token audience/tenant/admin-principal matching
+without printing claims, identifiers, or tokens. Inherited Owner and User
+Access Administrator assignments do not include inference data actions.
+No inference role was found on either resource. See `azure-evidence.md` for
+official role definitions and the proposed resource-scoped remedy. No roles,
+local-auth settings, hosting, deployments, or additional image requests were
+changed during diagnosis. Subsequently, the user approved and the agent created
+only the exact resource-scoped admin assignments: OpenAI User on Sunburst,
+Cognitive Services User on MAI. Both tuples were re-read and verified, with
+local auth still disabled. Propagation/effective inference are untested.
+**No fresh image calls are approved yet; the original two-call ledger remains
+exhausted.** See the dated authorization sequence in `azure-evidence.md`.
 
 ## Approved control-plane provisioning
 
