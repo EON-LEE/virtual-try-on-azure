@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "track": "baseline",
+  "models": [
+    {
+      "id": "sunburst",
+      "family": "gpt",
+      "catalog_model": "gpt-image-2.5-sunburst",
+      "model_version": "2026-09-08",
+      "deployment": "REQUIRES_USER_APPROVED_DEPLOYMENT",
+      "endpoint": "https://REPLACE.openai.azure.com",
+      "api_version": "2025-04-01-preview",
+      "api_key_env": "TRYON_SUNBURST_KEY",
+      "options": {}
+    },
+    {
+      "id": "mai",
+      "family": "mai",
+      "catalog_model": "MAI-Image-2.6",
+      "model_version": "2026-07-31",
+      "deployment": "REQUIRES_USER_APPROVED_DEPLOYMENT",
+      "endpoint": "https://REPLACE.services.ai.azure.com",
+      "api_key_env": "TRYON_MAI_KEY",
+      "options": {}
+    }
+  ],
+  "cases": [
+    {
+      "id": "frontal-shirt",
+      "person": "samples/person-portrait.png",
+      "garment": "samples/garment-shirt.png",
+      "rights_reviewed": false,
+      "category": "upper-body",
+      "tags": ["historical", "frontal-seated", "plain", "hands-partly-hidden"]
+    },
+    {
+      "id": "turned-jacket",
+      "person": "samples/person-turned.png",
+      "garment": "samples/garment-jacket.png",
+      "rights_reviewed": false,
+      "category": "upper-body",
+      "tags": ["historical", "standing-looking-left", "lace-pattern", "hand-on-prop"]
+    }
+  ]
+}

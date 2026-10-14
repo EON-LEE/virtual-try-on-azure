@@ -1,0 +1,21 @@
+{
+  "approved": false,
+  "scope_sha256": "COPY_FROM_OFFLINE_PLAN_AFTER_USER_APPROVES_EXACT_SCOPE",
+  "approval_reference": "NON_SENSITIVE_USER_DECISION_REFERENCE",
+  "expires_utc": "2000-01-01T00:00:00Z",
+  "max_requests": 0,
+  "max_cost": "0",
+  "currency": "USD",
+  "account_subscription_verified": false,
+  "deployment_api_verified": false,
+  "models": {
+    "sunburst": {
+      "reservation_per_request": "0",
+      "price_source": "REQUIRES_AZURE_PRICE_AND_UPPER_BOUND_VERIFICATION"
+    },
+    "mai": {
+      "reservation_per_request": "0",
+      "price_source": "REQUIRES_AZURE_PRICE_AND_UPPER_BOUND_VERIFICATION"
+    }
+  }
+}
