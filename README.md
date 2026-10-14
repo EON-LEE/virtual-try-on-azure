@@ -9,7 +9,9 @@ a model. No user-written prompt is required.
 model resources and deployments were provisioned successfully on 2026-10-14.
 App hosting has not been deployed. The experiment harness observed one HTTP 200
 image edit per model after RBAC propagation; the application credential path has
-not been live-tested. Both outputs failed the agent's visual preservation review.
+not been live-tested. The initial two outputs failed the agent's visual
+preservation review; only two outputs in a later four-case pilot passed its
+rubric. These observations do not establish service quality or garment accuracy.
 No sample illustration or test fixture is presented as a generated try-on result.
 
 ## Local run
@@ -90,6 +92,20 @@ including `experiments/second-smoke-results.json` and
 were USD 0.036974 (Sunburst) and USD 0.152260 (MAI); **actual billing is unknown**.
 These are not fixed prices or approval for more calls. Private research images
 are not embedded in the application or this document.
+
+The later VITON-HD pilot used four unpaired cases: eight approved attempts,
+five valid PNGs, three failures and no retries. Only stripe/Sunburst and
+lettered-print/MAI passed the agent's visual pilot rubric, not a ground-truth or
+service-quality assessment. Graphic/MAI invented a **BOSS wordmark absent from
+the garment reference**; both floral outputs failed to preserve the collar/
+placket. Models can invent lettering or brands, not just change patterns.
+Compare every result with both source images; garment accuracy is not guaranteed.
+Two attempts returned 401 and one returned 429; exact causes remain unresolved.
+The conditional usage-based estimate for five successful outputs was USD
+0.209598; actual billing is unknown, and failed calls are not assumed free.
+Evidence: [commit a63a9ad](https://github.com/EON-LEE/virtual-try-on-azure/commit/a63a9ad),
+`experiments/viton-hd-batch-review.md`. Lifetime totals are twelve attempts and
+seven outputs. No additional generation is authorized; inference remains disabled.
 
 ### Authentication modes
 
