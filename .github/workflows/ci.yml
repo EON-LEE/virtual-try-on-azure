@@ -1,0 +1,23 @@
+name: Application checks
+on:
+  pull_request:
+  push:
+    branches: [main, 'eonlee-microsoft-try-on-system-development']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: docker build -t try-on-studio:test .
+      - run: az bicep build --file infra/main.bicep --stdout > /dev/null

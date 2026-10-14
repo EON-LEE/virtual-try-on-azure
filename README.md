@@ -1,7 +1,156 @@
 # virtual-try-on-azure
 
-Virtual try-on on Azure. Application scope and architecture are not decided yet.
-This initial setup establishes the Git workflow only.
+Azure-only virtual try-on studio for **upper-body clothing**. Upload a person
+photo and a garment reference, then explicitly select GPT Image 2.5 Sunburst,
+MAI, or both. Only checked models run; changing the result view does not call
+a model. No user-written prompt is required.
+
+**Status:** local application/API/browser flows are implemented. Actual Azure
+deployment, Sunburst API compatibility, MAI variant availability, and garment/
+identity/pose preservation remain unverified until approved live experiments.
+No sample illustration or test fixture is presented as a generated try-on result.
+
+## Local run
+
+Install Node 24 or later. In PowerShell, use `npm.cmd` if the execution policy
+blocks the `npm.ps1` wrapper; no policy change is necessary.
+
+```powershell
+npm.cmd ci --ignore-scripts
+Copy-Item .env.example .env
+npm.cmd start
+```
+
+Open `http://127.0.0.1:3000`. The default UI previews local files and explicitly
+shows that Azure generation is disconnected. There is no mock mode in the
+application. `ENABLE_AZURE_INFERENCE=false` prevents all inference even if keys
+are present. Do not enable it without explicit account and cost approval.
+
+After approval, set these values in the ignored `.env` or hosting secrets:
+
+| Model | Required settings |
+| --- | --- |
+| Sunburst | `AZURE_SUNBURST_ENDPOINT` (resource root `https://NAME.openai.azure.com`), `AZURE_SUNBURST_DEPLOYMENT`, `AZURE_SUNBURST_API_KEY`, `AZURE_SUNBURST_API_VERSION` |
+| MAI | `AZURE_MAI_ENDPOINT` (resource root `https://NAME.services.ai.azure.com`), `AZURE_MAI_DEPLOYMENT`, `AZURE_MAI_API_KEY`, `AZURE_MAI_MODEL=MAI-Image-2.6` |
+| Paid-call gate | `ENABLE_AZURE_INFERENCE=true`, only after authorization |
+
+MAI Image 2.6 basic is the **user-confirmed quality-first variant** and is shown
+as Preview. Flash and other variants are rejected rather than substituted.
+Changing a deployment name does not prove that it contains the intended model:
+the operator must verify its actual model/version in Azure. Resource endpoint
+validation only permits the supported Azure domains; there is no external fallback.
+
+Non-loopback binding requires `APP_ACCESS_TOKEN` (32+ characters) and an HTTPS
+`APP_ORIGIN`. Users unlock the UI with that token; it is exchanged for an
+HttpOnly, SameSite session cookie, not stored in browser local storage. Public
+deployments need an HTTPS reverse proxy. Do not expose the loopback development
+server with an unauthenticated tunnel. The shared-token demo is not a substitute
+for per-user enterprise identity, access auditing, or production authorization.
+
+## Editing contract and limitations
+
+`src/prompt.js` exports the five-line `upper-body-v1` fixed instruction shared
+with the experiment track. Image 1 is the person/base photograph; image 2 is
+the garment reference. The backend asks to preserve face, body, pose, hands,
+background and garment details. These are instructions, **not guarantees**.
+This preview does not measure physical fit or size.
+
+Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096 pixels per side and
+20 megapixels. Sharp applies EXIF orientation and removes metadata by PNG
+re-encoding without resizing. Both selected models receive the same normalized
+buffers, person first and garment second. PNG encoder differences mean a
+cross-tool experiment must reuse the exact prepared bytes, not just equivalent
+pixels, for a strict paired comparison.
+
+| Adapter | Request contract |
+| --- | --- |
+| Sunburst | Azure dated deployment `images/edits`, repeated `image[]`, `model`, fixed `prompt`, `n=1` |
+| MAI Image 2.6 | Azure `/mai/v1/images/edits`, repeated `image`, `model`, fixed `prompt` |
+
+No mask, fidelity, size, quality, seed or web-grounding fields are guessed or
+sent. `2025-04-01-preview` comes from the official GPT Image family example and
+is configurable; **that example is not proof of Sunburst deployment compatibility**.
+Provider response must contain one base64 image; arbitrary returned URLs are
+not fetched. Requests time out after 180 seconds, with no paid retry or fallback.
+Azure may continue processing and billing after a timeout or client cancellation.
+
+Reference documentation, reviewed 2026-10-14:
+[GPT Image](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/dall-e)
+and [MAI Image](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-mai-image).
+Availability, quota, pricing, model/version and regional processing must still
+be checked in the approved subscription before a live call.
+
+## Privacy and lifecycle
+
+Photos and results are not written to disk, logged, or committed. Original
+browser previews remain local until generation is submitted with photo-use
+consent. Backend inputs live only while processing; results expire from server
+memory ten minutes after completion. A session expires after thirty minutes.
+Clearing the UI deletes that session's server jobs and browser blob previews;
+it cannot guarantee cancellation of already accepted Azure work.
+
+Job ownership is bound to the session cookie. Same-origin host/header checks,
+bounded uploads, decoder limits, at most eight retained jobs, one active job per
+session, and request-ID deduplication limit accidental duplicate submissions.
+Deduplication lasts only while the job is retained; this is not an Azure billing
+idempotency guarantee. Secrets and raw Azure errors are never returned to clients.
+Server restarts/revisions lose in-memory jobs and sessions.
+
+Azure data processing/retention is separate from application retention. Global
+deployments may process outside the resource region; Azure-only does not mean
+Korea-only processing. Do not use sensitive photos without appropriate consent.
+
+## Checks
+
+```powershell
+npm.cmd test
+npm.cmd run check
+npx.cmd playwright install chromium
+npm.cmd run test:e2e
+```
+
+If downloading Chromium is blocked but Microsoft Edge is installed:
+
+```powershell
+$env:PLAYWRIGHT_CHANNEL = 'msedge'
+npm.cmd run test:e2e
+```
+
+API tests inject a synthetic image provider and assert selection, form fields,
+metadata stripping, isolation, deduplication, expiry, quota failure and no retry.
+Browser tests launch `e2e/server.js` with clearly test-only colored PNG responses.
+These check UI wiring, **not real model fidelity**. Normal `npm start` never loads
+that fixture. CI also builds the container and compiles Bicep; it does not deploy.
+
+## Deployment configuration (approval required)
+
+`Dockerfile` runs the production app as a non-root user. `infra/main.bicep`
+defines HTTPS Azure Container Apps hosting, secret environment variables,
+health probes and one replica/revision because sessions/jobs are in memory.
+It does **not** create model deployments, pick a subscription, enable inference
+by default, or install Fabric. The minimum of one replica incurs hosting costs
+even when inference is disabled. The template requires an existing publicly
+pullable immutable container image reference; private-registry wiring is not
+included. Never publish photos, keys, or `.env` in the image.
+
+Compile without resource changes:
+
+```powershell
+az bicep build --file infra\main.bicep --stdout > $null
+docker build -t try-on-studio:local .
+```
+
+An operator must approve the account, subscription, location, hosting/model
+costs and model deployments before executing a deployment. Use the existing
+approved Azure identity with explicit `--subscription`; never change a shared
+login or default. Supply secure Bicep parameters from a private, ignored file or
+secure automation input rather than exposing secrets in command history.
+Deploy to an explicitly approved resource group using `az deployment group
+create --subscription <approved-id> --resource-group <approved-group>
+--template-file infra\main.bicep --parameters @<private-parameters.json>`.
+Start with `enableInference=false`, inspect `/healthz` and access control, then
+configure only verified model deployments and enable approved experiments.
+No deployment or model quality claim should be based on template compilation.
 
 ## Accounts
 
