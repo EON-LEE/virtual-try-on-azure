@@ -7,8 +7,9 @@ a model. No user-written prompt is required.
 
 **Status:** local application/API/browser flows are implemented. Dedicated Azure
 model resources and deployments were provisioned successfully on 2026-10-14.
-App hosting has not been deployed. Actual data-plane compatibility and garment/
-identity/pose preservation remain unverified until separately approved live experiments.
+App hosting has not been deployed. The experiment harness observed one HTTP 200
+image edit per model after RBAC propagation; the application credential path has
+not been live-tested. Both outputs failed the agent's visual preservation review.
 No sample illustration or test fixture is presented as a generated try-on result.
 
 ## Local run
@@ -58,10 +59,37 @@ to them. The first approved research smoke call to each model returned HTTP 401,
 with no outputs and no retries. Control-plane Owner access did not provide the
 required inference DataActions. The experiment track subsequently reported
 resource-scoped OpenAI User (Sunburst) and Cognitive Services User (MAI)
-assignments for the approved admin principal. Their effective data-plane access,
-API compatibility and output quality have not been tested after the assignments.
+assignments for the approved admin principal. A separately approved second smoke
+run then returned HTTP 200 for each model using fresh Cognitive Services bearer
+tokens. This verifies the harness routes/authentication for those deployments,
+not the application's AzureCliCredential execution path or general model quality.
 Those permission changes do not authorize additional generation or app hosting.
 Keep inference disabled until another explicit generation approval.
+
+### Observed smoke results (2026-10-14)
+
+The experiment track reported the same normalized person/garment inputs and
+`upper-body-v1` prompt for its second smoke run:
+
+| Model | HTTP / output | Harness duration | Agent visual review |
+| --- | --- | --- | --- |
+| Sunburst | 200 / PNG 1120 x 1405 | 32.414 s | Not accepted: hand occlusion changed, original right-side signature removed, shirt gathering/seams/hem differed |
+| MAI basic | 200 / PNG 912 x 1152 | 29.378 s | Not accepted: hand occlusion changed, torso silhouette expanded, hem not preserved |
+
+The garment changed, but **0 of 2 outputs passed this agent review**. Output
+resolution/aspect ratio did not exactly match the original. This single pair is
+not a benchmark, independent quality assessment or proof of face/pose/logo
+preservation or physical fit. No additional app calls or hosting were approved.
+Across both smoke runs: four total calls (two 401, two 200), zero automatic
+retries; both call authorizations are exhausted.
+
+Evidence was published by the experiment track in
+[commit ec07e79](https://github.com/EON-LEE/virtual-try-on-azure/commit/ec07e79),
+including `experiments/second-smoke-results.json` and
+`experiments/second-smoke-review.md`. The reported usage-based retail estimates
+were USD 0.036974 (Sunburst) and USD 0.152260 (MAI); **actual billing is unknown**.
+These are not fixed prices or approval for more calls. Private research images
+are not embedded in the application or this document.
 
 ### Authentication modes
 
@@ -139,7 +167,9 @@ pixels, for a strict paired comparison.
 No mask, fidelity, size, quality, seed or aspect-ratio fields are guessed or
 sent. MAI's documented Image 2.6 edits control `web_grounding=false` explicitly
 disables additional Bing context. `2025-04-01-preview` comes from the official GPT Image family example and
-is configurable; **that example is not proof of Sunburst deployment compatibility**.
+is configurable. The second approved harness smoke observed HTTP 200 for this
+exact dated Sunburst route; this does not establish compatibility for every
+deployment/version or validate the application's credential path.
 Provider response must contain one base64 image; arbitrary returned URLs are
 not fetched. Requests time out after 180 seconds, with no paid retry or fallback.
 Azure may continue processing and billing after a timeout or client cancellation.
