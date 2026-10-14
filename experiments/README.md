@@ -113,6 +113,69 @@ logos/text, diverse body shapes, arm-crossing occlusion, and complex outdoor
 backgrounds. Do not label lace as a successful modern-logo test. Add rights-
 reviewed pairs and tags before assessing those requirements.
 
+### Hugging Face candidate review (local preview only)
+
+`sample-candidates.json` records a small review of the Hugging Face
+[`glanceai/VTON-Synthetic-Pairs`](https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs)
+dataset, pinned to revision
+`7ae72513413932dbfdb15d02c924f3be9739b0c4`. The card declares [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and
+describes both the person and garment as generated, with source product
+catalogue metadata and Flux Dev. The preferred local preview is row 34, whose
+large plaid pattern, collar, placket, pockets, and cuffs are visible; row 23
+offers a vertical-stripe alternative. The card's own warning about occasional
+pair inconsistencies applies, and row 34's visible colors do not cleanly match
+all of its tags.
+
+These are **synthetic images, not photographs**. The person already wears the
+same garment shown as the reference, making output comparison a trivial
+re-render rather than a test of transferring a new garment. Neither the card
+nor metadata establishes an adult-only dataset, individual model releases,
+likeness safeguards, or permission for private Azure image processing. CC BY
+permits reuse only to the extent the uploader had authority to license; it
+does not itself grant personality/privacy rights. Thus the local images are
+attributed previews only and are **not cleared or approved for Azure transfer
+or inference**. The contact sheet is under ignored `experiments\local\`; no
+dataset image is committed. See the manifest for exact local paths, source,
+license, and limitations.
+
+DressCode is not a viable substitute: its official repository requires a
+signed release agreement, disallows release to private companies, and requires
+institutional email. VITON-HD's official repository states research-only use
+and CC BY-NC 4.0, but does not establish model releases or permission for the
+proposed cloud processing; a Hugging Face mirror with missing license details
+does not override those upstream restrictions. No real modern photo with
+verified person-use and Azure-transfer rights was identified. Use a
+user-provided adult volunteer image with explicit consent and a garment image
+whose rights cover this processing, or obtain written permission from the
+dataset/rightsholder first.
+
+### Human review rubric for future outputs
+
+Keep `upper-body-v1` unchanged. Score each dimension from 0 to 3: **0** =
+missing or severe mismatch; **1** = obvious material change; **2** = mostly
+preserved with visible deviations; **3** = visually consistent with no
+material deviation. Explain every score with a concrete comparison to the
+input; these are visual judgments, not biometric identity or physical-fit
+claims.
+
+| Dimension | Compare explicitly |
+| --- | --- |
+| Face | Face shape/features, expression, hair, and visible skin appearance; do not claim identity is verified |
+| Body silhouette | Shoulder, waist, torso width/length and apparent volume, separating clothing volume from body geometry |
+| Pose/framing | Head direction, shoulder/torso axis, elbows, wrists, camera viewpoint, crop, and aspect ratio |
+| Hands/occlusion | Visible hand/finger anatomy and location; whether sleeves/cuffs newly hide or expose them |
+| Background | Objects, text, edges, lighting, and shadows that appear, disappear, or move |
+| Garment color/pattern | Main and secondary colors; stripe/check direction, spacing, scale, repeat, and continuity across seams/placket; compare the entire visible reference |
+| Garment logo/text | Exact visible symbol/letter placement and legibility; use N/A only when the reference has none |
+| Garment cut | Collar, neckline, placket/button count and positions, pockets, sleeve length, cuffs, seams, silhouette, and hem |
+| Artifacts | Extra/missing anatomy, doubled edges, texture discontinuities, warped fasteners, and background bleed |
+
+For an input with a discernible pattern, score `garment_pattern` as applicable;
+do not mark it N/A. A result is rejected if any applicable score is below 2
+or severe distortion is observed. Keep per-model scores and observations
+separate. A same-garment person/ground-truth pair cannot count as evidence of
+successful transfer to a different person.
+
 ## Paid execution gate
 
 The user subsequently authorized a dedicated resource group, two AI resources,
