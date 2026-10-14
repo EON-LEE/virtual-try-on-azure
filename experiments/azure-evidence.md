@@ -1,12 +1,17 @@
 # Verified Azure evidence, 2026-10-14
 
-**Latest: lifetime image-edit requests 4, first two HTTP 401 PermissionDenied,
-second separately approved two HTTP 200; generated outputs 2, accepted under
-preservation/cut rubric 0.** See `second-smoke-review.md` for actual usage,
-agent visual assessment, and conditional list-rate estimates.
+**Latest: lifetime image-edit attempts 12, 7 valid PNG outputs, 5 failed
+attempts, and 0 retries.** The first two Met calls returned HTTP 401; the next
+two returned PNGs but both failed the preservation/cut rubric. The latest
+VITON-HD batch used eight separately approved calls and returned five PNGs;
+two of those five passed the stated visual pilot rubric. See
+`second-smoke-review.md` and `viton-hd-batch-review.md` for visual reviews,
+usage, and conditional list-rate estimates.
 Initial investigation/provisioning had zero calls.
+All current request approvals are exhausted; no further inference is authorized.
 The following distinguishes public documentation, read-only control-plane
-observations, list prices, and untested inference. It is not a success case.
+observations, list prices, and limited visual evidence. It is not a broad
+success claim.
 MAI-Image-2.6 **basic** was subsequently confirmed by the user; Flash is excluded.
 The admin subscription was authorized for investigation, then the user approved
 the dedicated resource group, two AI resources, and the exact model deployments.
@@ -22,8 +27,10 @@ failed and exhausted approval. Additional calls/permissions remain unapproved.
   family edit section gives multipart `image[]`, deployment-based edit route,
   up to 16 PNG/JPEG references under 50 MB each. Its example versions differ
   (`2025-04-01` prose, `2025-04-01-preview` quickstart). The harness candidate
-  route uses the explicit preview version; exact Sunburst compatibility is
-  **untested**. Generic mask/fidelity sections do not prove Sunburst support.
+  route uses the explicit preview version. Later approved calls returned valid
+  Sunburst PNGs, alongside HTTP 401/429 failures: route compatibility was
+  observed on successful requests, but reliable availability is not
+  established. Generic mask/fidelity sections do not prove Sunburst support.
   Retrieved page git revision:
   `3c005e56db92baeb0697eac859eb04436c16bb75`.
 - [Azure MAI image how-to](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-mai-image):
@@ -309,7 +316,8 @@ Both exact assignments were absent before and present afterward.
 grant, custom role, other account/identity, hosting, deployment, or additional
 image/API compatibility request was made. Role propagation can take minutes;
 control-plane existence does not prove effective data-plane access or edit
-compatibility. **The original two-call approval is still exhausted.** Fresh
+compatibility at that diagnostic stage. **The original two-call approval was
+still exhausted at that point.** Fresh
 generation approval is required before testing the assignments with images.
 
 The user subsequently granted fresh two-call approval with the same pair and
@@ -321,3 +329,59 @@ the documented agent visual preservation/cut review. Lifetime attempts are 4;
 both approvals exhausted, no additional calls authorized. See the separate
 `second-smoke-results.json` and `second-smoke-review.md`; no output photos
 are included in Git.
+
+## Latest approved VITON-HD four-case batch
+
+The user later approved the existing stripe pair for two requests and three
+additional pinned VITON-HD cross-pairs for six requests. The separate
+unknown-cost approvals covered exactly one Sunburst and one MAI basic request
+per case. The executed order was sequential; all eight slots were consumed,
+including failures. No automatic retry or additional API probe occurred.
+
+| Model | Attempts | PNGs | Failures | Retry count | Median latency, all attempts |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Sunburst | 4 | 2 | 2 (401 `PermissionDenied`, 429 `RateLimitReached`) | 0 | 11.343 s |
+| MAI-Image-2.6 basic | 4 | 3 | 1 (401 `PermissionDenied`) | 0 | 23.779 s |
+
+Sunburst successful usage per output was 246 text-input, 1,536 image-input,
+and 386 image-output tokens. MAI successful usage per output was 440
+text-input, 1,536 image-input, and 1,017 output tokens. Applying the previously
+verified Azure Retail Prices API list rates gives conditional estimates of
+$0.025098 per successful Sunburst output and $0.053134 per successful MAI
+output, or **$0.209598 for the five successful outputs**. Failed attempts had
+no usage object and are not assumed free. Actual billing remains unknown; no
+invoice, discount, tax, delayed charge, or hard spending ceiling was verified.
+
+All inputs were 768 × 1024 normalized PNGs without crop, resize, or square
+padding. Sunburst outputs were 1086 × 1448 (same 0.75 aspect ratio); MAI
+outputs were 880 × 1184 (approximately 0.743 aspect ratio). Both models
+changed source pixel dimensions; the grid uses proportional contain-fit.
+Case-level judgments, pattern/cut differences, and the local-only grid are
+documented in `viton-hd-batch-review.md`.
+
+### Read-only failure diagnosis
+
+Every attempt was serialized; same-model start intervals ranged from 39.442
+to 54.485 seconds for Sunburst and 24.121 to 53.344 seconds for MAI. The
+HTTP 429 was not caused by concurrent requests or a rapid repeated call. It
+does establish service throttling, but the sanitized response contains no
+provider details or `Retry-After`; capacity 1 and deployment quota do not
+specify an image request rate.
+
+Before each call, the runner reacquired a Cognitive Services Entra token and
+checked the subscription-scoped account, tenant, admin username, audience,
+and expiry internally. A post-run read-only check matched the current token
+principal to the exact resource-scoped OpenAI User role on Sunburst and
+Cognitive Services User role on MAI. Both exact model/version deployments
+still report GlobalStandard capacity 1 and Succeeded. The same configured
+identity/deployment combinations succeeded on other cases in this batch, so
+the two 401s do not establish a general missing-role or route failure. The
+sanitized records intentionally omit token IDs and raw response bodies; they
+cannot distinguish transient service behavior from request-specific
+authorization handling. No image call, role change, or deployment change was
+made to investigate further.
+
+All eight VITON-HD attempts are exhausted. The upstream CC BY-NC 4.0
+non-commercial terms, attribution/change requirement, absent individual
+release/age verification, and remaining third-party-rights uncertainty still
+apply. No input or output photo is included in Git.

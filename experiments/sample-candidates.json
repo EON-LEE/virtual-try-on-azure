@@ -28,8 +28,9 @@
       "age_record_verified": false,
       "visual_age_observation": "The selected catalog-model image appears adult; this is visual observation only, not verified age.",
       "remaining_uncertainty": "The upstream dataset license permits non-commercial reuse to the extent the licensor controls the relevant rights. It does not by itself establish all subject, photographer, catalog, privacy, or likeness permissions.",
-      "azure_transfer_approved": false,
-      "inference_calls_for_this_candidate": 0
+      "azure_transfer_approved": true,
+      "approval_scope": "User approved this exact pair for private non-commercial Azure research: two requests total, one per selected model, no retries; this is not a blanket rights grant.",
+      "inference_calls_for_this_candidate": 2
     },
     "pair": {
       "type": "cross-paired unpaired try-on input",
@@ -68,5 +69,122 @@
     "dataset": "DressCode",
     "repository": "https://github.com/aimagelab/dress-code",
     "reason": "Official upstream requires a signed release agreement, disallows release to private companies, and requires institutional email. Do not access until those conditions are met."
+  },
+  "approved_viton_hd_batch": {
+    "dataset": "TryOnVirtual/VITON-HD-TEST",
+    "dataset_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST",
+    "revision": "fbec00f2f68cacbcdd7e1dee047405e7319226c6",
+    "upstream_license": "CC BY-NC 4.0; rely on the original upstream's narrower non-commercial terms rather than the mirror's broader CC BY 4.0 claim.",
+    "attribution": "Cite Choi et al., VITON-HD, CVPR 2021, and indicate changes.",
+    "rights_limitations": {
+      "individual_subject_release_verified": false,
+      "photographer_or_catalog_rights_independently_verified": false,
+      "age_records_verified": false,
+      "visual_adult_appearance_only": true,
+      "mirror_bytes_compared_with_official_archive": false,
+      "explicit_third_party_processing_prohibition_found": false,
+      "remaining_uncertainty": "The dataset license does not establish that licensors control every subject, photographer, catalog, privacy, or likeness right. User approved only private non-commercial research and Azure transfer for this exact batch; no blanket rights grant or public release is implied."
+    },
+    "authorization": {
+      "existing_stripe_pair": "Two approved requests total, one per model; no retries; unknown monetary ceiling explicitly accepted.",
+      "three_additional_pairs": "Six additional approved requests total, one per model for each listed pair; no retries; unknown monetary ceiling explicitly accepted.",
+      "total_this_batch": 8,
+      "maximum_lifetime_attempts": 12,
+      "scope": "Private non-commercial research only. No commercial/promotional use, public image publication, extra calls, deployment changes, hosting, or permission changes.",
+      "ground_truth": false,
+      "evaluation_limit": "These cross-pairs have no exact target-wearing ground truth. Evaluate outputs against person and garment inputs; do not claim a ground-truth similarity score."
+    },
+    "execution": {
+      "attempts": 8,
+      "successful_png_outputs": 5,
+      "failed_attempts": 3,
+      "automatic_retries": 0,
+      "all_approval_ledgers_exhausted": true,
+      "case_level_review": "viton-hd-batch-review.md",
+      "case_outcomes": {
+        "vitonhd-stripe": {
+          "sunburst": "PNG; accepted under the visual pilot rubric",
+          "mai": "HTTP 401 PermissionDenied; no output"
+        },
+        "vitonhd-graphic-stripe": {
+          "sunburst": "HTTP 401 PermissionDenied; no output",
+          "mai": "PNG; rejected for an invented BOSS wordmark"
+        },
+        "vitonhd-floral": {
+          "sunburst": "PNG; rejected for collar/placket mismatch",
+          "mai": "PNG; rejected for collar/placket mismatch"
+        },
+        "vitonhd-lettered-print": {
+          "sunburst": "HTTP 429 RateLimitReached; no output",
+          "mai": "PNG; accepted under the visual pilot rubric"
+        }
+      },
+      "additional_pattern_coverage_limit": "No clear check/plaid garment was included; check-pattern fidelity remains untested."
+    },
+    "cases": [
+      {
+        "id": "vitonhd-graphic-stripe",
+        "person": {
+          "dataset_record": "train row offset 802, label 5",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-graphic-stripe-person.jpg",
+          "sha256_original": "127adecf44a4205a90a724875fd3b9f64e7727afc8b04916257a1dab2319834f",
+          "sha256_normalized_png": "e5d579953cb659e5e680332376c57449ca7a8ef251bdd7019c7b577275aec04c",
+          "dimensions": [768, 1024],
+          "description": "Catalog model in a plain pink tee, slight angle with one hand at hip; adult appearance is visual only."
+        },
+        "garment": {
+          "dataset_record": "train row offset 466, label 1",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-graphic-stripe-garment.jpg",
+          "sha256_original": "8ff3c75e0fcae791b47e335df4b16f655a86d49e596ee896e87c28a29e99bebe",
+          "sha256_normalized_png": "55ec7230a309827652ef159d0aac5ca1f1b3096ba5f06f44e9df7a46f6399149",
+          "dimensions": [768, 1024],
+          "description": "White tee with a large multicolor banded circular graphic and horizontal stripe elements."
+        },
+        "pair_type": "Cross-paired unpaired; no exact ground truth.",
+        "approval": "One Sunburst and one MAI request; no retries."
+      },
+      {
+        "id": "vitonhd-floral",
+        "person": {
+          "dataset_record": "train row offset 815, label 5",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-floral-person.jpg",
+          "sha256_original": "21f019fc25d629df2bf9fe253b6928ac304b742ded4509843abfffaaed15c97e",
+          "sha256_normalized_png": "dd380ce2e1a75e0b68a4c4b01873f8e71973e35e005c079c70c66e3dee9458de",
+          "dimensions": [768, 1024],
+          "description": "Catalog model facing camera in a plain light-gray long-sleeve top, arms at sides; adult appearance is visual only."
+        },
+        "garment": {
+          "dataset_record": "train row offset 494, label 1",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-floral-garment.jpg",
+          "sha256_original": "7144c1293813e2d5a1a7150898696b2aca0f805bcb8d7e80dcfd9fab20fd500f",
+          "sha256_normalized_png": "2334e91beadf147984a8b4e25061607470b50206ef9f53194e064a7bc00be85d",
+          "dimensions": [768, 1024],
+          "description": "Bright yellow long-sleeve blouse with repeated dark floral pattern, collar, and placket."
+        },
+        "pair_type": "Cross-paired unpaired; no exact ground truth.",
+        "approval": "One Sunburst and one MAI request; no retries."
+      },
+      {
+        "id": "vitonhd-lettered-print",
+        "person": {
+          "dataset_record": "train row offset 801, label 5",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-lettered-print-person.jpg",
+          "sha256_original": "a44b484773f6fa5e2d4e93c55d97012e3e0317ea64eceac0f779d8892cbb0722",
+          "sha256_normalized_png": "c970d4a529cc3d2b04a0a0ec98f061ee76d25fb92b2a18e5db810191c7576579",
+          "dimensions": [768, 1024],
+          "description": "Catalog model in a red athletic top, standing front/three-quarter with arms down; adult appearance is visual only."
+        },
+        "garment": {
+          "dataset_record": "train row offset 475, label 1",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-lettered-print-garment.jpg",
+          "sha256_original": "502f93296f738625b18c7000b3ee3aba80d588f876803c70fd5d26d32c8a88d0",
+          "sha256_normalized_png": "c83122d57319e02616b89a3dcc54f78bb875d93be8ee81471b3bb17f65e95ae8",
+          "dimensions": [768, 1024],
+          "description": "Beige short-sleeve tee with red illustrated faces and readable “HAPPY WEEKEND” print."
+        },
+        "pair_type": "Cross-paired unpaired; no exact ground truth.",
+        "approval": "One Sunburst and one MAI request; no retries."
+      }
+    ]
   }
 }

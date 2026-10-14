@@ -1,14 +1,15 @@
 # Azure-only try-on experiments
 
-Status, 2026-10-14: **six licensed archival inputs downloaded and inspected;
-offline harness implemented; dedicated resources/model deployments provisioned;
-first two user-approved image-edit requests returned HTTP 401 PermissionDenied;
-two separately approved requests after scoped RBAC produced PNG outputs,
-but both fail the preservation/cut rubric.** See `second-smoke-review.md` for
-actual agent visual assessment and usage-based estimates, not billed costs.
-Lifetime requests 4, outputs 2, retries 0; both approval ledgers exhausted.
-This is a separate experiment track,
-not the application or evidence that virtual try-on works.
+Status, 2026-10-14: **12 lifetime attempts, 7 PNG outputs, 5 failed attempts,
+0 retries.** The first two calls returned HTTP 401; the next two produced
+outputs but failed the preservation/cut rubric. A separately approved
+VITON-HD four-case batch used eight more attempts: five outputs, three failures,
+and two outputs passed the visual pilot rubric. See
+`second-smoke-review.md` and `viton-hd-batch-review.md` for case-level reviews,
+latency, and conditional usage-based estimates—not billed costs. Every current
+approval ledger is exhausted; further inference requires a new exact approval.
+This is a separate experiment track, not the application or evidence that
+virtual try-on works generally.
 
 ## Reproduce the offline work
 
@@ -39,7 +40,9 @@ offline plan**. They prevent live execution. Verified non-secret deployment
 metadata is in `deployments.json`; replace local config placeholders from that
 file only after checking the approved scope. The example models are the
 user-selected Sunburst and **MAI-Image-2.6 basic**, not Flash or an automatic
-fallback. The catalog versions are verified; API compatibility is not.
+fallback. The catalog versions are verified. Both exact routes have returned
+valid PNGs in approved attempts, but the later 401/429 responses mean reliability
+is not established.
 
 ## Input and prompt contract
 
@@ -113,16 +116,17 @@ logos/text, diverse body shapes, arm-crossing occlusion, and complex outdoor
 backgrounds. Do not label lace as a successful modern-logo test. Add rights-
 reviewed pairs and tags before assessing those requirements.
 
-### Hugging Face candidate review (local preview only)
+### Hugging Face VITON-HD sample review and completed batch
 
-`sample-candidates.json` records a small, unpaired VITON-HD candidate. Its
-person input is a modern color catalog-model photo in a plain black top; its
-separate garment input is a white/navy horizontal-striped top with yellow trim.
-They are distinct VITON-HD test-set examples: the person is not wearing the
-reference garment. This is suitable for a real garment-transfer test, but this
-cross-pair has **no ground-truth image** of that person in the striped top.
-Inspect the ignored local `experiments\local\viton-hd-unpaired\preview.jpg`
-before any later approval.
+`sample-candidates.json` records the approved stripe pair plus three additional
+unpaired VITON-HD cases: a multicolor banded graphic, a yellow floral repeat,
+and a legible text/illustration print. Each person is wearing a different
+garment from the reference. None has an exact target-wearing ground-truth
+image. A clear check/plaid pattern was not represented in this batch and
+remains untested. The four-row/four-column local comparison is
+`experiments\local\viton-hd-approved-batch\comparison-grid.jpg`; a
+self-contained `comparison.html` is beside it. Both are ignored local
+artifacts; inspect them without publishing or redistributing the images.
 
 The [official VITON-HD repository](https://github.com/shadow2496/VITON-HD)
 describes the data as research-only and declares [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/),
@@ -141,11 +145,12 @@ establish that the original uploader controls every underlying image right.
 No individual model release or separate subject/photographer permission was
 verified. This is a documented residual rights uncertainty, not an inference
 that the sample is forbidden merely because release forms are not published.
-The source describes a woman-model dataset, and this selected image appears
-adult, but no age record was verified. Local preview does not authorize Azure
-transmission: inference remains disabled pending a separate exact call/input
-approval. Only the two selected originals and labeled preview remain in the
-ignored `experiments\local\viton-hd-unpaired\` folder; no photo is committed.
+The selected images appear adult, but no age records were verified. The user
+approved Azure transfer of these exact inputs for private non-commercial
+research and the exact eight calls documented in
+`viton-hd-batch-review.md`; this does not create a blanket rights grant.
+Originals, outputs, previews, approvals, and run records remain ignored local
+files; no photo or model output is committed.
 
 The previously reviewed
 [`glanceai/VTON-Synthetic-Pairs`](https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs)
@@ -155,9 +160,9 @@ pair. Provenance and rights notes remain in `sample-candidates.json`.
 
 DressCode remains excluded unless its signed release and institutional access
 conditions are met. VITON-HD is not excluded merely because its license is
-non-commercial; confirm any proposed paid API run and its exact input scope
-separately with the coordinator. Do not publish the images or generated
-outputs, use them commercially, or claim model/subject endorsement.
+non-commercial. The eight VITON-HD attempts are completed and exhausted; any
+new paid run needs a separate exact approval. Do not publish the images or
+generated outputs, use them commercially, or claim model/subject endorsement.
 
 ### Human review rubric for future outputs
 
@@ -189,20 +194,22 @@ successful transfer to a different person.
 ## Paid execution gate
 
 The user subsequently authorized a dedicated resource group, two AI resources,
-and the exact model deployments. Those have been provisioned. Subsequently,
-the user approved exactly two private-research image edits with the specified
-Met pair, accepting the unknown monetary ceiling. **Both requests failed with
-401 PermissionDenied and consumed that approval; additional inference remains
-unauthorized.** Existing-project resource reuse remains unauthorized. See the provisioning
-procedure below. The experiment runner
-never uses `az login`, changes a shared default, acquires cached credentials, or
-deploys anything. Azure public resource origins only; redirects and image-URL
-responses are rejected. Credentials come solely from the explicitly named
-process environment, never JSON or stdout.
+and the exact model deployments. Those have been provisioned. The first
+Met-pair smoke used two requests and both returned 401; after scoped RBAC, a
+separate two-request smoke returned two PNGs, both rejected under the
+preservation/cut rubric. The latest VITON-HD batch used eight separately
+approved requests: five PNGs and three failures, with two of five outputs
+passing the visual pilot rubric. All related approvals are exhausted; new
+inference is not authorized. See `viton-hd-batch-review.md` for details.
+Existing-project resource reuse remains unauthorized. The experiment runner
+never uses `az login`, changes a shared default, or deploys anything. Azure
+public resource origins only; redirects and image-URL responses are rejected.
+Credentials come solely from the explicitly named process environment, never
+JSON or stdout.
 
-After the coordinator obtains approval for the **exact deployments, API
-compatibility probe, input rights, request count, conservative request-cost
-bound, and expiration**, fill a local copy of `approval.example.json` and set
+For any future experiment, first obtain approval for the **exact deployments,
+input rights, request count, cost-bound or explicit unknown-cost acceptance,
+and expiration**, fill a local copy of `approval.example.json` and set
 credential in the command process through an approved secure mechanism.
 `auth_mode` defaults to `api_key`; explicit `bearer` uses the same named
 environment variable as an Entra access token. The current dedicated resources
@@ -273,9 +280,11 @@ Cognitive Services User on MAI. Both tuples were re-read and verified, with
 local auth still disabled. Propagation/effective inference are untested.
 The user subsequently approved a separate second two-call smoke, which returned
 HTTP 200 for both models. Both outputs were visually reviewed and rejected
-under the preservation/cut rubric. **Both two-call ledgers are now exhausted**;
-no further calls are authorized. See `second-smoke-review.md` and the dated
-authorization sequence in `azure-evidence.md`.
+under the preservation/cut rubric. **Those two historical ledgers were
+exhausted at that point.** The later eight-call VITON-HD batch is documented in
+`viton-hd-batch-review.md`; all 12 lifetime attempts have now consumed their
+approvals. No further calls are authorized. See the dated authorization
+sequence in `azure-evidence.md`.
 
 ## Approved control-plane provisioning
 
@@ -317,8 +326,10 @@ control-plane reads. Sunburst quota consumption is now 1 of 2; MAI is 1 of 6.
 The generic account `cognitiveservices.azure.com` origin is not the app's image
 API origin: use the provider-published `openai.azure.com` (Sunburst) and
 `services.ai.azure.com` (MAI) endpoints in `deployments.json`.
-This resolves capacity-one **provisioning**, not data-plane API compatibility,
-authorization for paid probes, billing ceilings, or try-on quality.
+This resolves capacity-one **provisioning**, not request-rate guarantees,
+reliable availability, billing ceilings, or try-on quality. Exact model edit
+routes have since returned valid PNGs in approved attempts, with intermittent
+401 and 429 failures; see `viton-hd-batch-review.md`.
 
 Results contain request attempts/retries, elapsed request+decode+save duration,
 input/prompt scope hash, actual PNG hash/dimensions, sanitized HTTP failures,
