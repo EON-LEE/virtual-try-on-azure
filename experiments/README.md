@@ -1,0 +1,207 @@
+# Azure-only try-on experiments
+
+Status, 2026-10-14: **six licensed archival inputs downloaded and inspected;
+offline harness implemented; zero live image-edit requests and zero generated
+try-on outputs. Quality is not evaluated.** This is a separate experiment track,
+not the application or evidence that virtual try-on works.
+
+## Reproduce the offline work
+
+Python 3.12 and Pillow 12.3.0 are used. No cloud SDK, Azure login, external
+inference service, deployment, or web application is required.
+
+```powershell
+python -m pip install -r .\experiments\requirements.txt
+python -m unittest discover -s .\experiments -p 'test_*.py' -v
+python .\experiments\harness.py acquire
+Copy-Item .\experiments\config.example.json .\experiments\local\config.json
+python .\experiments\harness.py plan --config .\experiments\local\config.json --output .\experiments\local\plan.json
+```
+
+`acquire` downloads public Met images, **not inference**. It rechecks each
+object's `isPublicDomain=true`, requires the official image hostname, rejects
+redirects, keeps original JPEGs locally, prepares PNGs, and records original and
+normalized SHA256, dimensions, timestamp, source, and license in
+`local\samples\inventory.json`. Re-running into an existing sample directory
+stops rather than overwriting inputs; choose a new `--destination` if needed.
+Photographs, credentials, local approvals, outputs, and raw API responses must
+never be committed. `experiments\local\` is ignored.
+
+`plan` is offline, requires actual input files, and records the exact input
+order/bytes, prompt digest, model versions, options, case labels, and an approval
+scope hash. Placeholder deployments/endpoints are acceptable **only for an
+offline plan**. They prevent live execution. The example models are the
+user-selected Sunburst and **MAI-Image-2.6 basic**, not Flash or an automatic
+fallback. The catalog versions are verified; API compatibility is not.
+
+## Input and prompt contract
+
+`prompt.txt`, version `upper-body-v1`, is the backend-owned instruction. UTF-8,
+five LF-separated lines, trimmed at both ends. No user prompt field is accepted.
+The same text is shared with the application development session.
+
+The input roles are fixed: **first person original; second garment reference**.
+This version handles **upper-body garments only**. It asks for face, expression,
+hair, skin tone, body proportions, pose, hands, background, framing, viewpoint,
+and lighting preservation, while transferring garment color, pattern, visible
+logo/text, neckline, sleeves, fasteners, seams, silhouette, and hem. Instructions
+are constraints to evaluate, not guarantees. Image text is visual content, not
+an instruction channel. No size, physical fit, or fabric-physics claim is made.
+
+Preparation applies EXIF orientation, converts embedded ICC profiles to sRGB,
+preserves transparency/aspect ratio, copies only pixels into a new PNG, and
+does **not** crop, resize, or square-pad. Local safety caps: 20 MiB per input and
+25 million decoded pixels; animated inputs are rejected. Conversion failures
+stop explicitly. Model comparison uses one prepared person/garment byte pair
+for both adapters. Pillow and the app's sharp encoder can produce different
+PNG bytes; use the same prepared files for strict cross-harness comparison,
+not merely similar source images.
+
+| Track | GPT Sunburst form | MAI 2.6 basic form |
+| --- | --- | --- |
+| Baseline | `model`, fixed `prompt`, `n=1`, ordered `image[]` | `model`, fixed `prompt`, `web_grounding=false`, repeated ordered `image` |
+| Optimized, separately reported | Exact-model-supported `size` / `quality` with evidence | `auto_aspect_ratio` boolean with evidence |
+
+Baseline output dimensions are **not forced equivalent**: MAI edit
+`width`/`height` are not documented controls. Record actual output dimensions
+and evaluate cropping, reframing, and pose drift rather than silently
+normalizing results to a square. MAI web grounding is explicitly off: no Bing
+search context is needed. Masks, input fidelity, seed, and other options are
+rejected because their compatibility with the exact selected deployments has
+not been verified. Optimized requests must remain in separate config/scope
+groups and require their own approval.
+
+## Sample provenance and coverage
+
+The [official Met API documentation](https://metmuseum.github.io/) states that
+the API supplies public-domain high-resolution images under its Open Access
+policy. Individual public-domain flags and image availability were verified
+on 2026-10-14. [The official Open Access repository](https://github.com/metmuseum/openaccess)
+explains CC0 and cautions that its CSV license alone does not license every
+image: only Open Access companion images qualify. All six selected records
+passed the image check. Source/creator/title/date links are in `samples.json`.
+No image is redistributed in Git.
+
+| Sample | Actual visual inspection | Use and limitation |
+| --- | --- | --- |
+| Met 286070, Nadar's Jules Janin | Frontal seated portrait, torso visible, hands partly hidden; monochrome | Frontal pose diagnostic; not a modern color-photo benchmark |
+| Met 269256, Franz Antoine portrait | Standing looking left, one hand on a prop, long skirt, oval framing | Different-pose and hand/prop-preservation diagnostic |
+| Met 764794, Pierre Petit self-portrait | Standing three-quarter view, large mirror reflection | Diagnostic-only: second depiction violates ideal single-person guidance |
+| Met 84219, cotton shirt | Plain light shirt, full front, visible collar/placket/cuffs | Plain-garment cut/texture transfer |
+| Met 80714, linen shirt | Plain light shirt with pleated front and cuffs | Pleat/detail transfer, not modern branding |
+| Met 102528, silk jacket | Short light lace-pattern jacket with ties, dark background | Pattern/detail/background-transfer diagnostic |
+
+The example pairs use the frontal portrait/plain shirt and standing
+looking-left/lace jacket. Samples are non-explicit historical subjects, but
+**public-domain copyright is not a blanket consent/personality-rights grant**.
+These are archival research candidates, not approved marketing imagery.
+`rights_reviewed=false` blocks inference until the intended jurisdiction,
+person-use permission/ethical suitability, and permitted disclosure have been
+reviewed. Do not imply museum/subject endorsement; label any edit as generated.
+Use adult volunteers' specifically consented originals and owned/licensed
+garment references before drawing modern consumer-use conclusions.
+
+Uncovered: contemporary color portraits, modern striped/printed patterns,
+logos/text, diverse body shapes, arm-crossing occlusion, and complex outdoor
+backgrounds. Do not label lace as a successful modern-logo test. Add rights-
+reviewed pairs and tags before assessing those requirements.
+
+## Paid execution gate
+
+The user authorized read-only investigation in the selected admin subscription,
+not deployment, existing-project resource reuse, or paid inference. The runner
+never uses `az login`, changes a shared default, acquires cached credentials, or
+deploys anything. Azure public resource origins only; redirects and image-URL
+responses are rejected. Credentials come solely from the explicitly named
+process environment, never JSON or stdout.
+
+After the coordinator obtains approval for the **exact deployments, API
+compatibility probe, input rights, request count, conservative request-cost
+bound, and expiration**, fill a local copy of `approval.example.json` and set
+the API key in the command process through an approved secure mechanism.
+The `deployment_api_verified` field covers verified deployment/version,
+documented route and controls, and authorization to make the first paid API
+compatibility probe; it is **not a claim that a successful edit was already
+observed**. Recompute the offline plan hash after any input/model/option change.
+
+```powershell
+python .\experiments\harness.py live --config .\experiments\local\config.json --approval .\experiments\local\approval.json --model sunburst --case frontal-shirt
+python .\experiments\harness.py live --config .\experiments\local\config.json --approval .\experiments\local\approval.json --model mai --case frontal-shirt
+```
+
+Each command makes **at most one paid request**, with no automatic retry or
+hidden model fallback. A persistent ledger next to the approval reserves the
+verified worst-case request bound **before** submission, counting failed and
+uncertain completions too. An exclusive lock prevents concurrent spending from
+the same ledger. Interrupted submission leaves a sanitized `submitted` record;
+reserve is not refunded. Investigate stale locks and reconcile reservations
+manually; do not delete/reissue approvals to reset the budget. This is local
+admission control, not an Azure billing hard limit. A guessed per-request price
+cannot supply a reliable upper bound. Azure budgets also are not hard spending
+limits.
+
+Results contain request attempts/retries, elapsed request+decode+save duration,
+input/prompt scope hash, actual PNG hash/dimensions, sanitized HTTP failures,
+client request ID, and available sanitized Azure request IDs. Raw error bodies,
+photos, signed URLs, and keys are not logged. HTTP/moderation/shape errors fail
+explicitly; network failures mark completion uncertain. A timeout does not prove
+Azure did not generate or bill. The recorded latency starts immediately before
+network submission, **not browser upload or full application latency**.
+
+## Human evaluation and cost reporting
+
+Inspect person, garment, and every actual output side by side at full resolution.
+Review all attempts, not best-of-N. No biometric face-recognition metric is used.
+Score each dimension independently:
+
+| Score | Meaning |
+| --- | --- |
+| 0 | Severe mismatch/distortion or requirement absent |
+| 1 | Clearly visible, unacceptable defect |
+| 2 | Small visible deviation; acceptable only for a labeled pilot |
+| 3 | No visible deviation under the stated viewing conditions |
+
+Dimensions: face, body, pose, hands, background, garment color, garment pattern,
+garment logo/text, garment cut, artifacts. For artifacts, a higher score means
+fewer defects. Record visible evidence in `notes`. Only hands/pattern/logo may
+be N/A, with an explanation such as hidden hands or a garment with no logo;
+N/A does not establish those dimensions work. All applicable dimensions must
+score at least 2, with `severe_distortion=false`, to count as accepted. Do not
+average away identity or pose failures. This is a transparent **proposed pilot
+criterion**, not a validated production acceptance standard.
+
+Copy `reviews.example.json` locally. Key each review by the actual `run_id`:
+
+```json
+{
+  "ACTUAL_RUN_ID": {
+    "output_sha256": "ACTUAL_OUTPUT_SHA256",
+    "scores": {
+      "face": 2, "body": 2, "pose": 2, "hands": null, "background": 2,
+      "garment_color": 2, "garment_pattern": 2, "garment_logo": null,
+      "garment_cut": 2, "artifacts": 2
+    },
+    "not_applicable": {"hands": "Hidden in source", "garment_logo": "No logo in reference"},
+    "severe_distortion": false,
+    "notes": "Replace these illustrative scores and text with actual visual evidence."
+  }
+}
+```
+
+```powershell
+python .\experiments\evaluate.py --runs .\experiments\local\runs --reviews .\experiments\local\reviews.json --output .\experiments\local\report.json
+```
+
+The evaluator verifies output files/hashes, rejects mismatched or extra reviews,
+and groups by model/track/scope/currency. It reports failed, incomplete,
+unreviewed, accepted, and rejected runs, dimension-specific scores, individual
+verdicts, median, and nearest-rank p95. Failure/unreviewed counts remain in the
+all-attempt acceptance denominator. Small pilots cannot establish stable p95
+or production reliability. Empty runs say `no live outputs`.
+
+`reserved_cost_bound` is **not billed cost**. `billed_cost` and
+`cost_per_accepted_result` stay `null` until actual Azure billing reconciliation;
+the current evaluator does not invent them from latency, list pricing, output
+count, or token guesses. Keep invoices/receipts private and publish only reviewed
+non-sensitive aggregates. See `azure-evidence.md` for verified retail rates and
+remaining deployability/cost uncertainties.
