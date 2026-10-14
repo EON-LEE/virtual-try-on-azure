@@ -1,7 +1,10 @@
 # Verified Azure evidence, 2026-10-14
 
-**Latest: live image-edit requests 2, both HTTP 401 PermissionDenied;
-generated try-on outputs 0.** Initial investigation/provisioning had zero calls.
+**Latest: lifetime image-edit requests 4, first two HTTP 401 PermissionDenied,
+second separately approved two HTTP 200; generated outputs 2, accepted under
+preservation/cut rubric 0.** See `second-smoke-review.md` for actual usage,
+agent visual assessment, and conditional list-rate estimates.
+Initial investigation/provisioning had zero calls.
 The following distinguishes public documentation, read-only control-plane
 observations, list prices, and untested inference. It is not a success case.
 MAI-Image-2.6 **basic** was subsequently confirmed by the user; Flash is excluded.
@@ -308,3 +311,13 @@ image/API compatibility request was made. Role propagation can take minutes;
 control-plane existence does not prove effective data-plane access or edit
 compatibility. **The original two-call approval is still exhausted.** Fresh
 generation approval is required before testing the assignments with images.
+
+The user subsequently granted fresh two-call approval with the same pair and
+unknown-amount acceptance. Both exact routes returned valid PNGs after RBAC
+propagation; a separate ledger consumed exactly one request per model, retries 0.
+Original failures were retained. This validates the observed data-plane route/
+auth combination, not general preservation or repeatability. Both outputs fail
+the documented agent visual preservation/cut review. Lifetime attempts are 4;
+both approvals exhausted, no additional calls authorized. See the separate
+`second-smoke-results.json` and `second-smoke-review.md`; no output photos
+are included in Git.

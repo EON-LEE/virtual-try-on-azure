@@ -2,8 +2,12 @@
 
 Status, 2026-10-14: **six licensed archival inputs downloaded and inspected;
 offline harness implemented; dedicated resources/model deployments provisioned;
-two user-approved live image-edit requests returned HTTP 401 PermissionDenied;
-zero generated try-on outputs. Quality is not evaluated.** This is a separate experiment track,
+first two user-approved image-edit requests returned HTTP 401 PermissionDenied;
+two separately approved requests after scoped RBAC produced PNG outputs,
+but both fail the preservation/cut rubric.** See `second-smoke-review.md` for
+actual agent visual assessment and usage-based estimates, not billed costs.
+Lifetime requests 4, outputs 2, retries 0; both approval ledgers exhausted.
+This is a separate experiment track,
 not the application or evidence that virtual try-on works.
 
 ## Reproduce the offline work
@@ -194,8 +198,11 @@ changed during diagnosis. Subsequently, the user approved and the agent created
 only the exact resource-scoped admin assignments: OpenAI User on Sunburst,
 Cognitive Services User on MAI. Both tuples were re-read and verified, with
 local auth still disabled. Propagation/effective inference are untested.
-**No fresh image calls are approved yet; the original two-call ledger remains
-exhausted.** See the dated authorization sequence in `azure-evidence.md`.
+The user subsequently approved a separate second two-call smoke, which returned
+HTTP 200 for both models. Both outputs were visually reviewed and rejected
+under the preservation/cut rubric. **Both two-call ledgers are now exhausted**;
+no further calls are authorized. See `second-smoke-review.md` and the dated
+authorization sequence in `azure-evidence.md`.
 
 ## Approved control-plane provisioning
 
