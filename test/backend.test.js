@@ -7,6 +7,8 @@ import { sanitizeImage } from '../src/images.js';
 import { JobStore, publicJob, RESULT_TTL_MS } from '../src/jobs.js';
 import { TRY_ON_PROMPT } from '../src/prompt.js';
 import { createServer } from '../src/server.js';
+import { readFile } from 'node:fs/promises';
+import { parseEnv } from 'node:util';
 
 const png = () => sharp({ create: { width: 16, height: 24, channels: 3, background: '#abcdef' } }).png().toBuffer();
 const configured = () => loadConfig({
@@ -15,6 +17,22 @@ const configured = () => loadConfig({
   AZURE_SUNBURST_DEPLOYMENT: 'sunburst-test', AZURE_SUNBURST_API_KEY: 'test-only',
   AZURE_MAI_ENDPOINT: 'https://test.services.ai.azure.com',
   AZURE_MAI_DEPLOYMENT: 'mai-test', AZURE_MAI_API_KEY: 'test-only', AZURE_MAI_MODEL: 'MAI-Image-2.6'
+});
+
+test('provisioned example aligns Azure routes while keeping keys and paid calls disabled', async () => {
+  const example = parseEnv(await readFile(new URL('../.env.example', import.meta.url), 'utf8'));
+  const config = loadConfig(example);
+  assert.equal(example.ENABLE_AZURE_INFERENCE, 'false');
+  for (const model of Object.values(config.models)) {
+    assert.equal(model.ready, false);
+    assert.equal(model.key, '');
+  }
+  const sunburst = buildRequest(config.models.sunburst, Buffer.from('person'), Buffer.from('garment'));
+  assert.equal(sunburst.url, 'https://vto-sunburst-eus2-b0af194e.openai.azure.com/openai/deployments/tryon-sunburst/images/edits?api-version=2025-04-01-preview');
+  const mai = buildRequest(config.models.mai, Buffer.from('person'), Buffer.from('garment'));
+  assert.equal(mai.url, 'https://vto-mai26-eus-b0af194e.services.ai.azure.com/mai/v1/images/edits');
+  assert.equal(mai.options.body.get('model'), 'tryon-mai26');
+  assert.throws(() => selectModels(['sunburst', 'mai'], config), /not connected/);
 });
 
 test('default is disconnected, deployment does not imply paid-call permission', () => {

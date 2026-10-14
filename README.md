@@ -5,9 +5,10 @@ photo and a garment reference, then explicitly select GPT Image 2.5 Sunburst,
 MAI, or both. Only checked models run; changing the result view does not call
 a model. No user-written prompt is required.
 
-**Status:** local application/API/browser flows are implemented. Actual Azure
-deployment, Sunburst API compatibility, MAI variant availability, and garment/
-identity/pose preservation remain unverified until approved live experiments.
+**Status:** local application/API/browser flows are implemented. Dedicated Azure
+model resources and deployments were provisioned successfully on 2026-10-14.
+App hosting has not been deployed. Actual data-plane compatibility and garment/
+identity/pose preservation remain unverified until separately approved live experiments.
 No sample illustration or test fixture is presented as a generated try-on result.
 
 ## Local run
@@ -33,6 +34,27 @@ After approval, set these values in the ignored `.env` or hosting secrets:
 | Sunburst | `AZURE_SUNBURST_ENDPOINT` (resource root `https://NAME.openai.azure.com`), `AZURE_SUNBURST_DEPLOYMENT`, `AZURE_SUNBURST_API_KEY`, `AZURE_SUNBURST_API_VERSION` |
 | MAI | `AZURE_MAI_ENDPOINT` (resource root `https://NAME.services.ai.azure.com`), `AZURE_MAI_DEPLOYMENT`, `AZURE_MAI_API_KEY`, `AZURE_MAI_MODEL=MAI-Image-2.6` |
 | Paid-call gate | `ENABLE_AZURE_INFERENCE=true`, only after authorization |
+
+### Provisioned model configuration
+
+The experiment track reported the following control-plane deployments as
+`Succeeded` in resource group `rg-virtual-try-on`. These are secret-free resource
+coordinates, not proof of a successful image edit. `.env.example` contains the
+matching endpoint/deployment values, blank API keys and inference disabled.
+
+| Model | Resource / region | Deployment | Model version | SKU / capacity |
+| --- | --- | --- | --- | --- |
+| Sunburst | `vto-sunburst-eus2-b0af194e` / `eastus2` | `tryon-sunburst` | `gpt-image-2.5-sunburst`, `2026-09-08` | `GlobalStandard` / 1 |
+| MAI basic | `vto-mai26-eus-b0af194e` / `eastus` | `tryon-mai26` | `MAI-Image-2.6`, `2026-07-31` | `GlobalStandard` / 1 |
+
+Use `https://vto-sunburst-eus2-b0af194e.openai.azure.com` for Sunburst and
+`https://vto-mai26-eus-b0af194e.services.ai.azure.com` for MAI. These origins
+were reported from Azure's service-specific `properties.endpoints`; the generic
+`cognitiveservices.azure.com` endpoint is not compatible with these adapters.
+The **model version is not the HTTP API version**. Provisioning success does
+not validate the configured Sunburst `2025-04-01-preview` edits contract.
+The approval covers only two model resources/deployments, not app hosting or
+generation. Do not obtain keys or enable inference as part of this setup.
 
 MAI Image 2.6 basic is the **user-confirmed quality-first variant** and is shown
 as Preview. Flash and other variants are rejected rather than substituted.
