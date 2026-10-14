@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import unittest
+from email.message import Message
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from urllib.error import HTTPError, URLError
 from PIL import Image, PngImagePlugin
 
 import evaluate
+import comparison
 import harness as h
 
 
@@ -66,6 +68,46 @@ class ExperimentsTest(unittest.TestCase):
         self.assertEqual(image.size, (32, 48))
         self.assertNotIn("private", image.info)
         self.assertEqual(plan, self.plan)
+
+    def test_grid_has_one_row_per_case_and_decodable_original_assets(self):
+        import re
+        cases = {}
+        for index in range(2):
+            case_id = f"case-{index}"
+            person = f"{index}-person.png"
+            garment = f"{index}-garment.png"
+            cases[case_id] = {"person": {"local_path": person},
+                              "garment": {"local_path": garment}}
+            for name in (person, garment):
+                Image.new("RGB", (24, 32), "white").save(self.root / name)
+            for model in ("sunburst", "mai"):
+                folder = self.root / "runs" / f"{case_id}-{model}"
+                folder.mkdir(parents=True)
+                output = folder / "output.png"
+                Image.new("RGB", (24, 32), "blue").save(output)
+                h.write_json(folder / "result.json", {
+                    "case_id": case_id, "model_id": model, "status": "succeeded",
+                    "elapsed_seconds": 1.2, "output_sha256": h.digest(output.read_bytes())})
+        h.write_json(self.root / "selected-inputs.json", {"cases": cases})
+        comparison.generate(self.root)
+        page = (self.root / "hardcase-grid.html").read_text(encoding="utf-8")
+        self.assertEqual(page.count("<tr>"), 3)
+        sources = re.findall(r'src="data:image/png;base64,([^"]+)"', page)
+        self.assertEqual(len(sources), 8)
+        for source in sources:
+            with Image.open(io.BytesIO(base64.b64decode(source))) as image:
+                self.assertEqual(image.size, (24, 32))
+        with Image.open(self.root / "hardcase-grid.jpg") as image:
+            self.assertEqual(image.size, (2000, 1454))
+        self.assertIn("dialog.showModal()", page)
+        self.assertIn("object-fit:contain", page)
+        result = self.root / "runs" / "case-0-mai" / "result.json"
+        record = h.read_json(result)
+        record.update(status="failed", http_status=401)
+        h.write_json(result, record)
+        comparison.generate(self.root)
+        self.assertIn("401 권한 오류", (self.root / "hardcase-grid.html").read_text(encoding="utf-8"))
+        self.assertNotIn("No output image was returned", page)
 
     def test_alpha_preserved(self):
         path = self.root / "alpha.png"
@@ -156,7 +198,13 @@ class ExperimentsTest(unittest.TestCase):
         self.assertEqual(ledger["reserved_cost"], "1.00")
 
     def test_failures_recorded_reserved_no_retry_no_secret(self):
-        for exception in (HTTPError("https://example", 429, "secret body", {}, None),
+        headers = Message()
+        headers["Date"] = "Wed, 14 Oct 2026 08:50:00 GMT"
+        headers["Retry-After"] = "120"
+        headers["x-request-id"] = "request-123"
+        for exception in (HTTPError(
+                "https://example", 429, "secret body", headers,
+                io.BytesIO(b'{"error":{"code":"RateLimitReached"},"detail":"do not persist"}')),
                           URLError("secret signed URL")):
             with self.assertRaises(h.ExperimentError):
                 self.run_mock(exception=exception)
@@ -169,6 +217,18 @@ class ExperimentsTest(unittest.TestCase):
             self.assertEqual(result["status"], "failed")
             self.assertEqual(result["attempts"], 1)
             self.assertEqual(result["retries"], 0)
+            self.assertNotIn("do not persist", text)
+        http_record = next(json.loads(path.read_text()) for path in records
+                           if json.loads(path.read_text()).get("error_kind") == "http")
+        self.assertEqual(http_record["provider_error_code"], "RateLimitReached")
+        self.assertEqual(http_record["response_metadata"], {
+            "http_status": 429,
+            "date": "Wed, 14 Oct 2026 08:50:00 GMT",
+            "retry_after": "120",
+            "x-request-id": "request-123",
+        })
+        ledger = h.read_json(self.approval_path.with_suffix(".ledger.json"))
+        self.assertIn("sunburst", ledger["retry_after_not_before_utc_by_model"])
 
     def test_bad_output_explicit_failure(self):
         with self.assertRaises(h.ExperimentError):
@@ -210,6 +270,39 @@ class ExperimentsTest(unittest.TestCase):
             h.reserve(self.approval_path, self.approval, "mai", case)
         report = evaluate.summarize(self.root / "runs", {})
         self.assertIsNone(report["groups"][0]["reserved_cost_bound"])
+
+    def test_lifetime_cap_and_minimum_model_spacing_are_enforced(self):
+        case_ids = [case["id"] for case in self.config["cases"]]
+        approval = {
+            "approved": True, "scope_sha256": self.plan["scope_sha256"],
+            "approval_reference": "offline-unit-test-only",
+            "account_subscription_verified": True, "deployment_api_verified": True,
+            "expires_utc": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+            "max_requests": 6, "max_cost": None, "currency": "USD",
+            "cost_mode": "explicit_unknown_cost", "unknown_cost_accepted": True,
+            "cost_risk_acknowledgment": "Unit-test only",
+            "request_limits": {f"{model}:{case}": 1
+                               for model in ("sunburst", "mai") for case in case_ids},
+            "lifetime_attempt_cap": 18, "lifetime_prior_attempts": 12,
+            "minimum_model_interval_seconds": 90,
+        }
+        with self.assertRaises(h.ExperimentError):
+            h.check_approval({**approval, "lifetime_attempt_cap": 17}, self.plan)
+        h.write_json(self.approval_path, approval)
+        h.reserve(self.approval_path, approval, "sunburst", case_ids[0])
+        with self.assertRaises(h.ExperimentError):
+            h.reserve(self.approval_path, approval, "sunburst", case_ids[1])
+        ledger = h.read_json(self.approval_path.with_suffix(".ledger.json"))
+        self.assertEqual(ledger["attempts"], 1)
+        self.assertNotIn(f"sunburst:{case_ids[1]}", ledger["request_counts"])
+        ledger["last_started_utc_by_model"]["sunburst"] = (
+            datetime.now(timezone.utc) - timedelta(seconds=180)).isoformat()
+        h.write_json(self.approval_path.with_suffix(".ledger.json"), ledger)
+        h.record_retry_after(self.approval_path, "sunburst", {"retry_after": "120"},
+                             datetime.now(timezone.utc))
+        with self.assertRaises(h.ExperimentError):
+            h.reserve(self.approval_path, approval, "sunburst", case_ids[1])
+        self.assertEqual(h.read_json(self.approval_path.with_suffix(".ledger.json"))["attempts"], 1)
 
     def test_usage_excludes_unknown_strings(self):
         self.assertEqual(h.sanitize_usage({"input_tokens": 5, "secret": "key",

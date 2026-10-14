@@ -1,10 +1,13 @@
 # Azure-only try-on experiments
 
-Status, 2026-10-14: **12 lifetime attempts, 7 PNG outputs, 5 failed attempts,
+Status, 2026-10-14: **16 lifetime attempts, 11 PNG outputs, 5 failed attempts,
 0 retries.** The first two calls returned HTTP 401; the next two produced
 outputs but failed the preservation/cut rubric. A separately approved
 VITON-HD four-case batch used eight more attempts: five outputs, three failures,
-and two outputs passed the visual pilot rubric. See
+and two outputs passed its historical pilot rubric. The subsequent hard-pose/
+logo/lace batch returned four PNGs; none establishes the user's strict
+unchanged-pose and exact garment-detail requirement. Historical pilot passes
+are not passes under that later criterion. See `hardcase-review.md`,
 `second-smoke-review.md` and `viton-hd-batch-review.md` for case-level reviews,
 latency, and conditional usage-based estimates—not billed costs. Every current
 approval ledger is exhausted; further inference requires a new exact approval.
@@ -178,18 +181,29 @@ claims.
 | Face | Face shape/features, expression, hair, and visible skin appearance; do not claim identity is verified |
 | Body silhouette | Shoulder, waist, torso width/length and apparent volume, separating clothing volume from body geometry |
 | Pose/framing | Head direction, shoulder/torso axis, elbows, wrists, camera viewpoint, crop, and aspect ratio |
-| Hands/occlusion | Visible hand/finger anatomy and location; whether sleeves/cuffs newly hide or expose them |
+| Hands/occlusion | Hand/finger anatomy and position; whether crossed or raised arms retain their overlap with torso, face, and garment, including what sleeves/cuffs hide or expose |
 | Background | Objects, text, edges, lighting, and shadows that appear, disappear, or move |
-| Garment color/pattern | Main and secondary colors; stripe/check direction, spacing, scale, repeat, and continuity across seams/placket; compare the entire visible reference |
-| Garment logo/text | Exact visible symbol/letter placement and legibility; use N/A only when the reference has none |
-| Garment cut | Collar, neckline, placket/button count and positions, pockets, sleeve length, cuffs, seams, silhouette, and hem |
-| Artifacts | Extra/missing anatomy, doubled edges, texture discontinuities, warped fasteners, and background bleed |
+| Garment color/pattern | Main and secondary colors; stripe/check direction, spacing, scale, repeat, and continuity across folds, seams, and placket; compare the entire visible reference |
+| Garment material/texture | Surface weave, knit, lace/openwork, transparency, sheen, and texture scale; distinguish preserved material character from a re-created or smoothed surface |
+| Garment logo/text | Exact brand mark, lettering, spelling, color, scale, orientation, and chest/sleeve placement; never accept an invented, altered, or relocated mark |
+| Garment cut/construction | Collar, neckline, placket/button count and positions, pockets, sleeve length, cuffs, seams, silhouette, and hem |
+| Drape and occlusion | Folds, tension, and sleeve/torso overlap should follow the preserved pose and plausible fabric drape; this is not a physical-fit or size prediction |
+| Artifacts | Extra/missing anatomy, moved hands, doubled edges, pattern discontinuities, changed texture, warped fasteners, and background bleed |
 
 For an input with a discernible pattern, score `garment_pattern` as applicable;
-do not mark it N/A. A result is rejected if any applicable score is below 2
-or severe distortion is observed. Keep per-model scores and observations
-separate. A same-garment person/ground-truth pair cannot count as evidence of
-successful transfer to a different person.
+do not mark it N/A. Mark logo/text N/A only when the reference has no visible
+mark, and state why. A visually attractive result or broadly similar pose is
+not a pass: every applicable pose, face/body, hand/occlusion, pattern,
+material/texture, logo/text, construction, drape, and artifact dimension must
+score at least 2, with no severe distortion. Any invented/changed brand mark,
+material pattern, or hand/arm position is a failure. Keep per-model scores and
+observations separate. A same-garment person/ground-truth pair cannot count as
+evidence of successful transfer to a different person.
+
+The historical `evaluate.py` numeric schema does not separately score material
+texture or drape. Its automatic pilot verdict is not the later strict
+acceptance decision; record that full criterion-by-criterion visual review
+explicitly, as in `hardcase-review.md`.
 
 ## Paid execution gate
 
@@ -199,7 +213,9 @@ Met-pair smoke used two requests and both returned 401; after scoped RBAC, a
 separate two-request smoke returned two PNGs, both rejected under the
 preservation/cut rubric. The latest VITON-HD batch used eight separately
 approved requests: five PNGs and three failures, with two of five outputs
-passing the visual pilot rubric. All related approvals are exhausted; new
+passing its historical pilot rubric. A separate four-call hard-case approval
+then returned four PNGs, bringing the lifetime total to 16 attempts. See
+`hardcase-review.md` for the stricter assessment. All related approvals are exhausted; new
 inference is not authorized. See `viton-hd-batch-review.md` for details.
 Existing-project resource reuse remains unauthorized. The experiment runner
 never uses `az login`, changes a shared default, or deploys anything. Azure
@@ -282,7 +298,8 @@ The user subsequently approved a separate second two-call smoke, which returned
 HTTP 200 for both models. Both outputs were visually reviewed and rejected
 under the preservation/cut rubric. **Those two historical ledgers were
 exhausted at that point.** The later eight-call VITON-HD batch is documented in
-`viton-hd-batch-review.md`; all 12 lifetime attempts have now consumed their
+`viton-hd-batch-review.md`; the subsequent four-call hard-case batch is in
+`hardcase-review.md`. All 16 lifetime attempts have now consumed their
 approvals. No further calls are authorized. See the dated authorization
 sequence in `azure-evidence.md`.
 

@@ -385,3 +385,49 @@ All eight VITON-HD attempts are exhausted. The upstream CC BY-NC 4.0
 non-commercial terms, attribution/change requirement, absent individual
 release/age verification, and remaining third-party-rights uncertainty still
 apply. No input or output photo is included in Git.
+
+## Read-only MAI quality-tier review, 2026-10-14
+
+The current explicitly selected East US subscription catalog lists these MAI
+image edit routes; the official model guide was checked on the same date:
+
+| Catalog model | Version | Status | Edit support | East US Global Standard quota |
+| --- | --- | --- | --- | --- |
+| `MAI-Image-2.6` (the unsuffixed model; called “basic” in this experiment) | `2026-07-31` | Preview | Yes | current 1 / limit 6 RPM |
+| `MAI-Image-2.6-Flash` | `2026-07-31` | Preview | Yes | current 0 / limit 6 RPM |
+| `MAI-Image-2.5-Pro` | `2026-06-19` | Preview | Yes | current 0 / limit 2 RPM |
+| `MAI-Image-2.5-Flash` | `2026-06-02` | Preview | Yes | current 0 / limit 2 RPM |
+| `MAI-Image-2.5` | `2026-06-02` | Preview | Yes | current 0 / limit 2 RPM |
+
+The `MAI-Image-2.5-Pro` model is an actual higher-quality tier: Microsoft
+describes it as the highest-quality model in the 2.5 series, with added object
+and character consistency, material/physical-property accuracy, and spatial/
+geometric reasoning. It is **older than** the unqualified 2.6 model and is not
+a `2.6-Pro` or `Ultra` successor. The official guide describes 2.6 as having
+the latest gains in text rendering, portraits, and commercial/photorealistic
+output; it describes 2.6-Flash as the faster/lower-cost 2.6 variant, not a
+higher-quality tier. Neither the tier labels nor these broad claims prove better
+virtual try-on, pose preservation, exact pattern transfer, or logo fidelity.
+
+The guide confirms image-to-image edit support for all five listed models via
+`/mai/v1/images/edits`, with up to five repeated `image` reference fields.
+`auto_aspect_ratio` and `web_grounding` are documented only for 2.6 and
+2.6-Flash. No mask or input-fidelity control is documented for the exact
+`MAI-Image-2.5-Pro` model. The guide itself is marked Preview with no SLA.
+There is no vendor “Base” model name in this family list; “basic” here means
+the unsuffixed `MAI-Image-2.6` deployment.
+
+Read-only Azure quota data is a request-per-minute allocation, not a sustained
+throughput promise or a deployment. The public Retail Prices API listed the
+East US Global meters for 2.5 Pro at USD $5/1M text-input tokens, $8/1M
+image-input tokens, and $106/1M image-output tokens (effective 2026-08-01).
+These are token rates, not a per-image estimate or actual charge; a cost needs
+measured usage and failed-request billing remains unknown.
+
+**No Pro/Flash model was deployed or called.** The separately approved
+four-request hard-case run remains fixed to the existing Sunburst and
+unqualified `MAI-Image-2.6` deployments; the approval does not include
+`MAI-Image-2.5-Pro`. Testing Pro would require a separate exact deployment/
+call approval and would be a model-version change, not a retry of this run.
+Sources: [official MAI image model guide](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-mai-image),
+[Azure Retail Prices API](https://prices.azure.com/api/retail/prices).

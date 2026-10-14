@@ -10,7 +10,8 @@ import re
 import time
 import uuid
 import warnings
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib import error, parse, request
@@ -215,15 +216,53 @@ def fetch(url, data=None, headers=None, limit=MAX_RESPONSE_BYTES, response_metad
     opener = request.build_opener(NoRedirect())
     with opener.open(request.Request(url, data=data, headers=headers or {}), timeout=180) as response:
         if response_metadata is not None:
-            response_metadata["http_status"] = response.status
-            for header in ("x-request-id", "apim-request-id", "x-ms-request-id"):
-                value = response.headers.get(header)
-                if value and re.fullmatch(r"[A-Za-z0-9._-]{1,256}", value):
-                    response_metadata[header] = value
+            response_metadata.update(safe_response_metadata(response.status, response.headers))
         payload = response.read(limit + 1)
         if len(payload) > limit:
             raise ExperimentError("Response exceeded the local size limit.")
         return payload
+
+
+def safe_response_metadata(status, headers):
+    metadata = {"http_status": status}
+    allowed = {
+        "date": "date",
+        "retry-after": "retry_after",
+        "x-request-id": "x-request-id",
+        "apim-request-id": "apim-request-id",
+        "x-ms-request-id": "x-ms-request-id",
+    }
+    safe_value = re.compile(r"[A-Za-z0-9.,:_/+ =-]{1,256}\Z")
+    for header, field in allowed.items():
+        value = headers.get(header)
+        if isinstance(value, str):
+            value = value.strip()
+            if safe_value.fullmatch(value):
+                metadata[field] = value
+    return metadata
+
+
+def record_retry_after(approval_path, model_id, metadata, received_at):
+    value = metadata.get("retry_after")
+    if not value:
+        return
+    try:
+        try:
+            not_before = received_at + timedelta(seconds=int(value))
+        except ValueError:
+            not_before = parsedate_to_datetime(value)
+            if not_before.tzinfo is None:
+                not_before = not_before.replace(tzinfo=timezone.utc)
+        not_before = not_before.astimezone(timezone.utc)
+    except (OverflowError, TypeError, ValueError):
+        return
+    ledger_path = approval_path.with_suffix(".ledger.json")
+    ledger = read_json(ledger_path)
+    waits = ledger.setdefault("retry_after_not_before_utc_by_model", {})
+    current = waits.get(model_id)
+    if not current or datetime.fromisoformat(current.replace("Z", "+00:00")) < not_before:
+        waits[model_id] = not_before.isoformat()
+        write_json(ledger_path, ledger)
 
 
 def positive_decimal(value):
@@ -249,6 +288,17 @@ def check_approval(approval, plan):
     count = approval["max_requests"]
     if type(count) is not int or count <= 0:
         raise ExperimentError("Approval must cap request count.")
+    lifetime_cap = approval.get("lifetime_attempt_cap")
+    lifetime_prior = approval.get("lifetime_prior_attempts")
+    if lifetime_cap is not None or lifetime_prior is not None:
+        if (type(lifetime_cap) is not int or lifetime_cap <= 0
+                or type(lifetime_prior) is not int or lifetime_prior < 0
+                or lifetime_prior + count > lifetime_cap):
+            raise ExperimentError("Lifetime attempt cap does not cover the exact approved request count.")
+    minimum_interval = approval.get("minimum_model_interval_seconds", 0)
+    if type(minimum_interval) is not int or minimum_interval < 0 or (
+            minimum_interval and minimum_interval < 90):
+        raise ExperimentError("Per-model request spacing must be at least 90 seconds.")
     unknown_cost = approval.get("cost_mode") == "explicit_unknown_cost"
     if unknown_cost:
         if (approval.get("unknown_cost_accepted") is not True
@@ -296,7 +346,24 @@ def reserve(approval_path, approval, model_id, case_id=None):
         limit = approval["request_limits"].get(key, 0)
         if ledger["attempts"] >= approval["max_requests"] or counts.get(key, 0) >= limit:
             raise ExperimentError("Exact approved model/case request count exhausted.")
+        lifetime_cap = approval.get("lifetime_attempt_cap")
+        if (lifetime_cap is not None
+                and approval["lifetime_prior_attempts"] + ledger["attempts"] >= lifetime_cap):
+            raise ExperimentError("Lifetime attempt cap reached; request not submitted.")
+        now = datetime.now(timezone.utc)
+        minimum_interval = approval.get("minimum_model_interval_seconds", 0)
+        last_start = ledger.get("last_started_utc_by_model", {}).get(model_id)
+        if last_start and minimum_interval:
+            elapsed = (now - datetime.fromisoformat(last_start.replace("Z", "+00:00"))).total_seconds()
+            if elapsed < minimum_interval:
+                raise ExperimentError(
+                    f"Minimum per-model spacing not elapsed; wait at least {minimum_interval - elapsed:.0f} seconds.")
+        retry_after = ledger.get("retry_after_not_before_utc_by_model", {}).get(model_id)
+        if retry_after and now < datetime.fromisoformat(retry_after.replace("Z", "+00:00")):
+            raise ExperimentError("Server Retry-After has not elapsed; wait before the next approved request.")
         counts[key] = counts.get(key, 0) + 1
+        starts = ledger.setdefault("last_started_utc_by_model", {})
+        starts[model_id] = now.isoformat()
         ledger.update(attempts=ledger["attempts"] + 1, request_counts=counts, reserved_cost=None)
         write_json(ledger_path, ledger)
         return None
@@ -376,6 +443,10 @@ def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
                           output_dimensions=dimensions)
         except error.HTTPError as exc:
             record.update(status="failed", error_kind="http", http_status=exc.code)
+            received_at = datetime.now(timezone.utc)
+            record["response_metadata"] = safe_response_metadata(exc.code, exc.headers or {})
+            if record["response_metadata"].get("retry_after"):
+                record_retry_after(approval_path, model_id, record["response_metadata"], received_at)
             try:
                 detail = json.loads(exc.read(1024 * 1024))
                 code = detail.get("error", {}).get("code")
