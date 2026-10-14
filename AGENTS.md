@@ -15,5 +15,10 @@
 - Keep changes and commit messages concise. Stage only intended files, push the
   feature branch, and merge only with user authorization. Never force-push or
   bypass branch protection.
-- Application scope and architecture are not decided. Do not select a framework,
-  install dependencies, or deploy Azure resources as part of Git setup.
+- The application uses Node 24, native HTTP/browser APIs and sharp. Run
+  `npm test` and `npm run check` for application changes.
+- Only Azure-managed Sunburst and explicitly configured MAI Image 2.6 edits are
+  supported. Do not add external inference, hidden fallbacks, or paid retries.
+- Keep inference disabled until the user approves the deployment account and
+  cost. Do not change shared Azure login/defaults or deploy without authorization.
+- Never log or commit photos, access tokens, Azure keys, or raw provider errors.
