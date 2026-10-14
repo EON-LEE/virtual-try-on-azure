@@ -1,80 +1,72 @@
 {
   "schema_version": 1,
-  "purpose": "Local provenance and rights review only; not an inference allowlist.",
-  "reviewed_dataset": {
-    "name": "Glance VTON Synthetic Dataset",
-    "repository": "https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs",
-    "revision": "7ae72513413932dbfdb15d02c924f3be9739b0c4",
-    "dataset_card_license": "CC BY 4.0",
-    "license_text": "https://creativecommons.org/licenses/by/4.0/",
-    "required_attribution": "Glance VTON Synthetic Dataset (2026), https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs",
-    "card_claims": {
-      "images_are_synthetic": true,
-      "generation_method": "Flux Dev paired generation from prompts based on third-party product-catalogue metadata",
-      "known_pair_quality_warning": "The card warns that some pairs may contain visual inconsistencies or mismatches."
+  "purpose": "Local sample provenance and rights notes; not an inference approval.",
+  "selected_unpaired_candidate": {
+    "dataset": "VITON-HD",
+    "upstream": {
+      "repository": "https://github.com/shadow2496/VITON-HD",
+      "paper": "https://arxiv.org/abs/2103.16874",
+      "paper_citation": "Choi, S.; Park, S.; Lee, M.; Choo, J. VITON-HD: High-Resolution Virtual Try-On via Misalignment-Aware Normalization. CVPR 2021.",
+      "dataset_description": "Official README describes a 1024x768 research dataset of frontal-view woman and top-clothing pairs.",
+      "license": "CC BY-NC 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+      "conditions": "Non-commercial purposes only; cite the paper and indicate changes.",
+      "official_download": "https://github.com/shadow2496/VITON-HD"
+    },
+    "retrieved_from": {
+      "repository": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST",
+      "revision": "fbec00f2f68cacbcdd7e1dee047405e7319226c6",
+      "mirror_card_claim": "CC BY 4.0",
+      "license_conflict": "The Hugging Face mirror claims the broader CC BY 4.0, while the original VITON-HD upstream states CC BY-NC 4.0. This review relies only on the original, narrower non-commercial terms; no broader mirror grant is assumed.",
+      "provenance_limit": "The selected mirror files were not byte-compared with the original authors' linked Google Drive archive."
     },
     "rights_review": {
-      "copyright_license": "The card declares CC BY 4.0; attribution and change disclosure are required.",
-      "license_scope_caveat": "CC BY grants only rights the uploader is authorized to grant; it does not by itself establish personality, privacy, likeness, or other third-party rights.",
-      "adult_only_status": "Not established by the dataset card; no age validation was performed on the dataset.",
-      "individual_release_or_likeness_safeguards_verified": false,
-      "private_azure_processing_permission_verified": false,
-      "eligible_for_azure_transfer_or_inference": false
+      "noncommercial_scope": "Private technical research only; no commercial use or public image/output publication.",
+      "explicit_third_party_processing_prohibition_found": false,
+      "individual_subject_release_verified": false,
+      "photographer_or_catalog_rights_independently_verified": false,
+      "age_record_verified": false,
+      "visual_age_observation": "The selected catalog-model image appears adult; this is visual observation only, not verified age.",
+      "remaining_uncertainty": "The upstream dataset license permits non-commercial reuse to the extent the licensor controls the relevant rights. It does not by itself establish all subject, photographer, catalog, privacy, or likeness permissions.",
+      "azure_transfer_approved": false,
+      "inference_calls_for_this_candidate": 0
+    },
+    "pair": {
+      "type": "cross-paired unpaired try-on input",
+      "ground_truth_for_this_exact_person_garment_pair": false,
+      "evaluation_limit": "No exact target-wearing ground truth exists for this cross-pair. Assess output visually against the two inputs only; do not report a ground-truth similarity score."
+    },
+    "person": {
+      "dataset_path": "image/00006_00.jpg",
+      "appearance": "Modern color catalog-model portrait, front-facing with a slight body angle, head to hip visible, one hand visible; wears a plain black long-sleeve top distinct from the target.",
+      "local_path": "experiments/local/viton-hd-unpaired/person.jpg",
+      "sha256": "c29753ccb0e245ea96920afce565548bddee173494b4e044510f95b5b2daa9ce",
+      "dimensions": [768, 1024]
+    },
+    "garment": {
+      "dataset_path": "cloth/00151_00.jpg",
+      "appearance": "Isolated white and navy horizontal-striped top with yellow neckline and sleeve-cuff trim; stripe spacing and direction, neckline, sleeves, and hem are visible.",
+      "local_path": "experiments/local/viton-hd-unpaired/garment.jpg",
+      "sha256": "d8ad0a63cdacfa9e7876c25624195def2f4005cc9eb8e63b3f8f275b4fa0d7f7",
+      "dimensions": [768, 1024]
+    },
+    "preview": {
+      "local_path": "experiments/local/viton-hd-unpaired/preview.jpg",
+      "sha256": "bd43f6b4a7cec34d3a0852b0824774c0e5ca492a3bda2b46b683f63e76c658a6",
+      "local_only": true
     }
   },
-  "preferred_preview": {
-    "config": "mens-upperwear",
-    "split": "test",
-    "row_index": 34,
-    "source_file_name": "00357_00.jpg",
-    "metadata_tags": {
-      "pattern_type": "Plaid",
-      "pattern_subtype": "Checkered",
-      "pattern_size": "Medium",
-      "repeat": "Medium Repeat"
-    },
-    "visual_observation": "Synthetic adult-appearing person shown from head to waist wearing a cream, dark, and brown large-check upper-body jacket; collar, zipper/placket, pockets, cuffs, and pattern are visible. Hands are in pockets. Apparent age is not verified. The visible colors are not an exact match for every source tag.",
-    "pairing_limitation": "The person already wears the same garment shown in the reference. This is a trivial same-garment reconstruction pair, not a non-trivial transfer or independent ground-truth test.",
-    "local_files": {
-      "person": {
-        "path": "experiments/local/glance-vton-candidates/pattern-0034-person.jpg",
-        "sha256": "08df97831cbe1d9b58b6b824ac389ebb3da2e7cd77ceb635505bc74895f0e9c1",
-        "dimensions": [768, 1024]
-      },
-      "garment": {
-        "path": "experiments/local/glance-vton-candidates/pattern-0034-garment.jpg",
-        "sha256": "cbd916816c9678361f4086911eb08c27a2935c3c8cf86ddaa8beba8e83b4e5a5",
-        "dimensions": [768, 1024]
-      },
-      "contact_sheet": "experiments/local/glance-vton-candidates/pattern-candidates-contact-sheet.jpg"
-    },
-    "local_preview_only": true,
-    "azure_transfer_approved": false
+  "other_reviewed_candidate": {
+    "dataset": "Glance VTON Synthetic Dataset",
+    "repository": "https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs",
+    "revision": "7ae72513413932dbfdb15d02c924f3be9739b0c4",
+    "license": "CC BY 4.0 as declared by the card",
+    "limitation": "Synthetic person and garment; the person already wears the target garment, so the pair tests only trivial same-garment reconstruction. Not a replacement for the VITON-HD real catalog-model photo.",
+    "not_selected_for_real_photo_trial": true
   },
-  "alternate_preview": {
-    "config": "mens-upperwear",
-    "split": "test",
-    "row_index": 23,
-    "source_file_name": "00214_00.jpg",
-    "visual_observation": "Synthetic adult-appearing person wearing a light-green vertically striped button-front shirt; collar, buttons, pocket, and stripe direction are visible. The person already wears the reference garment; hands are in pockets; age is not verified.",
-    "local_files": {
-      "person": "experiments/local/glance-vton-candidates/pattern-0023-person.jpg",
-      "garment": "experiments/local/glance-vton-candidates/pattern-0023-garment.jpg"
-    },
-    "local_preview_only": true,
-    "azure_transfer_approved": false
-  },
-  "rejected_or_limited_candidates": [
-    {
-      "dataset": "DressCode",
-      "source": "https://github.com/aimagelab/dress-code",
-      "reason": "Official upstream requires a signed release agreement, prohibits release to private companies, and restricts access to institutional email; it does not verify the proposed individual rights or cloud processing."
-    },
-    {
-      "dataset": "VITON-HD",
-      "source": "https://github.com/shadow2496/VITON-HD",
-      "reason": "Official upstream says research purposes only and CC BY-NC 4.0. No person release or permission for the proposed cloud processing was verified; mirror metadata is not sufficient."
-    }
-  ],
-  "inference_calls_for_this_review": 0
+  "excluded_candidate": {
+    "dataset": "DressCode",
+    "repository": "https://github.com/aimagelab/dress-code",
+    "reason": "Official upstream requires a signed release agreement, disallows release to private companies, and requires institutional email. Do not access until those conditions are met."
+  }
 }

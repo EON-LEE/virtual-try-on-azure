@@ -115,39 +115,49 @@ reviewed pairs and tags before assessing those requirements.
 
 ### Hugging Face candidate review (local preview only)
 
-`sample-candidates.json` records a small review of the Hugging Face
+`sample-candidates.json` records a small, unpaired VITON-HD candidate. Its
+person input is a modern color catalog-model photo in a plain black top; its
+separate garment input is a white/navy horizontal-striped top with yellow trim.
+They are distinct VITON-HD test-set examples: the person is not wearing the
+reference garment. This is suitable for a real garment-transfer test, but this
+cross-pair has **no ground-truth image** of that person in the striped top.
+Inspect the ignored local `experiments\local\viton-hd-unpaired\preview.jpg`
+before any later approval.
+
+The [official VITON-HD repository](https://github.com/shadow2496/VITON-HD)
+describes the data as research-only and declares [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/),
+requiring citation and change indication. The selected bytes were obtained
+from the Hugging Face `TryOnVirtual/VITON-HD-TEST` mirror, pinned in the
+manifest; that mirror labels its card CC BY 4.0, which conflicts with the
+original upstream restriction. We rely only on the original, narrower
+non-commercial grant and do not rely on the mirror's broader claim. The
+official repository links the original dataset download, but these individual
+mirror files were not independently byte-compared with that archive.
+
+Neither source checked here states a specific prohibition on third-party
+processing. The original license is non-commercial, so any use must stay
+within that scope and preserve attribution; the mirror/license does not
+establish that the original uploader controls every underlying image right.
+No individual model release or separate subject/photographer permission was
+verified. This is a documented residual rights uncertainty, not an inference
+that the sample is forbidden merely because release forms are not published.
+The source describes a woman-model dataset, and this selected image appears
+adult, but no age record was verified. Local preview does not authorize Azure
+transmission: inference remains disabled pending a separate exact call/input
+approval. Only the two selected originals and labeled preview remain in the
+ignored `experiments\local\viton-hd-unpaired\` folder; no photo is committed.
+
+The previously reviewed
 [`glanceai/VTON-Synthetic-Pairs`](https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs)
-dataset, pinned to revision
-`7ae72513413932dbfdb15d02c924f3be9739b0c4`. The card declares [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and
-describes both the person and garment as generated, with source product
-catalogue metadata and Flux Dev. The preferred local preview is row 34, whose
-large plaid pattern, collar, placket, pockets, and cuffs are visible; row 23
-offers a vertical-stripe alternative. The card's own warning about occasional
-pair inconsistencies applies, and row 34's visible colors do not cleanly match
-all of its tags.
+candidate remains a synthetic alternative, not a real-person sample. Its
+person already wears the same target garment, so it is a trivial reconstruction
+pair. Provenance and rights notes remain in `sample-candidates.json`.
 
-These are **synthetic images, not photographs**. The person already wears the
-same garment shown as the reference, making output comparison a trivial
-re-render rather than a test of transferring a new garment. Neither the card
-nor metadata establishes an adult-only dataset, individual model releases,
-likeness safeguards, or permission for private Azure image processing. CC BY
-permits reuse only to the extent the uploader had authority to license; it
-does not itself grant personality/privacy rights. Thus the local images are
-attributed previews only and are **not cleared or approved for Azure transfer
-or inference**. The contact sheet is under ignored `experiments\local\`; no
-dataset image is committed. See the manifest for exact local paths, source,
-license, and limitations.
-
-DressCode is not a viable substitute: its official repository requires a
-signed release agreement, disallows release to private companies, and requires
-institutional email. VITON-HD's official repository states research-only use
-and CC BY-NC 4.0, but does not establish model releases or permission for the
-proposed cloud processing; a Hugging Face mirror with missing license details
-does not override those upstream restrictions. No real modern photo with
-verified person-use and Azure-transfer rights was identified. Use a
-user-provided adult volunteer image with explicit consent and a garment image
-whose rights cover this processing, or obtain written permission from the
-dataset/rightsholder first.
+DressCode remains excluded unless its signed release and institutional access
+conditions are met. VITON-HD is not excluded merely because its license is
+non-commercial; confirm any proposed paid API run and its exact input scope
+separately with the coordinator. Do not publish the images or generated
+outputs, use them commercially, or claim model/subject endorsement.
 
 ### Human review rubric for future outputs
 
