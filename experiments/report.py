@@ -127,4 +127,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "local" / "report" / "index.html")
     args = parser.parse_args()
-    print(json.dumps(generate(args.output), ensure_ascii=False))
+    state = json.loads((ROOT / "restart-state.json").read_text(encoding="utf-8"))
+    if state.get("registered_scope"):
+        from dataset_batch import render
+        if args.output.resolve() != (ROOT / "local" / "report" / "index.html").resolve():
+            raise ValueError("Registered dataset report uses its fixed private output path.")
+        render()
+        print("Updated registered dataset report.")
+    else:
+        print(json.dumps(generate(args.output), ensure_ascii=False))

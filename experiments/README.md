@@ -1,5 +1,21 @@
 # Azure-only try-on experiments
 
+**2026-10-15 later scope change:** user explicitly returned to noncommercial
+VTO dataset inference/demo mockup. The 2026 Korean-brand/current-season
+restriction was lifted. The same previously unused maximum 24 attempts apply,
+not another allocation (historical 16, lifetime maximum 40). Deleted historical
+photos are not restored. `dataset-return-cases.json` selects 12 new unpaired
+VITON-HD ID combinations; local `dataset-return\manifest.json` freezes original
+and normalized hashes, rights and source URLs before calls.
+`restart-state.json` registers only that exact plan and approval-file hash.
+Other approvals/legacy sample acquisition remain blocked.
+`python .\experiments\dataset_batch.py run` uses fresh scoped Entra validation,
+serial requests, model spacing >=90s and provider Retry-After, no retries.
+Reservations/failures/unknown completions consume slots; unknown completion or
+two consecutive 401s stop the remaining batch. No roles/deployments changed.
+`python .\experiments\report.py` now updates the new-dataset-only large grid;
+new brand-source review photos are not part of the experiment grid.
+
 **Current status, 2026-10-15: user-directed photo reset.** All 79 inventoried
 historical input/output images and image-embedded local artifacts were removed.
 All 65 preexisting JSON approval/result/provenance files remain intact.

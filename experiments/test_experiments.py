@@ -17,6 +17,7 @@ import evaluate
 import comparison
 import report
 import harness as h
+import dataset_batch
 
 
 class ExperimentsTest(unittest.TestCase):
@@ -113,6 +114,7 @@ class ExperimentsTest(unittest.TestCase):
 
     def test_restart_report_never_reads_or_embeds_historical_images(self):
         state = h.read_json(h.ROOT / "restart-state.json")
+        state["live_execution_allowed"] = False
         state["new_source_candidates"][0]["product"] = "<script>not markup</script>"
         state_path = self.root / "state.json"
         h.write_json(state_path, state)
@@ -136,6 +138,7 @@ class ExperimentsTest(unittest.TestCase):
 
     def test_report_embeds_only_hash_pinned_new_source_previews(self):
         state = h.read_json(h.ROOT / "restart-state.json")
+        state["live_execution_allowed"] = False
         candidate = state["person_source_candidates"][0]
         preview = self.root / candidate["preview_path"]
         preview.parent.mkdir(parents=True)
@@ -161,13 +164,14 @@ class ExperimentsTest(unittest.TestCase):
             report.generate(output, state_path, self.root)
 
     def test_restart_blocks_cli_acquisition_and_live_before_input_reads(self):
+        h.write_json(self.root / "restart-state.json", {"live_execution_allowed": False})
         commands = [
             ["harness.py", "acquire"],
             ["harness.py", "live", "--config", "missing.json",
              "--approval", "missing.json", "--model", "sunburst", "--case", "new-case"],
         ]
         for command in commands:
-            with self.subTest(command=command[1]), patch("sys.argv", command), \
+            with self.subTest(command=command[1]), patch.object(h, "ROOT", self.root), patch("sys.argv", command), \
                     patch("sys.stderr", new_callable=io.StringIO) as stderr, \
                     patch.object(h, "acquire") as acquire, patch.object(h, "live") as live:
                 with self.assertRaises(SystemExit) as stopped:
@@ -178,18 +182,64 @@ class ExperimentsTest(unittest.TestCase):
                 live.assert_not_called()
 
     def test_restart_blocks_imported_entrypoints_and_missing_state(self):
-        with patch("harness.fetch") as network:
+        h.write_json(self.root / "restart-state.json", {"live_execution_allowed": False})
+        with patch.object(h, "ROOT", self.root), patch("harness.fetch") as network:
             with self.assertRaisesRegex(h.ExperimentError, "photo reset"):
                 h.acquire(self.root / "blocked-acquire")
             with self.assertRaisesRegex(h.ExperimentError, "photo reset"):
                 h.live(self.config, self.plan, self.inputs, self.approval_path,
                        "sunburst", self.config["cases"][0]["id"], self.root / "runs")
-            with patch.object(h, "ROOT", self.root):
+            with patch.object(h, "ROOT", self.root / "missing"):
                 with self.assertRaisesRegex(h.ExperimentError, "state is missing"):
                     h.require_active_scope()
             network.assert_not_called()
         self.assertFalse((self.root / "blocked-acquire").exists())
         self.assertFalse((self.root / "runs").exists())
+
+    def test_registered_scope_rejects_other_approvals_and_plans(self):
+        approval = self.root / "registered.json"
+        h.write_json(approval, {"approved": True})
+        h.write_json(self.root / "restart-state.json", {
+            "live_execution_allowed": True,
+            "registered_scope": {"scope_sha256": "expected", "approval_path": "registered.json",
+                                 "approval_file_sha256": h.digest(approval.read_bytes())}})
+        with patch.object(h, "ROOT", self.root):
+            h.require_active_scope("expected", approval)
+            with self.assertRaises(h.ExperimentError):
+                h.require_active_scope("other", approval)
+            h.write_json(approval, {"approved": False})
+            with self.assertRaises(h.ExperimentError):
+                h.require_active_scope("expected", approval)
+
+    def test_dataset_grid_contains_only_registered_new_inputs_and_real_outputs(self):
+        batch = self.root / "batch"
+        batch.mkdir()
+        (self.root / "local" / "report").mkdir(parents=True)
+        manifest = h.read_json(dataset_batch.SPEC)
+        manifest["cases"] = manifest["cases"][:1]
+        case = manifest["cases"][0]
+        for role in ("person", "garment"):
+            path = batch / f"{role}.png"
+            Image.new("RGB", (24, 32), "red").save(path)
+            case[role] = {"path": path.name, "sha256": h.digest(path.read_bytes())}
+        h.write_json(batch / "manifest.json", manifest)
+        folder = batch / "runs" / "fixture"
+        folder.mkdir(parents=True)
+        Image.new("RGB", (24, 32), "blue").save(folder / "output.png")
+        h.write_json(folder / "result.json", {
+            "case_id": case["id"], "model_id": "sunburst", "status": "succeeded",
+            "attempts": 1, "output_sha256": h.digest((folder / "output.png").read_bytes())})
+        with patch.object(dataset_batch, "FOLDER", batch), patch.object(h, "ROOT", self.root):
+            dataset_batch.render()
+            page = (self.root / "local" / "report" / "index.html").read_text(encoding="utf-8")
+            self.assertEqual(page.count('src="data:image/png;base64,'), 3)
+            self.assertIn("1/24", page)
+            self.assertIn("미실행", page)
+            self.assertIn("showModal()", page)
+            self.assertNotIn("Nater Kane", page)
+            (batch / "person.png").write_bytes(b"tampered")
+            with self.assertRaisesRegex(h.ExperimentError, "hash"):
+                dataset_batch.render()
 
     def test_alpha_preserved(self):
         path = self.root / "alpha.png"

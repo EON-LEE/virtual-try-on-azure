@@ -382,17 +382,25 @@ def reserve(approval_path, approval, model_id, case_id=None):
     return str(bound)
 
 
-def require_active_scope():
+def require_active_scope(scope_sha256=None, approval_path=None):
     restart_path = ROOT / "restart-state.json"
     if not restart_path.is_file():
         raise ExperimentError("Execution state is missing; acquisition/live execution remains paused.")
     if read_json(restart_path).get("live_execution_allowed") is not True:
         raise ExperimentError(
             "User-directed photo reset: acquisition/live execution paused until new inputs and coordinator go.")
+    state = read_json(restart_path)
+    registered = state.get("registered_scope")
+    if scope_sha256 is not None and registered is not None:
+        approval = Path(approval_path).resolve()
+        if (scope_sha256 != registered["scope_sha256"]
+                or approval != (ROOT / registered["approval_path"]).resolve()
+                or digest(approval.read_bytes()) != registered["approval_file_sha256"]):
+            raise ExperimentError("Execution is limited to the exact registered replacement dataset scope.")
 
 
 def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
-    require_active_scope()
+    require_active_scope(plan["scope_sha256"], approval_path)
     approval = read_json(approval_path)
     check_approval(approval, plan)
     model = next((m for m in config["models"] if m["id"] == model_id), None)
@@ -497,6 +505,8 @@ def sanitize_usage(usage):
 
 def acquire(destination):
     require_active_scope()
+    if read_json(ROOT / "restart-state.json").get("registered_scope"):
+        raise ExperimentError("Legacy sample acquisition is not part of the registered dataset-return scope.")
     manifest = read_json(ROOT / "samples.json")
     destination.mkdir(parents=True, exist_ok=True)
     inventory = []

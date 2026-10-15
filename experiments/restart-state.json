@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "effective_date": "2026-10-15",
-  "status": "awaiting_new_inputs_and_coordinator_go",
+  "status": "registered_dataset_return_scope",
   "historical_images_disposed": true,
   "historical_attempts_consumed": 16,
   "new_approval_max_attempts": 24,
   "new_approval_attempts_consumed": 0,
   "lifetime_attempt_cap": 40,
   "inflight_requests": 0,
-  "live_execution_allowed": false,
+  "live_execution_allowed": true,
   "required_inputs": "2026 current-season Korean-brand product photos and completely new actual adult person photos; no historical Met/VITON/person/garment reuse.",
   "conditions": [
     "New exact input bytes, source, date/season evidence, person and photo rights reviewed before approval scope is frozen.",
@@ -28,7 +28,7 @@
   "new_source_candidates": [
     {
       "brand": "BEANPOLE MEN",
-      "product": "브러쉬드 빅 멀티체크 셔츠 - 베이지",
+      "product": "\ube0c\ub7ec\uc26c\ub4dc \ube45 \uba40\ud2f0\uccb4\ud06c \uc154\uce20 - \ubca0\uc774\uc9c0",
       "sku": "BC6X64C75A",
       "url": "https://www.ssfshop.com/BEANPOLE-MEN/GM0026092333362/good",
       "date_evidence": "Official Product JSON-LD releaseDate 2026-09-30; release date is not the photo capture date.",
@@ -38,7 +38,7 @@
     },
     {
       "brand": "8 seconds",
-      "product": "[민주킴] 하트 클로버 프린트 레이어드 저지탑 - 화이트",
+      "product": "[\ubbfc\uc8fc\ud0b4] \ud558\ud2b8 \ud074\ub85c\ubc84 \ud504\ub9b0\ud2b8 \ub808\uc774\uc5b4\ub4dc \uc800\uc9c0\ud0d1 - \ud654\uc774\ud2b8",
       "sku": "356841SX21",
       "url": "https://www.ssfshop.com/8-seconds/GM0026080770250/good",
       "date_evidence": "Official Product JSON-LD releaseDate 2026-08-26; not verified photo capture date.",
@@ -48,7 +48,7 @@
     },
     {
       "brand": "HAZZYS MEN",
-      "product": "블루 소프트 울 플란넬 체크 셔츠",
+      "product": "\ube14\ub8e8 \uc18c\ud504\ud2b8 \uc6b8 \ud50c\ub780\ub12c \uccb4\ud06c \uc154\uce20",
       "sku": "HZSH6D502B2",
       "url": "https://www.hazzys.com/product.do?cmd=getProductDetail&PROD_CD=HZSH6D502B2",
       "date_evidence": "Exact official item notice manufacturing date 2026-06. This is neither photo capture nor publication date.",
@@ -98,5 +98,12 @@
       "preview_sha256": "f0315c8ba72b336f345c932112eecd2ed1e6e8f5003c843b9a4eba12863d41eb",
       "preview_change_notice": "Browser-rendered resized source-photo screenshot for local source review only; no AI edits or garment replacement."
     }
-  ]
+  ],
+  "scope_change": "2026 current-season Korean brand restriction lifted; fresh VTO dataset IDs only. Same previously unused 24 attempts.",
+  "registered_scope": {
+    "scope_sha256": "05fc9b711a6cd8b5b34a0230a6b73ed1199d4f723526d63bda547f232e3ed8a8",
+    "approval_path": "local\\dataset-return\\approval.json",
+    "approval_file_sha256": "1f13a11749e0d8f234ca19fac5e3900709268577afe3710a7aaf00b23cc8925c",
+    "manifest_sha256": "c1e098b63cc96feea6ee5ea2df90af104a0a58cad56d432439f5653747eb1588"
+  }
 }

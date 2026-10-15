@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "approval_reference": "User approved maximum 12 new combinations/24 attempts including Azure image transfer, private noncommercial use, unknown amount and zero retries; user-directed return to VTO dataset relayed by coordinator 2026-10-15 10:48 KST. Same unused 24-call allocation, not additional approval.",
+  "dataset": "VITON-HD",
+  "source": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST",
+  "revision": "fbec00f2f68cacbcdd7e1dee047405e7319226c6",
+  "upstream": "https://github.com/shadow2496/VITON-HD",
+  "license": "CC BY-NC 4.0; original upstream narrower license, not mirror CC BY claim",
+  "attribution": "Choi, Park, Lee and Choo. VITON-HD: High-Resolution Virtual Try-On via Misalignment-Aware Normalization. CVPR 2021.",
+  "use_scope": "Private noncommercial technical research/demo mockup inference only; no training/finetuning/public redistribution. EXIF rotation/color normalization/metadata removal, no resize; generated clothing edits indicated.",
+  "rights_uncertainty": "Individual releases, photographer/catalog rights and age records not independently verified. Selected catalog people visually appear adult. Source research/NC adaptation permission checked; no express third-party processing restriction found. Mirror bytes not compared with official archive.",
+  "limits": {"new_attempts": 24, "lifetime_prior": 16, "lifetime_cap": 40, "retries": 0, "minimum_model_gap_seconds": 90},
+  "coverage_limit": "VITON-HD is frontal-view catalog data: no strong side/seated condition, and selected hand-on-head poses are not overhead full-arm poses. Abstract graphic checks are not a fine regular plaid test. No garment material composition is certified from appearance.",
+  "cases": [
+    {"id":"new01-hair-stripe","person_id":"00690_00","garment_id":"00259_00","pose":"Head lowered/turned, right hand on hair with elbow raised, other arm down","checks":"Thin horizontal red/blue repeat spacing and red neck trim; elbow/head/hand contact and dark-to-light clothing change","tags":["raised-hand","stripe"]},
+    {"id":"new02-head-wordmark","person_id":"00624_00","garment_id":"00055_00","pose":"Right hand touches head, bent raised elbow; other arm down","checks":"VANS literal lettering/rectangular wordmark, lavender/black sleeve color blocks; finger/hair contact","tags":["raised-hand","letters"]},
+    {"id":"new03-folded-microprint","person_id":"00599_00","garment_id":"00460_00","pose":"One forearm crosses torso supporting opposite elbow; other hand at chin","checks":"Dense multicolor micro-pattern, neckline and sleeve ruffle construction; depth ordering of two arms and chin fingers","tags":["crossed-arms","repeat"]},
+    {"id":"new04-chest-lace","person_id":"00145_00","garment_id":"00254_00","pose":"One arm across lower chest, opposite hand by neckline","checks":"Black lace/mesh neckline, sleeve scallops and waist structure; hands/arms must remain in front","tags":["crossed-arms","lace"]},
+    {"id":"new05-wrist-logotext","person_id":"00064_00","garment_id":"00641_00","pose":"One hand holds opposite wrist/forearm at waist with visible overlap","checks":"THE NORTH FACE stacked letters and curved symbol; wrist grip and exposed skin when long sleeves become short","tags":["hand-occlusion","letters"]},
+    {"id":"new06-forearm-floral","person_id":"00475_00","garment_id":"00470_00","pose":"One hand grips opposite forearm across torso","checks":"Multicolor floral identity/density, high collar, cuffs; shirt cannot erase foreground fingers","tags":["hand-occlusion","repeat","collar"]},
+    {"id":"new07-hands-planttext","person_id":"00654_00","garment_id":"00396_00","pose":"Both hands meet in front of lower torso","checks":"Yellow botanical frame and PARALLEL EXISTENCE word layout; overlapping hands against navy top","tags":["front-hands","letters","repeat"]},
+    {"id":"new08-angle-polo","person_id":"00428_00","garment_id":"00617_00","pose":"Torso at modest three-quarter angle, one hand holds opposite elbow; other palm open","checks":"Polo collar/placket/button count and small chest embroidery; open palm and elbow grip","tags":["three-quarter","hand-occlusion","collar"]},
+    {"id":"new09-outward-word","person_id":"00468_00","garment_id":"00484_00","pose":"One arm bent outward away from torso, wrist extended; head turned","checks":"NORGAARD lettering baseline/spacing on pink tee; arm extension and sleeve-to-skin boundary","tags":["outward-arm","letters"]},
+    {"id":"new10-waist-eyelet","person_id":"00713_00","garment_id":"00709_00","pose":"Both elbows out with hands pressing waist","checks":"White eyelet/embroidered openwork and hem; waist finger pressure/contact and same body silhouette","tags":["hands-waist","texture"]},
+    {"id":"new11-back-graphic","person_id":"00462_00","garment_id":"00504_00","pose":"Arms behind back, elbows out, head turned to side; not full-body side view","checks":"Black/white irregular crossed graphic lines with metallic-looking letters; do not turn into regular plaid or invent text","tags":["arms-behind","graphic"]},
+    {"id":"new12-front-sheer","person_id":"00069_00","garment_id":"00261_00","pose":"Hands meet at lower torso, bent elbows","checks":"Transparent dotted sleeves over opaque inner panel; cuff/seam and hand layering, not certified fabric composition","tags":["front-hands","texture","layering"]}
+  ]
+}
