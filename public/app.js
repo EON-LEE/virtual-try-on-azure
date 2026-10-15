@@ -49,6 +49,7 @@ async function api(path, options = {}) {
 function controls() {
   const personSample = state.samples.find(item => item.id === state.sampleIds.person);
   const unsupportedPerson = personSample?.supportsModes && !personSample.supportsModes.includes($('mode').value);
+  $('person-samples').hidden = $('mode').value !== 'upper';
   $('input-fields').disabled = state.busy || !state.config?.authenticated;
   $('generate').disabled = state.busy || state.loading > 0 || !state.config?.authenticated ||
     required().some(role => !state.files[role]) || !selected().length || !$('consent').checked ||
@@ -73,7 +74,8 @@ function controls() {
   }
   $('mode-guidance').textContent = $('mode').value === 'upper'
     ? '' : '허리와 다리가 보이는 전신 사진을 선택하세요.';
-  if (unsupportedPerson) $('mode-guidance').textContent = '이 샘플은 상의용입니다. 전신 사진을 선택하세요.';
+  if (unsupportedPerson) $('mode-guidance').textContent = '전신 사진을 업로드하세요.';
+  $('person-guidance').hidden = $('mode').value === 'upper';
   for (const item of state.samples) {
     if (item.category !== 'person' || !item.supportsModes) continue;
     const button = [...$('person-samples').querySelectorAll('button')].find(button => button.dataset.id === item.id);
@@ -101,6 +103,7 @@ async function initialize() {
   for (const model of state.config.models) {
     $(`select-${model.id}`).disabled = false;
   }
+  if (state.config.authenticated && !state.samples.length) await loadSamples();
   controls();
 }
 
@@ -202,13 +205,12 @@ for (const role of roles) {
 }
 
 async function loadSamples() {
-  const response = await fetch('/samples/manifest.json', { signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) throw new Error('샘플을 불러오지 못했습니다.');
-  const manifest = await response.json();
+  const manifest = await api('/api/samples/manifest');
   if (!Array.isArray(manifest.items)) throw new Error('샘플 목록을 확인해 주세요.');
-  state.samples = manifest.items;
+  for (const role of roles) $(`${role}-samples`).replaceChildren();
+  $('sample-credits').replaceChildren();
   for (const item of manifest.items) {
-    if (!roles.includes(item.category) || !/^\/samples\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/.test(item.src)) throw new Error('샘플 목록을 확인해 주세요.');
+    if (!roles.includes(item.category) || !/^\/api\/samples\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/.test(item.src)) throw new Error('샘플 목록을 확인해 주세요.');
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'sample'; button.dataset.id = item.id; button.dataset.label = item.label;
     button.title = item.notes || item.label;
@@ -245,6 +247,7 @@ async function loadSamples() {
       $('sample-credits').append(credit);
     }
   }
+  state.samples = manifest.items;
   controls();
 }
 
@@ -345,6 +348,11 @@ async function clearStudio(logout = false) {
       $(role).value = '';
     }
     state.files = {}; state.urls = {}; state.sampleIds = {}; $('consent').checked = false;
+    if (logout) {
+      state.samples = [];
+      for (const role of roles) $(`${role}-samples`).replaceChildren();
+      $('sample-credits').replaceChildren();
+    }
     document.querySelectorAll('.sample').forEach(button => button.setAttribute('aria-pressed', 'false'));
     models.forEach(id => { $(`select-${id}`).checked = false; });
     render(); await initialize();
@@ -390,4 +398,3 @@ initialize().catch(cause => {
   $('login-error').hidden = false;
   error(cause.message); controls();
 });
-loadSamples().catch(cause => error(cause.message));

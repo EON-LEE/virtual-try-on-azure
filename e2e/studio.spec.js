@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 import sharp from 'sharp';
+import { readFile } from 'node:fs/promises';
+import manifest from '../samples/manifest.json' with { type: 'json' };
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 
 async function prepare(page, mode = 'upper') {
   const buffer = await sharp({ create: { width: 32, height: 48, channels: 3, background: '#abcdef' } }).png().toBuffer();
@@ -131,6 +135,8 @@ test('mode segments work with arrows and reduced motion disables the loading ani
 test('login is separate, keyboard accessible and logout invalidates the session', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#workspace')).toBeHidden();
+  await expect(page.locator('#unlock img, #unlock a, #unlock .login-art')).toHaveCount(0);
+  await expect(page.locator('.sample')).toHaveCount(0);
   await page.locator('#username').fill('test');
   await page.locator('#password').fill('wrong');
   await page.locator('#password').press('Enter');
@@ -174,20 +180,20 @@ test('logout returns to login even after the process session has been lost', asy
 test('sample galleries use fetched bytes, require each full-set reference and never submit on selection', async ({ page }) => {
   const bytes = await sharp({ create: { width: 30, height: 50, channels: 3, background: '#67856a' } }).png().toBuffer();
   const items = ['person', 'upper', 'lower'].flatMap(category => [1, 2].map(index => ({
-    id: `${category}-${index}`, category, label: `${category} ${index}`, src: `/samples/${category}-${index}.png`,
+    id: `${category}-${index}`, category, label: `${category} ${index}`, src: `/api/samples/${category}-${index}.png`,
     attribution: 'Synthetic browser-test fixture', supportsModes: category === 'person' && index === 2 ? ['upper'] : ['upper', 'lower', 'full']
   })));
-  await page.route('**/samples/manifest.json', route => route.fulfill({ json: { items } }));
-  await page.route(/\/samples\/(?:person|upper|lower)-[12]\.png$/, route => route.fulfill({ body: bytes, contentType: 'image/png' }));
+  await page.route('**/api/samples/manifest', route => route.fulfill({ json: { items } }));
+  await page.route(/\/api\/samples\/(?:person|upper|lower)-[12]\.png$/, route => route.fulfill({ body: bytes, contentType: 'image/png' }));
   let requests = 0;
   page.on('request', request => { if (request.url().endsWith('/api/jobs') && request.method() === 'POST') requests++; });
   await page.goto('/');
   await page.locator('#username').fill('test');
   await page.locator('#password').fill('test');
   await page.locator('#password').press('Enter');
-  await page.locator('[name="clothing-mode"][value="full"]').check();
   await expect(page.locator('#person-samples button')).toHaveCount(2);
   await page.locator('#person-samples button').first().click();
+  await page.locator('[name="clothing-mode"][value="full"]').check();
   await page.locator('#upper-samples button').last().click();
   await page.locator('#select-mai').check();
   await page.locator('#consent').check();
@@ -212,6 +218,59 @@ test('sample galleries use fetched bytes, require each full-set reference and ne
   await expect(page.locator('#person-samples button').last()).toHaveAttribute('aria-pressed', 'true');
   await page.locator('[name="clothing-mode"][value="full"]').check();
   await expect(page.locator('#person-samples button').last()).toBeDisabled();
-  await expect(page.locator('#mode-guidance')).toContainText('상의용');
+  await expect(page.locator('#person-samples')).toBeHidden();
+  await expect(page.locator('#person-guidance')).toContainText('전신 사진을 업로드');
   await expect(page.locator('#generate')).toBeDisabled();
+});
+
+test('the VITON-HD gallery sends the actual unpaired JPEG files only when generate is pressed', async ({ page }) => {
+  test.skip(!existsSync(new URL('../sample-images/', import.meta.url)), 'Real research pack stays outside public Git; synthetic gallery/HTTP tests run in CI.');
+  await page.addInitScript(() => {
+    const original = window.fetch;
+    window.fetch = async (input, options) => {
+      if (input === '/api/jobs' && options?.body instanceof FormData) {
+        window.submittedFiles = {};
+        for (const [name, file] of options.body.entries()) {
+          if (file instanceof File) {
+            const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+            window.submittedFiles[name] = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+          }
+        }
+        window.submittedModels = options.body.get('models');
+      }
+      return original(input, options);
+    };
+  });
+  let requests = 0;
+  page.on('request', request => { if (request.url().endsWith('/api/jobs') && request.method() === 'POST') requests++; });
+  await page.goto('/');
+  await expect(page.locator('.sample')).toHaveCount(0);
+  await page.locator('#username').fill('test');
+  await page.locator('#password').fill('test');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#person-samples .sample')).toHaveCount(6);
+  await expect(page.locator('#upper-samples .sample')).toHaveCount(8);
+  await expect(page.locator('#lower-samples .sample')).toHaveCount(0);
+  const person = manifest.items.find(item => item.category === 'person');
+  const upper = manifest.items.find(item => item.category === 'upper');
+  for (const item of [person, upper]) await page.locator(`[data-id="${item.id}"]`).click();
+  await page.locator('#select-sunburst').check();
+  await page.locator('#consent').check();
+  await expect(page.locator('#generate')).toBeEnabled();
+  expect(requests).toBe(0);
+  await page.locator('#generate').click();
+  await expect(page.locator('#sunburst-result')).toBeVisible();
+  const submitted = await page.evaluate(() => ({ files: window.submittedFiles, models: window.submittedModels }));
+  for (const item of [person, upper]) {
+    expect(submitted.files[item.category]).toBe(createHash('sha256').update(
+      await readFile(new URL(`../sample-images/${item.filename}`, import.meta.url))).digest('hex'));
+  }
+  expect(submitted.models).toBe('["sunburst"]');
+  for (const mode of ['lower', 'full']) {
+    await page.locator(`[name="clothing-mode"][value="${mode}"]`).check();
+    await expect(page.locator('#generate')).toBeDisabled();
+    await expect(page.locator('#person-guidance')).toContainText('전신 사진을 업로드');
+    await expect(page.locator('#lower-upload')).toBeVisible();
+  }
+  expect(requests).toBe(1);
 });

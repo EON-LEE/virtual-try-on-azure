@@ -2,6 +2,8 @@ import sharp from 'sharp';
 import { createServer } from '../src/server.js';
 import { loadConfig } from '../src/config.js';
 import { JobStore } from '../src/jobs.js';
+import { syntheticSamples } from '../test/fixtures.js';
+import { existsSync } from 'node:fs';
 
 // Test-only fixture: no Azure requests or user photos. Never used by npm start.
 const config = loadConfig({
@@ -19,4 +21,11 @@ const jobs = new JobStore({ submissionsPerMinute: 100, provider: async model => 
   return { image, requestId: 'synthetic-fixture-not-a-quality-test' };
 } });
 jobs.gate.activate({ nonce: jobs.gate.state().nonce, allowance: 100, expiresAt: '2099-01-01T00:00:00Z' }, config);
-createServer(config, { jobs }).listen(config.port, config.host);
+const fixture = existsSync(new URL('../sample-images/', import.meta.url)) ? null : await syntheticSamples();
+const server = createServer(config, { jobs, ...fixture });
+server.listen(config.port, config.host);
+if (fixture) {
+  const stop = () => server.close(() => { void fixture.close().finally(() => process.exit(0)); });
+  process.once('SIGTERM', stop);
+  process.once('SIGINT', stop);
+}
