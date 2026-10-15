@@ -238,6 +238,24 @@ class ExperimentsTest(unittest.TestCase):
             self.assertIn("미실행", page)
             self.assertIn("showModal()", page)
             self.assertNotIn("Nater Kane", page)
+            observation = {key: "검토 <script>not markup</script>" for key in (
+                "person_color", "protected_details", "garment_color_details", "confidence", "display")}
+            colors = {"reviews": {case["id"]: {"sunburst": observation, "mai": observation}}}
+            h.write_json(self.root / "dataset-return-color-review.json", colors)
+            dataset_batch.render()
+            page = (self.root / "local" / "report" / "index.html").read_text(encoding="utf-8")
+            self.assertEqual(page.count('src="data:image/png;base64,'), 7)
+            self.assertIn('class="crop-review"', page)
+            self.assertIn('class="color-review"', page)
+            self.assertIn("같은 상대좌표", page)
+            self.assertIn("&lt;script&gt;not markup&lt;/script&gt;", page)
+            self.assertNotIn("<script>not markup</script>", page)
+            colors["reviews"][case["id"]]["mai"] = {}
+            h.write_json(self.root / "dataset-return-color-review.json", colors)
+            with self.assertRaisesRegex(h.ExperimentError, "Color review"):
+                dataset_batch.render()
+            colors["reviews"][case["id"]]["mai"] = observation
+            h.write_json(self.root / "dataset-return-color-review.json", colors)
             (batch / "person.png").write_bytes(b"tampered")
             with self.assertRaisesRegex(h.ExperimentError, "hash"):
                 dataset_batch.render()
@@ -259,6 +277,17 @@ class ExperimentsTest(unittest.TestCase):
                         dataset_batch.fresh_token()
                 else:
                     self.assertEqual(dataset_batch.fresh_token(), token)
+
+    def test_color_review_covers_all_24_outputs_and_preserves_detail_sections(self):
+        document = h.read_json(h.ROOT / "dataset-return-color-review.json")
+        cases = h.read_json(dataset_batch.SPEC)["cases"]
+        self.assertEqual(set(document["reviews"]), {case["id"] for case in cases})
+        for models in document["reviews"].values():
+            self.assertEqual(set(models), {"sunburst", "mai"})
+            for item in models.values():
+                for field in ("person_color", "protected_details", "garment_color_details", "confidence", "display"):
+                    self.assertTrue(isinstance(item[field], str) and item[field].strip())
+        self.assertIn("정렬", document["method"])
 
     def test_dataset_unknown_completion_stops_before_any_new_token_or_call(self):
         folder = self.root / "batch"

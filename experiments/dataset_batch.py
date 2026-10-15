@@ -3,6 +3,7 @@
 import argparse
 import base64
 import html
+import io
 import json
 import os
 import subprocess
@@ -260,16 +261,33 @@ def render():
     review_document = h.read_json(review_path) if review_path.exists() else {}
     reviews = review_document.get("reviews", {})
     corrections = review_document.get("case_check_corrections", {})
+    color_path = h.ROOT / "dataset-return-color-review.json"
+    color_document = h.read_json(color_path) if color_path.exists() else {}
+    color_reviews = color_document.get("reviews", {})
+    if color_document:
+        required_fields = {"person_color", "protected_details", "garment_color_details", "confidence", "display"}
+        if (set(color_reviews) != {case["id"] for case in manifest["cases"]}
+                or any(set(models) != {"sunburst", "mai"} for models in color_reviews.values())
+                or any(not required_fields <= item.keys() or any(not isinstance(item[k], str) or not item[k].strip()
+                           for k in required_fields) for models in color_reviews.values() for item in models.values())):
+            raise h.ExperimentError("Color review requires every exact case/model and nonempty observation fields.")
     if set(reviews) - {case["id"] for case in manifest["cases"]}:
         raise h.ExperimentError("Review contains a case outside the frozen dataset manifest.")
     for model_reviews in reviews.values():
         if set(model_reviews) - {"sunburst", "mai"}:
             raise h.ExperimentError("Review has an unexpected model/nested case.")
 
-    def image(path, label, expected_hash):
+    def image(path, label, expected_hash, crop=None):
         data = Path(path).read_bytes()
         if h.digest(data) != expected_hash:
             raise h.ExperimentError("Report image hash does not match frozen input/result record.")
+        if crop:
+            with Image.open(io.BytesIO(data)) as original:
+                region = original.crop(tuple(round(v * (original.width if i % 2 == 0 else original.height))
+                                             for i, v in enumerate(crop)))
+                buffer = io.BytesIO()
+                region.save(buffer, format="PNG")
+                data = buffer.getvalue()
         mime = "png" if data.startswith(b"\x89PNG") else "jpeg"
         return '<button class="zoom"><img alt="' + html.escape(label, quote=True) + '" src="data:image/' + mime + ';base64,' + base64.b64encode(data).decode() + '"></button>'
 
@@ -280,10 +298,18 @@ def render():
         for model in ("sunburst", "mai"):
             result = results.get((case["id"], model))
             if result and result["status"] == "succeeded":
+                color = color_reviews.get(case["id"], {}).get(model)
+                extra = ""
+                if color:
+                    extra = '<small class="color-review">' + html.escape(color["display"]) + '</small><details><summary>색상·원본 디테일 평가</summary>'
+                    for field, label in (("person_color", "인물색·WB/노출"), ("protected_details", "비대상 하의·액세서리"),
+                                         ("garment_color_details", "참조 의상색·디테일"), ("confidence", "관찰 확신·미확정")):
+                        extra += '<p><b>' + label + '</b> ' + html.escape(color[field]) + '</p>'
+                    extra += '</details>'
                 cells.append(image(Path(result["folder"]) / "output.png", case["id"] + " " + model,
                                    result["output_sha256"])
                              + '<small>' + html.escape(reviews.get(case["id"], {}).get(model, {}).get(
-                                 "display", "엄격 보존 평가 대기")) + '</small>')
+                                 "display", "엄격 보존 평가 대기")) + '</small>' + extra)
             elif result and result["status"] == "submitted":
                 cells.append("처리 중 · 재호출 없음")
             elif result:
@@ -291,10 +317,26 @@ def render():
                 cells.append("401 권한 오류" if status == 401 else "429 호출 제한" if status == 429 else "생성 실패")
             else:
                 cells.append("미실행")
+        crop_row = ""
+        if case["id"] in color_reviews:
+            source = case["person"]
+            assets = [(FOLDER / source["path"], "원본", source["sha256"])]
+            for model in ("sunburst", "mai"):
+                result = results.get((case["id"], model))
+                if result and result["status"] == "succeeded":
+                    assets.append((Path(result["folder"]) / "output.png", model, result["output_sha256"]))
+            crop_row = '<tr><td colspan="4"><details class="crop-review"><summary>얼굴·헤어 / 하단 영역 나란히 확대</summary><p>'
+            crop_row += '같은 상대좌표의 보조 크롭이며 정렬된 동일 픽셀이 아닙니다. 얼굴·배경과 하단을 함께 확인하세요. 하단에는 손·교체 의상 경계도 포함될 수 있습니다. 색 보정·샤프닝·색차 계산 없음.</p>'
+            for region_name, box in (("얼굴·헤어", (0.15, 0, 0.85, 0.35)), ("하단·비대상 후보 영역", (0.10, 0.75, 0.90, 1))):
+                crop_row += '<h4>' + region_name + '</h4><div class="crops">'
+                for path, label, digest in assets:
+                    crop_row += '<div><b>' + label + '</b>' + image(path, case["id"] + " " + label + " " + region_name, digest, box) + '</div>'
+                crop_row += '</div>'
+            crop_row += '</details></td></tr>'
         rows.append('<tbody data-tags="' + html.escape(" ".join(case["tags"]), quote=True) + '"><tr><td colspan="4"><b>'
                     + html.escape(case["id"]) + '</b> · ' + html.escape(case["pose"]) + '<br><small>'
                     + html.escape(corrections.get(case["id"], case["checks"])) + '</small></td></tr><tr>'
-                    + ''.join('<td>' + cell + '</td>' for cell in cells) + '</tr></tbody>')
+                    + ''.join('<td>' + cell + '</td>' for cell in cells) + '</tr>' + crop_row + '</tbody>')
     used = sum(r["attempts"] for r in results.values())
     success = sum(r["status"] == "succeeded" for r in results.values())
     failed = sum(r["status"] == "failed" for r in results.values())
@@ -310,7 +352,8 @@ def render():
             '<title>새 VTO 데이터셋 비교</title><style>body{font:15px system-ui;margin:8px}table{border-collapse:collapse;table-layout:fixed;min-width:1600px;width:100%}'
             'td,th{border:1px solid #ccc;padding:6px;width:400px}th{position:sticky;top:0;background:white}'
             'img{height:600px;width:100%;object-fit:contain}.zoom{border:0;background:none;width:100%;cursor:zoom-in}'
-            'small{font-size:12px}dialog{max-width:96vw;max-height:96vh}dialog img{height:auto;max-width:90vw;max-height:85vh}'
+            'small{display:block;font-size:12px}.color-review{margin-top:5px}.crops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.crops img{height:280px}'
+            'dialog{max-width:96vw;max-height:96vh}dialog img{height:auto;max-width:90vw;max-height:85vh}'
             '.scroll{overflow:auto}details{margin:16px 0}pre{white-space:pre-wrap}</style>'
             f'<h2>새 VTO 데이터셋 · {used}/24회 · 출력 {success}개 · 실패 {failed}회 · 처리 중 {pending}회</h2>'
             '<p>출력 생성 성공 ≠ 포즈·손·의상 세부 보존 통과. 새 조합만 표시 · 기존 이미지 복원 없음.</p>'
@@ -334,7 +377,8 @@ def render():
             '<a href="https://openaccess.thecvf.com/content/CVPR2024/papers/Yang_Texture-Preserving_Diffusion_Models_for_High-Fidelity_Virtual_Try-On_CVPR_2024_paper.pdf" target="_blank" rel="noopener">'
             'TPD §4.1/§4.3/§5</a>의 문자·로고 및 어려운 포즈의 손/팔 왜곡을 평가축으로 사용. '
             '이는 Azure 모델의 오류 원인·마스크 지원을 입증하는 근거가 아님.</p><pre>'
-            + html.escape(json.dumps(reviews, ensure_ascii=False, indent=2))
+            + html.escape(json.dumps({"strict_reviews": reviews, "color_review_method": color_document.get("method"),
+                                     "color_review_limitations": color_document.get("limitations")}, ensure_ascii=False, indent=2))
             + '</pre><pre>'
             + html.escape(json.dumps([{k:v for k,v in r.items() if k in (
                 "case_id","model_id","status","usage","elapsed_seconds","http_status","response_metadata","provider_error_code","completion_uncertain")} for r in results.values()],ensure_ascii=False,indent=2))

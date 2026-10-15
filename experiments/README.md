@@ -8,6 +8,9 @@ Conditional list estimate USD 1.007004, actual billing unknown. Approval exhaust
 See `dataset-return-review.md`, `dataset-return-quality.json` and
 `dataset-return-results.json`. `local\report\index.html` contains only the new
 batch, large four-column images with filters and enlargement; no disposed images.
+`dataset-return-color-review.json` adds all 24 Korean person-color/protected-detail/
+reference-garment observations with confidence and limitations. Folded face/hair
+and lower-region crops support visual comparison, not aligned pixel metrics.
 
 **2026-10-15 later scope change:** user explicitly returned to noncommercial
 VTO dataset inference/demo mockup. The 2026 Korean-brand/current-season

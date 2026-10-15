@@ -123,6 +123,42 @@ It provides concrete new images and failures for comparison, not a physical-fit
 or sizing predictor. Primary-paper evaluation rationale remains in
 `next-case-research.md` and is summarized in the report's folded details.
 
+## Color and protected-detail re-review
+
+All 24 existing outputs were visually re-reviewed without any new API call.
+`dataset-return-color-review.json` separates person color (visible skin/face,
+hair, global white balance/exposure), protected lower garments/accessories and
+reference garment color/pattern/text/construction. Each result has concise Korean
+display text, concrete observations and a qualitative confidence/uncertainty note.
+These observations supplement, not replace or inflate, the existing strict verdicts.
+
+Several MAI outputs appear warmer/more contrasty in face/visible skin; this is
+a qualitative observation, not a measured color shift or universal model result.
+Particularly visible garment-color concerns are case 07 MAI's navy appearing
+near-black and case 09 MAI's pink appearing darker/more magenta. Case 10's grey
+small motifs look more pronounced. Broad palette similarity in other outputs
+does not certify exact color. Lower-garment and jewelry survival is recorded,
+but changed hem coverage is not automatically called deletion or discoloration.
+Newly exposed skin under formerly long sleeves cannot be a preserved-source
+skin comparison. Natural wrinkles, perspective, transparency and cast shadows
+must be distinguished from an invented repeat or relocated label.
+
+The same report retains its four main columns and adds folded per-output detail
+and per-case face/hair and lower-region triptychs (source/Sunburst/MAI).
+These crops use the same fractional image coordinates, not landmark alignment;
+the lower crops may contain hands or edited garment boundaries. No color correction,
+sharpening or pixel-difference metric is applied. Original JPEG compression,
+PNG outputs, display scaling and the uncalibrated viewing environment limit
+fine color conclusions. No numerical color accuracy, fiber identity or
+unchanged-face claim is made.
+
+Evaluation-data contract for the demo: `reviews[case_id][model_id]`, with model IDs
+`sunburst`/`mai`; fields `display`, `person_color`, `protected_details`,
+`garment_color_details`, `confidence` are nonempty Korean strings.
+Strict verdicts remain in `dataset-return-quality.json`. Neither HTML nor source
+photos/results are public-deployment assets; this track does not deploy the live
+application. The development track owns the actual interactive demo/deployment.
+
 The large self-contained report is `local\report\index.html`. It updates after
 each completed attempt and includes only this new dataset batch. No remote
 images or network requests are used by the report. Usage and latency are
