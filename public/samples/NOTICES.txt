@@ -1,0 +1,91 @@
+PUBLIC DEMO PHOTOGRAPH NOTICES
+
+This pack contains 3 real stock-photo people, 4 photographed upper garments and
+3 photographed lower garments. These are selectable inputs, not generated
+results, verified try-on successes, Korean-brand samples or 2026-season claims.
+No VITON-HD or other private noncommercial experiment photographs are included.
+Per-file sources, authors, licenses, changes and hashes are in manifest.json.
+
+DISPLAY AND REUSE
+Keep each image's attribution, source link, license link and modification
+notice available in the sample UI, and link this file. Licenses cover the
+photographs as specified by their sources; they do not imply brand endorsement,
+trademark clearance or a guarantee about third-party rights.
+
+CC BY 2.0:
+upper-stripe: Robert Sheie, "Paul Smith striped shirt", via Flickr / Commons.
+https://creativecommons.org/licenses/by/2.0/
+
+CC BY-SA 4.0:
+upper-ambigram: Basile Morin, "Ambigram Ideal, polysymmetrical logo printed on
+a green T-shirt".
+lower-skirt: Carlton Newkirk and Kashif Sharif, "Sweat Skirt 01".
+https://creativecommons.org/licenses/by-sa/4.0/
+
+CC BY-SA 3.0:
+upper-polo: Elkagye, "Classical polo shirt".
+https://creativecommons.org/licenses/by-sa/3.0/
+
+CC BY-SA 2.0:
+lower-shorts: Alissa Walker, "Customised cut-off denim shorts with peace symbols
+and slogans, American, 1990s", from https://www.flickr.com/photos/gelatobaby/18185667268/
+https://creativecommons.org/licenses/by-sa/2.0/
+
+CC BY / BY-SA require attribution, license links and retained notices.
+The bundled resized/re-encoded BY-SA images remain under their listed licenses.
+If an edited/generated image is an adaptation of a BY-SA asset and is shared,
+comply with that license's ShareAlike and attribution obligations. Do not label
+all generated outputs unrestricted. These image licenses do not automatically
+license independent application code.
+
+PUBLIC DOMAIN:
+lower-jeans: Oktaeder (German Wikipedia), transferred by Juanmak.
+The Commons file page declares {{PD-user-w|de|wikipedia|Oktaeder}}.
+https://commons.wikimedia.org/wiki/File:Jeans.jpg
+This is a source public-domain dedication, not a claim that the photo is CC0.
+
+BURST STOCK PHOTOGRAPHS:
+person-street: Samantha Hurley, "Urban Fashion Modeled On The Street".
+person-seated: Shopify Photos, "Fashion Portrait".
+upper-solid: Shopify Partners, "Grey T-Shirt".
+These three use the Burst Some Rights Reserved license, NOT CC0:
+https://www.shopify.com/stock-photos/licenses/shopify-some-rights-reserved
+It expressly permits download, copying, modification, distribution and display
+for commercial and noncommercial purposes, subject to its terms. Do not resell
+the photos, assemble a competing stock-photo service or falsely claim authorship.
+
+person-tracks: Brodie, "Fashionable Man Walks By Train Tracks".
+Its photo page links to the Burst Creative Commons / CC0 1.0 license:
+https://www.shopify.com/stock-photos/licenses/creative-commons
+https://creativecommons.org/publicdomain/zero/1.0/
+
+All Burst use is also subject to:
+https://www.shopify.com/stock-photos/legal/terms
+Section 4 prohibits unlawful/immoral use, reputationally damaging or embarrassing
+portrayals of identifiable people and implied author/Shopify endorsement.
+It does not warrant or grant third-party trademark, publicity or privacy rights.
+Section 5.5 requires uploaders to have permission from identifiable people;
+individual model releases and age records were not independently inspected.
+Use the people only for a neutral, fully clothed clothing demo, not sensitive
+claims, endorsement, misleading depictions or harmful uses.
+
+PREPARATION AND LIMITATIONS
+The bundled images were EXIF-oriented, resized without upscaling to a maximum
+1280px edge, JPEG re-encoded and stripped of metadata. No crop, color correction,
+retouching or synthesis was applied. Source bytes and bundle bytes have separate
+hashes. "sourceDimensions" describes the downloaded display photo/thumbnail,
+not necessarily the photographer's full-resolution original.
+
+person-seated shows no lower legs/shoes: upper mode only. Other people show
+full bodies but were not tested with upper/lower/full inference. upper-stripe
+is folded, so sleeve length and full cut are not supplied by that reference.
+lower-skirt is partly occluded by its tied sleeves. lower-shorts uses a 330px
+public thumbnail: small lettering is not a reliable OCR/precision benchmark.
+Do not claim material composition, physical fit, model identity or exact age.
+
+INTEGRATION CONTRACT
+Read manifest.json items; category is person, upper or lower and src is
+same-origin /samples/<id>.jpg. Honor person.supportsModes before generation.
+Fetch selected image bytes into a File; transmit only after the user's explicit
+generation action. Keep attribution/license/changes accessible in the UI.
+No inference or external upload was performed to prepare this pack.
