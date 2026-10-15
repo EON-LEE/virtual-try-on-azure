@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import { AppError } from './errors.js';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-export const MAX_REQUEST_BYTES = 2 * MAX_IMAGE_BYTES + 64 * 1024;
+export const MAX_REQUEST_BYTES = 3 * MAX_IMAGE_BYTES + 64 * 1024;
 const MAX_PIXELS = 20_000_000;
 
 export async function sanitizeImage(file, role) {

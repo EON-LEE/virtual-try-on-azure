@@ -37,15 +37,25 @@ export function loadConfig(env = process.env) {
     mode: env.AZURE_AUTH_MODE || 'key',
     subscriptionId: env.AZURE_SUBSCRIPTION_ID || '',
     tenantId: env.AZURE_TENANT_ID || '',
-    principalId: env.AZURE_EXPECTED_PRINCIPAL_ID || ''
+    principalId: env.AZURE_EXPECTED_PRINCIPAL_ID || '',
+    clientId: env.AZURE_MANAGED_IDENTITY_CLIENT_ID || ''
   };
-  if (!['key', 'entra-cli'].includes(auth.mode)) throw new Error('AZURE_AUTH_MODE must be key or entra-cli.');
-  const identityConfigured = [auth.subscriptionId, auth.tenantId, auth.principalId].every(value => UUID.test(value));
-  if ([auth.subscriptionId, auth.tenantId, auth.principalId].some(value => value && !UUID.test(value))) {
+  if (!['key', 'entra-cli', 'managed-identity'].includes(auth.mode)) throw new Error('AZURE_AUTH_MODE must be key or entra-cli or managed-identity.');
+  const identityConfigured = (auth.mode === 'managed-identity'
+    ? [auth.clientId, auth.tenantId, auth.principalId]
+    : [auth.subscriptionId, auth.tenantId, auth.principalId]).every(value => UUID.test(value));
+  if ([auth.subscriptionId, auth.tenantId, auth.principalId, auth.clientId].some(value => value && !UUID.test(value))) {
     throw new Error('Azure subscription, tenant and expected principal IDs must be UUIDs.');
   }
-  if (enabled && auth.mode === 'entra-cli' && !identityConfigured) {
+  if (enabled && auth.mode !== 'key' && !identityConfigured) {
     throw new Error('Entra CLI inference requires explicit subscription, tenant and expected principal IDs.');
+  }
+  const attemptLimit = Number(env.DEMO_MAX_MODEL_ATTEMPTS || 0);
+  const expiresAt = env.DEMO_INFERENCE_EXPIRES_AT ? Date.parse(env.DEMO_INFERENCE_EXPIRES_AT) : 0;
+  if (!Number.isInteger(attemptLimit) || attemptLimit < 0 || attemptLimit > 100 ||
+      !Number.isFinite(expiresAt)) throw new Error('Demo requires 0-100 model attempts and an ISO inference expiry.');
+  if (enabled && !local && (!attemptLimit || expiresAt <= Date.now())) {
+    throw new Error('Hosted inference requires a positive attempt limit and a future inference expiry.');
   }
   const version = env.AZURE_SUNBURST_API_VERSION || '2025-04-01-preview';
   if (!/^\d{4}-\d{2}-\d{2}(-preview)?$/.test(version)) throw new Error('Invalid Azure API version.');
@@ -72,7 +82,7 @@ export function loadConfig(env = process.env) {
       (auth.mode === 'key' ? model.key : identityConfigured));
     model.reason = !enabled ? 'inference-disabled' : model.ready ? null : 'not-configured';
   }
-  return { host, port, token, origin, models, auth };
+  return { host, port, token, origin, models, auth, limits: { attemptLimit, expiresAt } };
 }
 
 export function selectModels(value, config) {

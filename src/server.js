@@ -6,6 +6,7 @@ import { loadConfig, publicModels, selectModels } from './config.js';
 import { AppError } from './errors.js';
 import { MAX_REQUEST_BYTES, sanitizeImage } from './images.js';
 import { JobStore, publicJob } from './jobs.js';
+import { modeContract } from './modes.js';
 
 const publicDir = new URL('../public/', import.meta.url);
 const staticFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/styles.css': ['styles.css', 'text/css; charset=utf-8'] };
@@ -117,7 +118,7 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
         return json(res, 200, { cleared: true }, { 'Set-Cookie': cookie('') });
       }
       if (path === '/api/jobs' && req.method === 'POST') {
-        if (submissions >= 4) throw new AppError(429, 'busy', 'Studio is processing other uploads. Try again later.');
+        if (submissions >= 1) throw new AppError(429, 'busy', 'Studio is processing another upload. Try again later.');
         submissions++;
         try {
           const requestId = req.headers['x-request-id'];
@@ -130,8 +131,14 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
           } catch {
             throw new AppError(400, 'invalid-upload', 'Invalid multipart upload.');
           }
-          if ([...form.keys()].some(key => !['person', 'garment', 'models', 'consent'].includes(key)) ||
-              ['person', 'garment', 'models', 'consent'].some(key => form.getAll(key).length !== 1)) {
+          if (form.getAll('mode').length > 1) throw new AppError(400, 'invalid-mode', 'Provide one clothing mode.');
+          const mode = form.has('mode') ? form.get('mode') : 'baseline';
+          if (form.has('mode') && mode === 'baseline') throw new AppError(400, 'invalid-mode', 'Select upper, lower or full.');
+          const contract = modeContract(mode);
+          const required = ['person', ...contract.fields, 'models', 'consent'];
+          const allowed = form.has('mode') ? [...required, 'mode'] : required;
+          if ([...form.keys()].some(key => !allowed.includes(key)) ||
+              required.some(key => form.getAll(key).length !== 1)) {
             throw new AppError(400, 'invalid-upload', 'Provide exactly one person, garment, model selection and consent.');
           }
           if (form.get('consent') !== 'true') throw new AppError(400, 'consent-required', 'Photo transmission consent is required.');
@@ -141,9 +148,10 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
           }
           const models = selectModels(selected, config);
           const person = await sanitizeImage(form.get('person'), 'person');
-          const garment = await sanitizeImage(form.get('garment'), 'garment');
-          const fingerprint = createHash('sha256').update(JSON.stringify(models)).update(person).update(garment).digest('hex');
-          const job = jobs.create(sessionId, requestId, fingerprint, models, config, person, garment);
+          const garment = await sanitizeImage(form.get(contract.fields[0]), contract.fields[0]);
+          const lowerGarment = mode === 'full' ? await sanitizeImage(form.get('lower'), 'lower') : undefined;
+          const fingerprint = createHash('sha256').update(JSON.stringify([mode, models])).update(person).update(garment).update(lowerGarment || '').digest('hex');
+          const job = jobs.create(sessionId, requestId, fingerprint, models, config, person, garment, { mode, lowerGarment });
           return json(res, 202, publicJob(job));
         } finally {
           submissions--;

@@ -138,6 +138,7 @@ test('both adapters use Bearer headers and do not retry 401 or fall back to keys
     accountInspector: async () => account,
     credentialFactory: () => ({ getToken: async () => token() })
   });
+
   let fetches = 0;
   for (const model of Object.values(config.models)) {
     await editImage(model, image, image, { getAuthHeaders: headers, fetchImpl: async (_, options) => {
@@ -151,4 +152,23 @@ test('both adapters use Bearer headers and do not retry 401 or fall back to keys
     getAuthHeaders: headers, fetchImpl: async () => { fetches++; return new Response('secret', { status: 401 }); }
   }), /authentication failed/);
   assert.equal(fetches, 3);
+});
+
+test('managed identity is explicit, validates token and never touches CLI or key fallback', async () => {
+  const clientId = '44444444-4444-4444-4444-444444444444';
+  const config = loadConfig({ ...env, AZURE_AUTH_MODE: 'managed-identity', AZURE_MANAGED_IDENTITY_CLIENT_ID: clientId });
+  let count = 0;
+  const headers = createAuthHeaders({
+    managedCredentialFactory: options => {
+      assert.deepEqual(options, { clientId, retryOptions: { maxRetries: 0 } });
+      return { getToken: async () => { count++; return token(); } };
+    },
+    credentialFactory: () => { throw new Error('CLI must not run'); },
+    accountInspector: () => { throw new Error('CLI must not run'); }
+  });
+  assert.match((await headers(config.models.mai)).Authorization, /^Bearer /);
+  await headers(config.models.sunburst);
+  assert.equal(count, 1);
+  const mismatch = createAuthHeaders({ managedCredentialFactory: () => ({ getToken: async () => token({ oid: tenantId }) }) });
+  await assert.rejects(() => mismatch(config.models.mai), /could not be verified/);
 });

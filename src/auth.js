@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { AzureCliCredential, getBearerTokenProvider } from '@azure/identity';
+import { AzureCliCredential, ManagedIdentityCredential, getBearerTokenProvider } from '@azure/identity';
 import { AppError } from './errors.js';
 
 export const COGNITIVE_SCOPE = 'https://cognitiveservices.azure.com/.default';
@@ -36,6 +36,7 @@ function validateToken(token, auth) {
 
 export function createAuthHeaders({
   credentialFactory = options => new AzureCliCredential(options),
+  managedCredentialFactory = options => new ManagedIdentityCredential(options),
   accountInspector = inspectCliAccount,
   bearerFactory = getBearerTokenProvider
 } = {}) {
@@ -47,25 +48,28 @@ export function createAuthHeaders({
       if (!model.key) throw new AppError(503, 'azure-auth-config', 'Azure API key is not configured.');
       return { 'api-key': model.key };
     }
-    if (auth.mode !== 'entra-cli' ||
-        ![auth.subscriptionId, auth.tenantId, auth.principalId].every(value => UUID.test(value))) {
+    if (!['entra-cli', 'managed-identity'].includes(auth.mode) ||
+        !(auth.mode === 'entra-cli' ? [auth.subscriptionId, auth.tenantId, auth.principalId]
+          : [auth.clientId, auth.tenantId, auth.principalId]).every(value => UUID.test(value))) {
       throw new AppError(503, 'azure-auth-config', 'Explicit Entra CLI identity configuration is required.');
     }
     try {
       let provider = providers.get(auth);
       if (!provider) {
-        const credential = credentialFactory({
-          subscription: auth.subscriptionId, tenantId: auth.tenantId, processTimeoutInMs: 15_000
-        });
+        const credential = auth.mode === 'managed-identity'
+          ? managedCredentialFactory({ clientId: auth.clientId, retryOptions: { maxRetries: 0 } })
+          : credentialFactory({ subscription: auth.subscriptionId, tenantId: auth.tenantId, processTimeoutInMs: 15_000 });
         let cachedToken = null;
         let pending = null;
         const guardedCredential = {
           getToken: async (scope, options) => {
-            const account = await accountInspector(auth.subscriptionId);
-            if (typeof account.id !== 'string' || account.id.toLowerCase() !== auth.subscriptionId.toLowerCase() ||
+            if (auth.mode === 'entra-cli') {
+              const account = await accountInspector(auth.subscriptionId);
+              if (typeof account.id !== 'string' || account.id.toLowerCase() !== auth.subscriptionId.toLowerCase() ||
                 typeof account.tenantId !== 'string' || account.tenantId.toLowerCase() !== auth.tenantId.toLowerCase() ||
                 account.state !== 'Enabled' || account.user?.type !== 'user') {
-              throw new Error('CLI account mismatch');
+                throw new Error('CLI account mismatch');
+              }
             }
             cachedToken = validateToken(await credential.getToken(scope, options), auth);
             return cachedToken;
@@ -87,7 +91,7 @@ export function createAuthHeaders({
     } catch {
       providers.delete(auth);
       // SDK/CLI errors can contain account identifiers or tokens; never propagate them.
-      throw new AppError(503, 'azure-identity-unavailable', 'Azure CLI identity could not be verified for the configured subscription, tenant and principal. No inference request was sent; do not change shared login or defaults.');
+      throw new AppError(503, 'azure-identity-unavailable', 'Azure identity could not be verified for the configured tenant and principal. No inference request was sent; do not change shared login or defaults.');
     }
   };
 }

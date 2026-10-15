@@ -1,15 +1,21 @@
 import { AppError } from './errors.js';
 import { sanitizeOutput } from './images.js';
-import { TRY_ON_PROMPT } from './prompt.js';
+import { modeContract } from './modes.js';
 import { authHeaders } from './auth.js';
 
-export function buildRequest(model, person, garment) {
+export function buildRequest(model, person, garment, { mode = 'baseline', lowerGarment } = {}) {
+  const contract = modeContract(mode);
+  if (!person?.length || !garment?.length || (mode === 'full' && !lowerGarment?.length) ||
+      (mode !== 'full' && lowerGarment)) throw new AppError(400, 'missing-reference', 'Provide exactly the reference images required by this clothing mode.');
   const body = new FormData();
   body.set('model', model.deployment);
-  body.set('prompt', TRY_ON_PROMPT);
+  body.set('prompt', contract.prompt);
   const field = model.id === 'sunburst' ? 'image[]' : 'image';
   body.append(field, new Blob([person], { type: 'image/png' }), 'person.png');
-  body.append(field, new Blob([garment], { type: 'image/png' }), 'garment.png');
+  body.append(field, new Blob([garment], { type: 'image/png' }), contract.names[0]);
+  if (mode === 'full') body.append(field, new Blob([lowerGarment], { type: 'image/png' }), contract.names[1]);
+  const maxImages = model.id === 'mai' ? 5 : 16;
+  if (body.getAll(field).length > maxImages) throw new AppError(400, 'image-limit', 'Image count exceeds the documented provider limit.');
   let url;
   if (model.id === 'sunburst') {
     url = `${model.endpoint}/openai/deployments/${encodeURIComponent(model.deployment)}/images/edits?api-version=${model.version}`;
@@ -31,12 +37,12 @@ const providerMessages = {
   429: 'Azure quota or rate limit reached. No automatic retry was made.'
 };
 
-export async function editImage(model, person, garment, { fetchImpl = fetch, signal, getAuthHeaders = authHeaders } = {}) {
+export async function editImage(model, person, garment, { fetchImpl = fetch, signal, getAuthHeaders = authHeaders, mode = 'baseline', lowerGarment } = {}) {
   if (!model.ready) throw new AppError(503, 'model-unavailable', 'Inference is disabled or this model is not configured.');
   signal?.throwIfAborted();
+  const request = buildRequest(model, person, garment, { mode, lowerGarment });
   const headers = await getAuthHeaders(model);
   signal?.throwIfAborted();
-  const request = buildRequest(model, person, garment);
   let response;
   try {
     response = await fetchImpl(request.url, {

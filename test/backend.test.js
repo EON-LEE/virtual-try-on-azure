@@ -13,6 +13,7 @@ import { parseEnv } from 'node:util';
 const png = () => sharp({ create: { width: 16, height: 24, channels: 3, background: '#abcdef' } }).png().toBuffer();
 const configured = () => loadConfig({
   ENABLE_AZURE_INFERENCE: 'true',
+  DEMO_MAX_MODEL_ATTEMPTS: '20', DEMO_INFERENCE_EXPIRES_AT: '2099-01-01T00:00:00Z',
   AZURE_SUNBURST_ENDPOINT: 'https://test.openai.azure.com',
   AZURE_SUNBURST_DEPLOYMENT: 'sunburst-test', AZURE_SUNBURST_API_KEY: 'test-only',
   AZURE_MAI_ENDPOINT: 'https://test.services.ai.azure.com',
