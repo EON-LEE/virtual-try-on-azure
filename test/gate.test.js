@@ -66,6 +66,9 @@ test('ordinary login is ready without operator activation in explicit unlimited 
   assert.ok(publicConfig.models.every(model => model.ready));
   assert.equal((await fetch(`${origin}/api/jobs`, { method: 'POST', headers })).status, 401);
   assert.equal((await fetch(`${origin}/api/operator/state`, { method: 'POST', headers, body: '{}' })).status, 404);
+  const logout = await fetch(`${origin}/api/session`, { method: 'DELETE', headers: { ...headers, cookie: 'studio=expired-session' } });
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get('set-cookie'), /studio=;.*Max-Age=0/);
 });
 
 test('every boot closed; one-shot activation, expiry and atomic two-slot reservations', () => {

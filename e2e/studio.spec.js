@@ -162,6 +162,15 @@ test('a rejected session cookie stays on login and explains how to recover', asy
   await expect(page.locator('#login-error')).toContainText('새 브라우저 탭');
 });
 
+test('logout returns to login even after the process session has been lost', async ({ page }) => {
+  await prepare(page);
+  await page.context().clearCookies();
+  await page.locator('#logout').click();
+  await expect(page.locator('#unlock')).toBeVisible();
+  await expect(page.locator('#workspace')).toBeHidden();
+  await expect(page.locator('#error')).toBeHidden();
+});
+
 test('sample galleries use fetched bytes, require each full-set reference and never submit on selection', async ({ page }) => {
   const bytes = await sharp({ create: { width: 30, height: 50, channels: 3, background: '#67856a' } }).png().toBuffer();
   const items = ['person', 'upper', 'lower'].flatMap(category => [1, 2].map(index => ({

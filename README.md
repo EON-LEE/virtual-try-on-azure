@@ -390,7 +390,9 @@ Do not activate a bounded deployment without a paid-generation approval.
 After login, the browser verifies that the session cookie was actually retained.
 If an embedded browser blocks it, the login screen asks the user to retry in a
 standalone browser tab; cookie policy is not weakened. Session expiry returns to
-login. Configuration and post-generation refresh reflect actual availability
+login. Logout also succeeds when a restart has already discarded the session,
+so a stale studio cannot trap the user behind a logout error.
+Configuration and post-generation refresh reflect actual availability
 without hiding finished images. A bounded health keepalive is used only
 during an approved live smoke and stops when that script exits; no always-on
 helper or automatic budget refill is provided.

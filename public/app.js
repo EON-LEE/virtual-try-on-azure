@@ -34,7 +34,7 @@ async function api(path, options = {}) {
     const cause = new Error(messages[data.error?.code] || data.error?.message || `요청 실패 (${response.status})`);
     cause.status = response.status;
     cause.code = data.error?.code;
-    if (response.status === 401 && path !== '/api/session') {
+    if (response.status === 401 && !(path === '/api/session' && options.method === 'POST')) {
       state.config = null;
       $('workspace').hidden = true;
       $('unlock').hidden = false;

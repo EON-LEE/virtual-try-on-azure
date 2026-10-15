@@ -149,12 +149,14 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
           models: publicModels(config).map(model => model.ready && !open ? { ...model, ready: false, reason: 'demo-budget-closed' } : model),
           maxImageMiB: 10, retentionMinutes: 10 });
       }
-      if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
       if (path === '/api/session' && req.method === 'DELETE') {
-        jobs.clearOwner(sessionId);
-        sessions.delete(sessionId);
+        if (session) {
+          jobs.clearOwner(sessionId);
+          sessions.delete(sessionId);
+        }
         return json(res, 200, { cleared: true }, { 'Set-Cookie': cookie('') });
       }
+      if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
       if (path === '/api/jobs' && req.method === 'POST') {
         if (submissions >= 1) throw new AppError(429, 'busy', 'Studio is processing another upload. Try again later.');
         submissions++;
