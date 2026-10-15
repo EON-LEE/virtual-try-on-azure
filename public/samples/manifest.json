@@ -176,7 +176,7 @@
       "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Classical_polo_shirt.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
       "author": "Elkagye",
       "license": "CC BY-SA 3.0",
-      "licenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
       "src": "/samples/upper-polo.jpg",
       "sourceDimensions": {
         "width": 1582,
@@ -190,7 +190,7 @@
       "sha256": "5620800fb9140b4dcf62ea6aa2a6131dbc4f674b94e657315b37ccc587213714",
       "bytes": 581621,
       "changes": "EXIF orientation applied; max edge 1280px without upscaling; JPEG re-encoded; metadata removed. No crop or color correction.",
-      "attribution": "Elkagye — https://commons.wikimedia.org/wiki/File:Classical_polo_shirt.jpg — CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0/). Resized/re-encoded; metadata removed.",
+      "attribution": "Elkagye — https://commons.wikimedia.org/wiki/File:Classical_polo_shirt.jpg — CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/). Resized/re-encoded; metadata removed.",
       "noticesUrl": "/samples/NOTICES.txt",
       "inferenceTested": false
     },

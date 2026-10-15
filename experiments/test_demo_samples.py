@@ -60,7 +60,7 @@ class DemoSamplesTests(unittest.TestCase):
                     self.assertTrue(item[key], key)
                 self.assertFalse(item["inferenceTested"])
                 for key in ("sourceUrl", "downloadUrl", "licenseUrl"):
-                    self.assertTrue(item[key].startswith(("https://", "http://")))
+                    self.assertTrue(item[key].startswith("https://"))
                 if "BY-SA" in item["license"]:
                     self.assertIn("creativecommons.org/licenses/by-sa/", item["licenseUrl"])
 

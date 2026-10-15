@@ -62,6 +62,7 @@ def prepare(review, output):
         dict(
             id="upper-polo", category="upper", label="카라 · 흰색 폴로",
             file="chosen-054.jpg", commons=candidates[54],
+            licenseUrl="https://creativecommons.org/licenses/by-sa/3.0/",
             notes="전체 상의. 카라·단추·소매 배색·작은 가슴 표식 비교.",
         ),
         dict(
