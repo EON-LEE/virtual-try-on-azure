@@ -8,3 +8,4 @@ test-results/
 infra/*.parameters.json
 .local-deploy/
 .deploy-context/
+sample-images/

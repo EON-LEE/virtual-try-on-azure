@@ -213,21 +213,69 @@ new generation, clearing or refresh. Compare skin/hair color, protected
 non-target areas and garment color/pattern/texture/logos/cut explicitly.
 Manual review is collapsed below each result so it does not reduce image space.
 The studio workflow is person (upload or sample), garment (upload or sample),
-model selection, then create. Samples are loaded from the same-origin
-`public/samples/manifest.json`; selection uses the actual image bytes as the
+model selection, then create. After login, samples are loaded from the same-origin
+`/api/samples/manifest`; selection uses the actual image bytes as the
 request input, never a fake output, and does not call Azure until submission.
 Sample sources/licenses are recorded in the manifest and shown in photo help.
-The published pack has three person photos, four upper garments and three lower
-garments. The seated person sample supports upper mode only; the client disables
-it for lower/full, and the server rejects its known input hash even if uploaded
-under another filename. This is a known-sample guard, not automatic full-body
-detection for arbitrary uploads. A folded striped shirt, partially occluded
-skirt and low-resolution shorts have reference limitations recorded in photo help.
+The replacement VITON-HD pack contains six people with varied arm poses and
+eight upper garments (stripe, text/logo, print, lace, floral, polo and sheer).
+All people support **upper mode only**: feet and complete lower-body clothing
+are not visible. Lower/full-set modes retain uploads, but hide the upper-only
+person gallery and request a full-body photo; there are no fabricated lower
+samples. The server rejects known sample hashes for these modes even if renamed.
+This is a known-sample guard, not full-body detection for arbitrary uploads.
+People and clothes use disjoint source IDs, and nothing is auto-selected as
+a trivial matched-clothing default. All 14 original and normalized hashes were
+checked against 77 excluded hashes; discarded photographs were not restored.
+
+Image files are in ignored `sample-images/`, outside `public/` **and the public
+Git repository**. Only manifest/source/IDs/hashes/notices are committed. The
+private ACR build receives a separately verified image pack. Every manifest/image endpoint
+requires a current session and returns `Cache-Control: no-store`; unauthenticated
+requests receive 401, public static image paths 404. The image is not made private
+by the intentionally public test/test credentials. Anyone who logs in can view
+it. This weak access gate neither waives license restrictions nor guarantees
+confidentiality or strong protection.
+
+Use is limited to **noncommercial research demos**, per the official
+[VITON-HD README](https://github.com/shadow2496/VITON-HD) and
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
 Sources, changes and license obligations are available through the footer's
-`사진 출처` link to `/samples/NOTICES.txt`. BY-SA assets and shared adaptations
-retain applicable attribution/ShareAlike obligations; generated images are not
-universally unrestricted. The stock platform's uploader assurances were used;
-individual model releases and age records were not independently inspected.
+`사진 출처` link to `/samples/NOTICES.txt`, including the CVPR 2021 paper citation.
+The original JPEG bytes are unchanged; layout thumbnails are scaled by CSS.
+Inference normalization and generated outputs are modifications, not original
+photographs. Retain citation/license/change notices when sharing adaptations.
+Mirror bytes have not been independently compared with the official archive;
+individual releases, photographer/catalog rights and age records were not
+independently verified. No brand endorsement is claimed.
+
+To acquire the reviewed inputs for a noncommercial research deployment, read
+the upstream terms and `public/samples/NOTICES.txt`, then run
+`node scripts/prepare-samples.js`. It uses the pinned mirror revision and exact
+SHA-256 values in `samples/manifest.json`, rejects excluded original/normalized
+hashes and does not retry failed downloads. It never runs automatically during
+application startup or CI. Do not commit `sample-images/` or publish it as a
+build artifact. For a clean image build, archive the tracked Dockerfile/package/
+`src`/`public`/`samples` files, then copy only the 14 verified JPEGs into
+`.deploy-context/sample-images/` before building with the existing private ACR.
+The Dockerfile copies this pack into the container, not a public static folder.
+
+`npm test` and browser tests use isolated synthetic photos when the licensed
+pack is absent. The original-photo integrity and actual-photo multipart checks
+are explicitly skipped in that checkout, not reported as passed. Run the same
+tests with the prepared local pack to validate all 14 real photos. Production
+never creates synthetic inputs or falls back to them.
+
+The demo workspace removes marketing heroes, numbered steps and English
+section slogans. Direct public-page observations informed upload/sample choices
+and large image comparison, not copied brand code or assets:
+[Vidnoz](https://www.vidnoz.com/ai-clothes-changer.html) (working upload and outfit
+chooser), [Fotor](https://www.fotor.com/features/ai-change-clothes/) (upload,
+examples and before/after), [FASHN](https://fashn.ai/virtual-try-on) (public
+person/product/create explanation), [FitRoom](https://fitroom.app/ko) (public
+upload/comparison), and [virtual-try-on.org](https://virtual-try-on.org/)
+(public landing comparison only). Authenticated product screens were not
+inspected; unavailable/404/blocked pages were not treated as reference evidence.
 
 Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096 pixels per side and
 20 megapixels. Sharp applies EXIF orientation and removes metadata by PNG
@@ -309,7 +357,7 @@ exhaustion; the approved single eastus2 fallback succeeded. The failed eastus
 environment was not deleted. Exactly three role assignments are scoped to the Sunburst resource
 (OpenAI User), MAI resource (Cognitive Services User) and registry (AcrPull).
 Existing model resources/local-auth settings are not changed. HTTPS external
-ingress exposes the static login and published sample assets. Uploads, jobs and
+ingress exposes the static login; sample images, uploads, jobs and
 result images require the server-issued demo login session cookie. The public
 test/test account is not per-user enterprise SSO or a private access boundary.
 
@@ -319,9 +367,10 @@ jobs on restart/scale-down. Registry storage has ongoing cost, even with
 inference disabled; Consumption compute/requests and image build may also incur
 charges. No fixed monthly estimate or free-service claim is made.
 
-The image contains only Dockerfile/package manifests, `src/` and `public/`
-from a clean tracked commit. Never include private reports, dataset images,
-photos, `.env`, CLI caches or access secrets in build context. Private registry
+The image contains Dockerfile/package manifests, `src/`, `public/` and sample
+metadata from a clean tracked commit, plus only the 14 hash-verified research
+JPEGs from the ignored pack. Never include private reports, other dataset
+images, uploads, `.env`, CLI caches or access secrets in build context. Private registry
 pull is handled by the assigned managed identity, not registry passwords.
 No model deployment or Fabric is created.
 
@@ -408,6 +457,8 @@ Compile without resource changes:
 
 ```powershell
 az bicep build --file infra\main.bicep --stdout > $null
+# Prepare the ignored licensed pack first for an actual photo-enabled image.
+node scripts\prepare-samples.js
 docker build -t try-on-studio:local .
 ```
 
@@ -432,7 +483,8 @@ image calls. Template compilation is not proof of live authentication/quality.
 
 The demo is hosted at
 <https://vto-studio-b0af194e.purpleground-f12dc511.eastus2.azurecontainerapps.io>.
-Fresh Edge login, all ten public samples, three modes, real managed-identity
+At that verification checkpoint, fresh Edge login, the previous ten stock samples,
+three modes, real managed-identity
 edits, result enlargement and PNG downloads passed the approved six-attempt
 hosted verification. All six succeeded, with zero retries or browser errors:
 

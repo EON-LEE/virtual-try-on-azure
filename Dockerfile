@@ -5,6 +5,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-fund --no-audit && npm cache clean --force
 COPY --chown=node:node src ./src
 COPY --chown=node:node public ./public
+COPY --chown=node:node samples ./samples
+COPY --chown=node:node sample-images ./sample-images
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \

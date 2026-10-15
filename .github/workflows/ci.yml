@@ -19,5 +19,5 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - run: docker build -t try-on-studio:test .
+      - run: mkdir -p sample-images && docker build -t try-on-studio:test .
       - run: az bicep build --file infra/main.bicep --stdout > /dev/null

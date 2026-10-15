@@ -7,9 +7,10 @@ import { AppError } from './errors.js';
 import { MAX_REQUEST_BYTES, sanitizeImage } from './images.js';
 import { JobStore, publicJob } from './jobs.js';
 import { modeContract } from './modes.js';
-import sampleManifest from '../public/samples/manifest.json' with { type: 'json' };
+import defaultSamples from '../samples/manifest.json' with { type: 'json' };
 
 const publicDir = new URL('../public/', import.meta.url);
+const samplesDir = new URL('../sample-images/', import.meta.url);
 const staticFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/styles.css': ['styles.css', 'text/css; charset=utf-8'] };
 const SESSION_TTL = 30 * 60 * 1000;
 
@@ -31,7 +32,9 @@ function json(res, status, value, headers = {}) {
   res.end(JSON.stringify(value));
 }
 
-export function createServer(config = loadConfig(), { jobs = new JobStore(), logger = console } = {}) {
+export function createServer(config = loadConfig(), {
+  jobs = new JobStore(), logger = console, samples = defaultSamples, sampleDirectory = samplesDir
+} = {}) {
   const sessions = new Map();
   let submissions = 0;
   let loginAttempts = 0;
@@ -75,15 +78,9 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
       if (req.headers.origin && req.headers.origin !== expectedOrigin) throw new AppError(403, 'cross-origin', 'Cross-origin requests are not allowed.');
       const path = new URL(req.url, expectedOrigin).pathname;
       const sessionId = req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('studio='))?.slice(7);
-      if (req.method === 'GET' && /^\/samples\/(?:manifest\.json|NOTICES\.txt|[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png))$/.test(path)) {
-        let bytes;
-        try { bytes = await readFile(new URL(`.${path}`, publicDir)); } catch (cause) {
-          if (cause.code !== 'ENOENT') throw cause;
-          throw new AppError(404, 'sample-not-found', '샘플을 찾을 수 없습니다.');
-        }
-        res.setHeader('Content-Type', path.endsWith('.json') ? 'application/json; charset=utf-8' :
-          path.endsWith('.txt') ? 'text/plain; charset=utf-8' : path.endsWith('.png') ? 'image/png' : 'image/jpeg');
-        return res.end(bytes);
+      if (req.method === 'GET' && path === '/samples/NOTICES.txt') {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.end(await readFile(new URL('samples/NOTICES.txt', publicDir)));
       }
       if (req.method === 'GET' && staticFiles[path]) {
         const [name, type] = staticFiles[path];
@@ -157,6 +154,17 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
         return json(res, 200, { cleared: true }, { 'Set-Cookie': cookie('') });
       }
       if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
+      if (path === '/api/samples/manifest' && req.method === 'GET') {
+        return json(res, 200, samples);
+      }
+      if (path.startsWith('/api/samples/') && req.method === 'GET') {
+        const sample = samples.items.find(item => item.src === path);
+        if (!sample || !/^[a-zA-Z0-9_-]+\.jpg$/.test(sample.filename)) {
+          throw new AppError(404, 'sample-not-found', '샘플을 찾을 수 없습니다.');
+        }
+        res.setHeader('Content-Type', 'image/jpeg');
+        return res.end(await readFile(new URL(sample.filename, sampleDirectory)));
+      }
       if (path === '/api/jobs' && req.method === 'POST') {
         if (submissions >= 1) throw new AppError(429, 'busy', 'Studio is processing another upload. Try again later.');
         submissions++;
@@ -189,7 +197,7 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
           const personInput = form.get('person');
           if (personInput instanceof File) {
             const hash = createHash('sha256').update(Buffer.from(await personInput.arrayBuffer())).digest('hex');
-            const sample = sampleManifest.items.find(item => item.category === 'person' && item.sha256 === hash);
+            const sample = samples.items.find(item => item.category === 'person' && item.sha256 === hash);
             if (sample?.supportsModes && !sample.supportsModes.includes(mode === 'baseline' ? 'upper' : mode)) {
               throw new AppError(400, 'sample-mode-mismatch', '이 샘플은 상의용입니다. 전신 사진을 선택해 주세요.');
             }

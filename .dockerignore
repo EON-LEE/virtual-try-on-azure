@@ -5,3 +5,7 @@
 !src/**
 !public/
 !public/**
+!samples/
+!samples/**
+!sample-images/
+!sample-images/*.jpg
