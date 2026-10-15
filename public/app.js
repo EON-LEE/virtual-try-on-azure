@@ -97,6 +97,7 @@ async function initialize() {
   $('workspace').hidden = !state.config.authenticated;
   const count = state.config.models.filter(model => model.ready).length;
   $('connection').textContent = count ? '피팅 준비 완료' : '현재 생성을 사용할 수 없습니다';
+  $('connection').dataset.ready = String(count > 0);
   for (const model of state.config.models) {
     $(`select-${model.id}`).disabled = false;
   }
@@ -137,6 +138,7 @@ function render() {
     if (result?.url) image.src = result.url;
     else image.removeAttribute('src');
     const empty = $(`${id}-empty`);
+    image.closest('.stage').dataset.state = result?.status || 'empty';
     empty.hidden = Boolean(result?.url);
     empty.textContent = !result ? '피팅 결과가 여기에 표시됩니다' : result.status === 'running'
       ? '만드는 중…' : messages[result.error?.code] || result.error?.message || '결과를 불러오지 못했습니다';
@@ -251,6 +253,10 @@ $('mode').addEventListener('change', async () => {
   try { await discard(); clearResults(); } catch (cause) { error(cause.message); }
   controls();
 });
+document.querySelectorAll('[name="clothing-mode"]').forEach(input => input.addEventListener('change', () => {
+  $('mode').value = input.value;
+  $('mode').dispatchEvent(new Event('change'));
+}));
 for (const id of models) $(`select-${id}`).addEventListener('change', controls);
 $('consent').addEventListener('change', controls);
 
@@ -316,7 +322,14 @@ $('try-on-form').addEventListener('submit', async event => {
     }
     render();
   } finally {
-    if (epoch === state.epoch) { state.busy = false; controls(); }
+    if (epoch === state.epoch) {
+      try { await initialize(); } catch (cause) {
+        if (state.config) state.config.models = state.config.models.map(model => ({ ...model, ready: false }));
+        $('connection').textContent = '서버 연결 실패';
+        error(`생성 가능 상태를 확인하지 못했습니다. ${cause.message}`);
+      }
+      state.busy = false; controls();
+    }
   }
 });
 
@@ -352,7 +365,7 @@ $('unlock-form').addEventListener('submit', async event => {
     await api('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) });
     await initialize();
     if (!state.config.authenticated) throw new Error('로그인이 유지되지 않았습니다. 새 브라우저 탭에서 다시 로그인해 주세요.');
-    $('mode').focus();
+    document.querySelector('[name="clothing-mode"]:checked').focus();
   } catch (cause) { $('login-error').textContent = cause.message; $('login-error').hidden = false; }
   finally { submit.disabled = false; }
 });

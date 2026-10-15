@@ -46,7 +46,7 @@ try {
     if (results.length) await page.waitForTimeout(61_000);
     await page.reload({ waitUntil: 'networkidle', timeout: 60_000 });
     await expect(page.locator('#workspace')).toBeVisible();
-    await page.locator('#mode').selectOption(mode);
+    await page.locator(`[name="clothing-mode"][value="${mode}"]`).check();
     for (const [role, id] of [['person', 'person-tracks'], ...(mode !== 'lower' ? [['upper', 'upper-polo']] : []),
       ...(mode !== 'upper' ? [['lower', 'lower-jeans']] : [])]) {
       const button = page.locator(`#${role}-samples [data-id="${id}"]`);
