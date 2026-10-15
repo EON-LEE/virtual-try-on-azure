@@ -11,7 +11,7 @@ export class InferenceGate {
     this.used = 0;
   }
 
-  activate({ nonce, allowance, expiresAt }, config) {
+  activate({ nonce, allowance, expiresAt }, config, owner = null) {
     if (this.activated) throw new AppError(409, 'activation-consumed', 'This boot was already activated. Replenishment is not allowed.');
     const end = typeof expiresAt === 'string' ? Date.parse(expiresAt) : NaN;
     if (nonce !== this.nonce || !Number.isInteger(allowance) || allowance < 1 ||
@@ -23,10 +23,12 @@ export class InferenceGate {
     this.activated = true;
     this.allowance = allowance;
     this.expiresAt = end;
+    this.owner = owner;
   }
 
-  reserve(count, limits) {
+  reserve(count, limits, owner) {
     if (!this.activated || this.now() >= this.expiresAt || this.now() >= limits.expiresAt ||
+        this.owner && this.owner !== owner ||
         !Number.isInteger(count) || count < 1 || this.used + count > this.allowance ||
         this.used + count > limits.attemptLimit) {
       throw new AppError(403, 'demo-budget-closed', 'Operator activation, inference window or model-attempt allowance is closed. No automatic retry.');

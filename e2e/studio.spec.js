@@ -111,6 +111,23 @@ test('login is separate, keyboard accessible and logout invalidates the session'
   expect((await (await page.request.get('/api/config')).json()).authenticated).toBe(false);
 });
 
+test('a rejected session cookie stays on login and explains how to recover', async ({ page }) => {
+  await page.route('**/api/session', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const response = await route.fetch();
+    const headers = response.headers();
+    delete headers['set-cookie'];
+    await route.fulfill({ status: response.status(), headers, body: await response.body() });
+    await page.context().clearCookies();
+  });
+  await page.goto('/');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#unlock')).toBeVisible();
+  await expect(page.locator('#workspace')).toBeHidden();
+  await expect(page.locator('#login-error')).toContainText('새 브라우저 탭');
+});
+
 test('sample galleries use fetched bytes, require each full-set reference and never submit on selection', async ({ page }) => {
   const bytes = await sharp({ create: { width: 30, height: 50, channels: 3, background: '#67856a' } }).png().toBuffer();
   const items = ['person', 'upper', 'lower'].flatMap(category => [1, 2].map(index => ({

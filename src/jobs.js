@@ -42,7 +42,7 @@ export class JobStore {
     }
     this.started = this.started.filter(time => time > this.now() - 60_000);
     if (this.started.length >= this.submissionsPerMinute) throw new AppError(429, 'demo-rate-limit', 'At most two demo submissions per minute. No automatic retry.');
-    this.gate.reserve(models.length, config.limits);
+    this.gate.reserve(models.length, config.limits, owner);
     this.started.push(this.now());
     this.attempts += models.length;
     this.active++;

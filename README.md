@@ -350,7 +350,19 @@ Both endpoints require `x-studio-request: 1` and `x-operator-token` headers.
 URL query parameters are rejected. Secrets are compared in constant time after
 hashing; operator requests have a process-wide eight-per-minute limit.
 Ordinary demo credentials/session cookies cannot obtain the nonce or activate.
+For an approved technical smoke, operators can set `sessionOnly: true` on the
+activation request and send their current studio session cookie. Only that
+session can spend its allowance; another public test/test login cannot consume
+the verification budget. This option does not authorize additional user calls.
 Do not activate the deployed demo without a separate paid-generation approval.
+
+After login, the browser verifies that the session cookie was actually retained.
+If an embedded browser blocks it, the login screen asks the user to retry in a
+standalone browser tab; cookie policy is not weakened. Session expiry returns to
+login. The configuration reflects a closed/exhausted boot gate instead of
+presenting enabled generation controls. A bounded health keepalive is used only
+during an approved live smoke and stops when that script exits; no always-on
+helper or automatic budget refill is provided.
 
 **This is not durable billing enforcement or a monetary cap.** Counters and
 operator rate limits are process-local, and an explicitly authorized new boot

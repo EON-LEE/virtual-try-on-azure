@@ -74,6 +74,7 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
       const expectedOrigin = config.origin || origin.origin;
       if (req.headers.origin && req.headers.origin !== expectedOrigin) throw new AppError(403, 'cross-origin', 'Cross-origin requests are not allowed.');
       const path = new URL(req.url, expectedOrigin).pathname;
+      const sessionId = req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('studio='))?.slice(7);
       if (req.method === 'GET' && /^\/samples\/(?:manifest\.json|NOTICES\.txt|[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png))$/.test(path)) {
         let bytes;
         try { bytes = await readFile(new URL(`.${path}`, publicDir)); } catch (cause) {
@@ -110,13 +111,16 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
             throw new AppError(400, 'invalid-activation', 'Invalid activation request.');
           }
           if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppError(400, 'invalid-activation', 'Invalid activation request.');
-          jobs.gate.activate(data, config);
+          const owner = data.sessionOnly ? sessionId : null;
+          if (data.sessionOnly && (!sessions.has(owner) || sessions.get(owner).expiresAt <= Date.now())) {
+            throw new AppError(401, 'operator-session-required', 'A current demo session is required for session-only activation.');
+          }
+          jobs.gate.activate(data, config, owner);
           return json(res, 200, { activated: true });
         }
         throw new AppError(404, 'not-found', 'Not found.');
       }
       prune();
-      const sessionId = req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('studio='))?.slice(7);
       let session = sessions.get(sessionId);
       if (path === '/api/session' && req.method === 'POST') {
         if (Date.now() - loginWindow > 60_000) { loginAttempts = 0; loginWindow = Date.now(); }
@@ -140,7 +144,10 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
         return json(res, 200, { authenticated: true }, { 'Set-Cookie': cookie(id) });
       }
       if (path === '/api/config' && req.method === 'GET') {
-        return json(res, 200, { authenticated: Boolean(session), models: publicModels(config), maxImageMiB: 10, retentionMinutes: 10 });
+        const open = jobs.gate.state().open;
+        return json(res, 200, { authenticated: Boolean(session),
+          models: publicModels(config).map(model => model.ready && !open ? { ...model, ready: false, reason: 'demo-budget-closed' } : model),
+          maxImageMiB: 10, retentionMinutes: 10 });
       }
       if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
       if (path === '/api/session' && req.method === 'DELETE') {

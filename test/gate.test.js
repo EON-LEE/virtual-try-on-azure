@@ -67,6 +67,15 @@ test('insufficient one-shot allowance sends neither comparison request', () => {
   store.close();
 });
 
+test('session-only smoke allowance cannot be spent by another public demo session', () => {
+  const config = loadConfig(settings), gate = new InferenceGate();
+  gate.activate({ nonce: gate.nonce, allowance: 2, expiresAt: '2099-01-01T00:00:00Z' }, config, 'smoke-owner');
+  assert.throws(() => gate.reserve(1, config.limits, 'another-owner'), /closed/);
+  assert.equal(gate.state().remaining, 2);
+  gate.reserve(2, config.limits, 'smoke-owner');
+  assert.equal(gate.state().remaining, 0);
+});
+
 test('operator endpoint hides nonce from demo sessions and demo password cannot activate', async t => {
   const config = loadConfig(settings);
   let calls = 0;

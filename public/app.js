@@ -34,6 +34,13 @@ async function api(path, options = {}) {
     const cause = new Error(messages[data.error?.code] || data.error?.message || `요청 실패 (${response.status})`);
     cause.status = response.status;
     cause.code = data.error?.code;
+    if (response.status === 401 && path !== '/api/session') {
+      state.config = null;
+      $('workspace').hidden = true;
+      $('unlock').hidden = false;
+      $('login-error').textContent = '로그인이 만료됐습니다. 다시 로그인해 주세요.';
+      $('login-error').hidden = false;
+    }
     throw cause;
   }
   return data;
@@ -344,6 +351,7 @@ $('unlock-form').addEventListener('submit', async event => {
     $('password').value = '';
     await api('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) });
     await initialize();
+    if (!state.config.authenticated) throw new Error('로그인이 유지되지 않았습니다. 새 브라우저 탭에서 다시 로그인해 주세요.');
     $('mode').focus();
   } catch (cause) { $('login-error').textContent = cause.message; $('login-error').hidden = false; }
   finally { submit.disabled = false; }
@@ -363,5 +371,10 @@ document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListen
 $('zoom-close').addEventListener('click', closeZoom);
 $('zoom').addEventListener('close', () => $('zoom-image').removeAttribute('src'));
 render();
-initialize().catch(cause => { $('connection').textContent = '서버 연결 실패'; error(cause.message); controls(); });
+initialize().catch(cause => {
+  $('connection').textContent = '서버 연결 실패';
+  $('login-error').textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 로그인해 주세요.';
+  $('login-error').hidden = false;
+  error(cause.message); controls();
+});
 loadSamples().catch(cause => error(cause.message));
