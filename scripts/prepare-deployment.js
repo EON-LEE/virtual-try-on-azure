@@ -12,11 +12,20 @@ try { secret = (await readFile(secretPath, 'utf8')).trim(); } catch (error) {
   await writeFile(secretPath, secret, { mode: 0o600, flag: 'wx' });
 }
 if (secret.length < 32) throw new Error('Existing local access token is invalid; do not deploy.');
+const operatorPath = resolve(directory, 'demo-operator-token.txt');
+let operatorToken;
+try { operatorToken = (await readFile(operatorPath, 'utf8')).trim(); } catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  operatorToken = randomBytes(48).toString('base64url');
+  await writeFile(operatorPath, operatorToken, { mode: 0o600, flag: 'wx' });
+}
+if (operatorToken.length < 32 || operatorToken === secret) throw new Error('Operator and invitation secrets must be distinct.');
 const parameters = {
   $schema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#',
   contentVersion: '1.0.0.0',
   parameters: {
     accessToken: { value: secret },
+    operatorToken: { value: operatorToken },
     enableInference: { value: false },
     maxModelAttempts: { value: 0 },
     inferenceExpiresAt: { value: '' }

@@ -1,6 +1,9 @@
 targetScope = 'resourceGroup'
 
 param location string = 'eastus'
+@description('Approved capacity fallback for environment/app only; registry and identity stay eastus.')
+param hostingLocation string = 'eastus2'
+param environmentName string = 'vto-studio-b0af194e-environment-eus2'
 param appName string = 'vto-studio-b0af194e'
 param registryName string = 'vtostudiob0af194e'
 param imageTag string = 'approved-build'
@@ -9,6 +12,9 @@ param deployApp bool = false
 @secure()
 @minLength(32)
 param accessToken string
+@secure()
+@minLength(32)
+param operatorToken string
 @description('A separate generation approval is required; hosting deploy leaves false.')
 param enableInference bool = false
 @minValue(0)
@@ -60,13 +66,13 @@ resource maiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: '${appName}-environment'
-  location: location
+  name: environmentName
+  location: hostingLocation
   properties: {}
 }
 resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
   name: appName
-  location: location
+  location: hostingLocation
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: { '${identity.id}': {} }
@@ -75,7 +81,10 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
     managedEnvironmentId: environment.id
     configuration: {
       activeRevisionsMode: 'Single'
-      secrets: [{ name: 'studio-access-token', value: accessToken }]
+      secrets: [
+        { name: 'studio-access-token', value: accessToken }
+        { name: 'studio-operator-token', value: operatorToken }
+      ]
       registries: [{ server: registry.properties.loginServer, identity: identity.id }]
       ingress: { external: true, allowInsecure: false, targetPort: 3000, transport: 'http' }
     }
@@ -90,6 +99,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'PORT', value: '3000' }
             { name: 'APP_ORIGIN', value: 'https://${appName}.${environment.properties.defaultDomain}' }
             { name: 'APP_ACCESS_TOKEN', secretRef: 'studio-access-token' }
+            { name: 'DEMO_OPERATOR_TOKEN', secretRef: 'studio-operator-token' }
             { name: 'ENABLE_AZURE_INFERENCE', value: string(enableInference) }
             { name: 'DEMO_MAX_MODEL_ATTEMPTS', value: string(maxModelAttempts) }
             { name: 'DEMO_INFERENCE_EXPIRES_AT', value: inferenceExpiresAt }
