@@ -70,10 +70,40 @@ test('insufficient one-shot allowance sends neither comparison request', () => {
 test('session-only smoke allowance cannot be spent by another public demo session', () => {
   const config = loadConfig(settings), gate = new InferenceGate();
   gate.activate({ nonce: gate.nonce, allowance: 2, expiresAt: '2099-01-01T00:00:00Z' }, config, 'smoke-owner');
+  assert.equal(gate.isOpenFor('another-owner'), false);
+  assert.equal(gate.isOpenFor('smoke-owner'), true);
   assert.throws(() => gate.reserve(1, config.limits, 'another-owner'), /closed/);
   assert.equal(gate.state().remaining, 2);
   gate.reserve(2, config.limits, 'smoke-owner');
   assert.equal(gate.state().remaining, 0);
+  assert.equal(gate.isOpenFor('smoke-owner'), false);
+});
+
+test('session-only activation needs a live cookie and config readiness matches its owner', async t => {
+  const config = loadConfig(settings);
+  const server = createServer(config);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const headers = { origin, 'x-studio-request': '1', 'content-type': 'application/json' };
+  const login = async () => (await fetch(`${origin}/api/session`, {
+    method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' })
+  })).headers.get('set-cookie').split(';')[0];
+  const owner = await login(), another = await login();
+  const operatorHeaders = { ...headers, 'x-operator-token': operator };
+  const state = await (await fetch(`${origin}/api/operator/state`, {
+    method: 'POST', headers: operatorHeaders, body: '{}'
+  })).json();
+  const body = JSON.stringify({ nonce: state.nonce, allowance: 2, expiresAt: '2099-01-01T00:00:00Z', sessionOnly: true });
+  assert.equal((await fetch(`${origin}/api/operator/activate`, { method: 'POST', headers: operatorHeaders, body })).status, 401);
+  assert.equal((await fetch(`${origin}/api/operator/activate`, {
+    method: 'POST', headers: { ...operatorHeaders, cookie: owner }, body
+  })).status, 200);
+  for (const [cookie, ready] of [[owner, true], [another, false]]) {
+    const publicConfig = await (await fetch(`${origin}/api/config`, { headers: { cookie } })).json();
+    assert.ok(publicConfig.models.every(model => model.ready === ready));
+    assert.doesNotMatch(JSON.stringify(publicConfig), /nonce|operator|remaining/);
+  }
 });
 
 test('operator endpoint hides nonce from demo sessions and demo password cannot activate', async t => {

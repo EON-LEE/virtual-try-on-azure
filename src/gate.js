@@ -28,7 +28,7 @@ export class InferenceGate {
 
   reserve(count, limits, owner) {
     if (!this.activated || this.now() >= this.expiresAt || this.now() >= limits.expiresAt ||
-        this.owner && this.owner !== owner ||
+        (this.owner && this.owner !== owner) ||
         !Number.isInteger(count) || count < 1 || this.used + count > this.allowance ||
         this.used + count > limits.attemptLimit) {
       throw new AppError(403, 'demo-budget-closed', 'Operator activation, inference window or model-attempt allowance is closed. No automatic retry.');
@@ -39,5 +39,9 @@ export class InferenceGate {
   state() {
     return { nonce: this.nonce, activated: this.activated, remaining: Math.max(0, this.allowance - this.used),
       expiresAt: this.expiresAt, open: this.activated && this.now() < this.expiresAt && this.used < this.allowance };
+  }
+
+  isOpenFor(owner) {
+    return this.state().open && (!this.owner || this.owner === owner);
   }
 }
