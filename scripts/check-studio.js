@@ -74,7 +74,11 @@ try {
     await expect(page.locator('#generate')).toBeEnabled();
   }
   await page.locator('[name="clothing-mode"][value="upper"]').check();
-  await page.locator('#person-samples [data-id="viton-person-00690_00"]').click();
+  const person = page.locator('#person-samples [data-id="viton-person-00690_00"]');
+  await person.click();
+  await expect(person).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#generate')).toBeEnabled();
+  await page.locator('#before').evaluate(image => image.decode());
   await page.screenshot({ path: resolve(directory, 'studio-desktop.png'), fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.setViewportSize({ width: 390, height: 844 });

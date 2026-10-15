@@ -32,4 +32,4 @@ for (const item of manifest.items) {
   }
   await writeFile(file, bytes);
 }
-console.log('Verified 14 original research photos in ignored sample-images/. Noncommercial research use only; see samples/NOTICES.txt.');
+console.log('Verified 14 original research photos in ignored sample-images/. Noncommercial research use only; see public/samples/NOTICES.txt.');
