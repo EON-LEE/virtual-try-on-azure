@@ -100,7 +100,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'APP_ORIGIN', value: 'https://${appName}.${environment.properties.defaultDomain}' }
             { name: 'APP_ACCESS_TOKEN', secretRef: 'studio-access-token' }
             { name: 'DEMO_OPERATOR_TOKEN', secretRef: 'studio-operator-token' }
-            { name: 'ENABLE_AZURE_INFERENCE', value: string(enableInference) }
+            { name: 'ENABLE_AZURE_INFERENCE', value: enableInference ? 'true' : 'false' }
             { name: 'DEMO_MAX_MODEL_ATTEMPTS', value: string(maxModelAttempts) }
             { name: 'DEMO_INFERENCE_EXPIRES_AT', value: inferenceExpiresAt }
             { name: 'AZURE_AUTH_MODE', value: 'managed-identity' }
