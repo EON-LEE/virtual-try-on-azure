@@ -36,13 +36,17 @@ export class JobStore {
       throw new AppError(429, 'busy', 'A generation is already running, or the studio is at capacity.');
     }
     const contract = modeContract(mode);
+    if (models.some(id => !config.models[id]?.ready)) {
+      throw new AppError(503, 'model-unavailable', 'The selected model is unavailable or inference is disabled.');
+    }
     const { attemptLimit = 0, expiresAt = 0 } = config.limits || {};
-    if (!attemptLimit || this.now() >= expiresAt || this.attempts + models.length > attemptLimit) {
+    if (config.limits?.mode !== 'unlimited' &&
+        (!attemptLimit || this.now() >= expiresAt || this.attempts + models.length > attemptLimit)) {
       throw new AppError(403, 'demo-budget-closed', 'Demo inference window or model-attempt allowance is closed. Ask the operator; no automatic retry.');
     }
     this.started = this.started.filter(time => time > this.now() - 60_000);
     if (this.started.length >= this.submissionsPerMinute) throw new AppError(429, 'demo-rate-limit', 'At most two demo submissions per minute. No automatic retry.');
-    this.gate.reserve(models.length, config.limits, owner);
+    if (config.limits?.mode !== 'unlimited') this.gate.reserve(models.length, config.limits, owner);
     this.started.push(this.now());
     this.attempts += models.length;
     this.active++;

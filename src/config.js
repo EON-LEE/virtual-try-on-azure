@@ -36,6 +36,8 @@ export function loadConfig(env = process.env) {
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT.');
   const enabled = env.ENABLE_AZURE_INFERENCE === 'true';
+  const inferenceMode = env.DEMO_INFERENCE_MODE || 'bounded';
+  if (!['bounded', 'unlimited'].includes(inferenceMode)) throw new Error('DEMO_INFERENCE_MODE must be bounded or unlimited.');
   const auth = {
     mode: env.AZURE_AUTH_MODE || 'key',
     subscriptionId: env.AZURE_SUBSCRIPTION_ID || '',
@@ -57,7 +59,7 @@ export function loadConfig(env = process.env) {
   const expiresAt = env.DEMO_INFERENCE_EXPIRES_AT ? Date.parse(env.DEMO_INFERENCE_EXPIRES_AT) : 0;
   if (!Number.isInteger(attemptLimit) || attemptLimit < 0 || attemptLimit > 100 ||
       !Number.isFinite(expiresAt)) throw new Error('Demo requires 0-100 model attempts and an ISO inference expiry.');
-  if (enabled && !local && (!attemptLimit || expiresAt <= Date.now())) {
+  if (enabled && inferenceMode === 'bounded' && !local && (!attemptLimit || expiresAt <= Date.now())) {
     throw new Error('Hosted inference requires a positive attempt limit and a future inference expiry.');
   }
   const version = env.AZURE_SUNBURST_API_VERSION || '2025-04-01-preview';
@@ -85,7 +87,7 @@ export function loadConfig(env = process.env) {
       (auth.mode === 'key' ? model.key : identityConfigured));
     model.reason = !enabled ? 'inference-disabled' : model.ready ? null : 'not-configured';
   }
-  return { host, port, operatorToken, origin, models, auth, limits: { attemptLimit, expiresAt } };
+  return { host, port, operatorToken, origin, models, auth, limits: { mode: inferenceMode, attemptLimit, expiresAt } };
 }
 
 export function selectModels(value, config) {

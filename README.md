@@ -66,8 +66,8 @@ assignments for the approved admin principal. A separately approved second smoke
 run then returned HTTP 200 for each model using fresh Cognitive Services bearer
 tokens. This verifies the harness routes/authentication for those deployments,
 not the application's AzureCliCredential execution path or general model quality.
-Those permission changes do not authorize additional generation or app hosting.
-Keep inference disabled until another explicit generation approval.
+Those historical permission changes did not authorize additional generation or app hosting.
+The later hosted verification and current paid-demo policy are recorded below.
 
 ### Observed smoke results (2026-10-14)
 
@@ -82,7 +82,7 @@ The experiment track reported the same normalized person/garment inputs and
 The garment changed, but **0 of 2 outputs passed this agent review**. Output
 resolution/aspect ratio did not exactly match the original. This single pair is
 not a benchmark, independent quality assessment or proof of face/pose/logo
-preservation or physical fit. No additional app calls or hosting were approved.
+preservation or physical fit. At that checkpoint, no additional app calls or hosting were approved.
 Across both smoke runs: four total calls (two 401, two 200), zero automatic
 retries; both call authorizations are exhausted.
 
@@ -105,8 +105,8 @@ Two attempts returned 401 and one returned 429; exact causes remain unresolved.
 The conditional usage-based estimate for five successful outputs was USD
 0.209598; actual billing is unknown, and failed calls are not assumed free.
 Evidence: [commit a63a9ad](https://github.com/EON-LEE/virtual-try-on-azure/commit/a63a9ad),
-`experiments/viton-hd-batch-review.md`. Lifetime totals are twelve attempts and
-seven outputs. No additional generation is authorized; inference remains disabled.
+`experiments/viton-hd-batch-review.md`. Totals at that pilot checkpoint were twelve attempts and
+seven outputs; these are not current lifetime usage or the current demo policy.
 
 ### Authentication modes
 
@@ -155,9 +155,9 @@ default credential chain or personal CLI cache. `AZURE_TENANT_ID` and
 same audience/expiry guards and process-only cache. CLI checks apply only to
 `entra-cli`. No key fallback or image retry occurs. The deployment template
 supplies all three IDs from the user-assigned identity, and grants only the
-approved resource-scoped inference roles. Actual hosted authentication remains
-unverified until a separately approved image call; disabled inference acquires
-no model token.
+approved resource-scoped inference roles. Hosted managed-identity authentication
+and both edits routes passed six approved image calls across all three modes.
+Disabled inference acquires no model token.
 
 MAI Image 2.6 basic is the **user-confirmed quality-first variant** and is shown
 as Preview. Flash and other variants are rejected rather than substituted.
@@ -171,9 +171,11 @@ HttpOnly, Secure (HTTPS), SameSite=Strict session cookie. No invitation token or
 local secret-file reading is required. The old token-login request is rejected.
 These intentionally public, weak credentials are a demo convenience, **not
 private access or production security**; do not reuse them for a real service.
-Login requests are rate limited. Paid inference remains separately protected
-by the operator-only boot gate, not the demo password. The operator secret is
-never exposed in the login form or public configuration.
+Login requests are rate limited. The current user-approved paid demo uses
+`DEMO_INFERENCE_MODE=unlimited`: login is enough to generate, including after
+a cold start. There is **no total-call cap, automatic expiry or guaranteed cost
+ceiling**. Anyone with these public credentials can incur charges. The operator
+secret is only for the optional bounded mode, never the login form.
 
 ## Editing contract and limitations
 
@@ -323,7 +325,36 @@ photos, `.env`, CLI caches or access secrets in build context. Private registry
 pull is handled by the assigned managed identity, not registry passwords.
 No model deployment or Fabric is created.
 
-Hosted inference requires **separate approval** plus all of:
+### Paid demo modes
+
+Both modes require `ENABLE_AZURE_INFERENCE=true`, configured model credentials
+and explicit account/cost approval. The default remains inference-disabled.
+
+**Current approved user demo:** `DEMO_INFERENCE_MODE=unlimited`. It does not use
+the attempt cap, expiry, operator nonce or per-boot activation. The deployment
+stores this mode in the Container App environment; a min0 cold start remains
+ready after ordinary test/test login. Sessions and result images are still
+temporary and are lost on restart. No persistent helper, min1 replica, new
+storage or extra role is needed. Public weak credentials plus unlimited paid
+calls create abuse/cost risk, not a private or cost-capped service.
+
+Both modes retain one active job globally, two submissions/minute, request-size
+limits, 180-second provider timeout, explicit model selection and no automatic
+retry. Frequency/concurrency protection is **not** a total-use or monetary cap.
+
+To stop new paid requests on the existing deployment:
+
+```powershell
+wsl.exe -d Ubuntu --exec /home/eonlee/.local/bin/az containerapp update --subscription b0af194e-77a5-4471-bb43-67e78295b5c8 --resource-group rg-virtual-try-on --name vto-studio-b0af194e --set-env-vars ENABLE_AZURE_INFERENCE=false --query properties.latestRevisionName -o tsv
+```
+
+This creates a disabled revision; also keep `enableInference=false` in the next
+deployment parameters to avoid re-enabling it. Accepted work may still incur
+charges after cancellation, timeout or disabling. Check Azure usage; do not
+assume failed attempts are free.
+
+**Optional bounded technical verification:** `DEMO_INFERENCE_MODE=bounded`.
+Hosted inference in this mode requires all of:
 `ENABLE_AZURE_INFERENCE=true`, `DEMO_MAX_MODEL_ATTEMPTS` (1-100), and future
 `DEMO_INFERENCE_EXPIRES_AT` (ISO timestamp), **and one operator activation for
 the current process boot**. Zero allowance closes jobs, including
@@ -334,7 +365,7 @@ An explicit two-model comparison reserves two attempts; failures/cancellations
 do not refund attempts. Clearing photos/sessions cannot reset the counter or
 free an active slot before provider completion. Reservations avoid races.
 
-Every process starts with its paid gate closed, even when environment settings
+In bounded mode, every process starts with its paid gate closed, even when environment settings
 permit inference. Restart, revision rollout and min0 cold start do **not**
 automatically replenish an enabled allowance: the new boot must be explicitly
 activated by the operator after authorization. Activation requires its current
@@ -354,13 +385,13 @@ For an approved technical smoke, operators can set `sessionOnly: true` on the
 activation request and send their current studio session cookie. Only that
 session can spend its allowance; another public test/test login cannot consume
 the verification budget. This option does not authorize additional user calls.
-Do not activate the deployed demo without a separate paid-generation approval.
+Do not activate a bounded deployment without a paid-generation approval.
 
 After login, the browser verifies that the session cookie was actually retained.
 If an embedded browser blocks it, the login screen asks the user to retry in a
 standalone browser tab; cookie policy is not weakened. Session expiry returns to
-login. The configuration reflects a closed/exhausted boot gate instead of
-presenting enabled generation controls. A bounded health keepalive is used only
+login. Configuration and post-generation refresh reflect actual availability
+without hiding finished images. A bounded health keepalive is used only
 during an approved live smoke and stops when that script exits; no always-on
 helper or automatic budget refill is provided.
 
@@ -368,7 +399,7 @@ helper or automatic budget refill is provided.
 operator rate limits are process-local, and an explicitly authorized new boot
 can receive a new allowance. Single revision/max replica1 is required; do not
 scale out or activate multiple revisions. Monitor usage, use a short approved
-window, and disable inference after the demo. Azure may still bill accepted work
+window for bounded verification. Azure may still bill accepted work
 after expiry, timeout or cancellation. No storage or extra cloud roles were added.
 
 Compile without resource changes:
@@ -395,12 +426,29 @@ Never share the operator secret in chat/logs/Git or with demo users.
 Verify `/healthz`, unauthenticated API rejection, test/test login/logout and mode controls without any
 image calls. Template compilation is not proof of live authentication/quality.
 
-The protected demo is hosted at
+### Hosted verification
+
+The demo is hosted at
 <https://vto-studio-b0af194e.purpleground-f12dc511.eastus2.azurecontainerapps.io>.
-Its deployed configuration remains inference-disabled with zero allowance;
-hosting approval is not generation approval. Upper/lower/full UI wiring is
-implemented, but real managed-identity model calls and lower/full quality have
-not yet been verified. `node scripts/check-hosted.js <HTTPS origin>` verifies
+Fresh Edge login, all ten public samples, three modes, real managed-identity
+edits, result enlargement and PNG downloads passed the approved six-attempt
+hosted verification. All six succeeded, with zero retries or browser errors:
+
+| Mode | Sunburst | MAI |
+| --- | --- | --- |
+| Upper | 28.602 s | 26.127 s |
+| Lower | 22.231 s | 20.928 s |
+| Full set | 19.686 s | 26.671 s |
+
+These are technical successes, **not fidelity acceptance**. Visual inspection
+shows garment changes, but color, trim and fit differ; exact face/pose/pattern
+preservation is not established. The six-attempt verification ended closed
+with zero remaining attempts and its temporary keepalive stopped. The user's
+subsequent explicit unlimited-demo request supersedes that bounded user policy;
+the old verification record must never be rerun.
+
+`node scripts/check-hosted.js <HTTPS origin>` is for a **disabled bounded**
+deployment only. It verifies
 health, demo login/session controls, disabled submission and closed operator
 state without activating or sending any image request to a provider.
 

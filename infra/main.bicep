@@ -14,6 +14,9 @@ param deployApp bool = false
 param operatorToken string
 @description('A separate generation approval is required; hosting deploy leaves false.')
 param enableInference bool = false
+@allowed(['bounded', 'unlimited'])
+@description('Unlimited requires explicit paid-demo approval and has no total-count or expiry cap.')
+param inferenceMode string = 'bounded'
 @minValue(0)
 @maxValue(100)
 param maxModelAttempts int = 0
@@ -96,6 +99,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'APP_ORIGIN', value: 'https://${appName}.${environment.properties.defaultDomain}' }
             { name: 'DEMO_OPERATOR_TOKEN', secretRef: 'studio-operator-token' }
             { name: 'ENABLE_AZURE_INFERENCE', value: enableInference ? 'true' : 'false' }
+            { name: 'DEMO_INFERENCE_MODE', value: inferenceMode }
             { name: 'DEMO_MAX_MODEL_ATTEMPTS', value: string(maxModelAttempts) }
             { name: 'DEMO_INFERENCE_EXPIRES_AT', value: inferenceExpiresAt }
             { name: 'AZURE_AUTH_MODE', value: 'managed-identity' }

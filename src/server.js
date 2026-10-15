@@ -144,7 +144,7 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
         return json(res, 200, { authenticated: true }, { 'Set-Cookie': cookie(id) });
       }
       if (path === '/api/config' && req.method === 'GET') {
-        const open = jobs.gate.isOpenFor(sessionId);
+        const open = config.limits.mode === 'unlimited' || jobs.gate.isOpenFor(sessionId);
         return json(res, 200, { authenticated: Boolean(session),
           models: publicModels(config).map(model => model.ready && !open ? { ...model, ready: false, reason: 'demo-budget-closed' } : model),
           maxImageMiB: 10, retentionMinutes: 10 });

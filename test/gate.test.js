@@ -14,6 +14,60 @@ const settings = {
   AZURE_SUNBURST_ENDPOINT: 'https://test.openai.azure.com', AZURE_SUNBURST_DEPLOYMENT: 'test', AZURE_SUNBURST_API_KEY: 'test-only'
 };
 
+test('explicit unlimited demo survives a new process without activation; count caps are not applied', async () => {
+  const config = loadConfig({ ...settings, HOST: '0.0.0.0', APP_ORIGIN: 'https://demo.example.com',
+    DEMO_INFERENCE_MODE: 'unlimited', DEMO_MAX_MODEL_ATTEMPTS: '0', DEMO_INFERENCE_EXPIRES_AT: '' });
+  assert.throws(() => loadConfig({ ...settings, DEMO_INFERENCE_MODE: 'unlimted' }), /bounded or unlimited/);
+  let calls = 0;
+  for (const count of [101, 1]) {
+    const jobs = new JobStore({ submissionsPerMinute: 200, provider: async () => {
+      calls++;
+      throw new Error('fixture failure; never retry');
+    } });
+    assert.equal(jobs.gate.activated, false);
+    for (let index = 0; index < count; index++) {
+      const job = jobs.create('owner', String(index), 'hash', ['mai'], config, Buffer.from('p'), Buffer.from('g'));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(job.results.mai.status, 'failed');
+      jobs.clearOwner('owner');
+    }
+    assert.throws(() => jobs.create('owner', 'off', 'hash', ['mai'],
+      loadConfig({ ...settings, DEMO_INFERENCE_MODE: 'unlimited', ENABLE_AZURE_INFERENCE: 'false' }),
+      Buffer.from('p'), Buffer.from('g')), /disabled/);
+    jobs.close();
+  }
+  assert.equal(calls, 102);
+});
+
+test('unlimited demo still enforces concurrency and short rate limits', async () => {
+  const config = loadConfig({ ...settings, DEMO_INFERENCE_MODE: 'unlimited' });
+  let finish;
+  const jobs = new JobStore({ submissionsPerMinute: 1, provider: () => new Promise(resolve => { finish = resolve; }) });
+  jobs.create('a', 'id', 'hash', ['mai'], config, Buffer.from('p'), Buffer.from('g'));
+  assert.throws(() => jobs.create('b', 'new', 'hash', ['mai'], config, Buffer.from('p'), Buffer.from('g')), /already running/);
+  finish({ image: Buffer.from('fixture') });
+  await new Promise(resolve => setImmediate(resolve));
+  jobs.clearOwner('a');
+  assert.throws(() => jobs.create('b', 'new', 'hash', ['mai'], config, Buffer.from('p'), Buffer.from('g')), /per minute/);
+  jobs.close();
+});
+
+test('ordinary login is ready without operator activation in explicit unlimited mode', async t => {
+  const config = loadConfig({ ...settings, DEMO_INFERENCE_MODE: 'unlimited', DEMO_OPERATOR_TOKEN: '' });
+  const server = createServer(config);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const headers = { origin, 'x-studio-request': '1', 'content-type': 'application/json' };
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' }) });
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  const publicConfig = await (await fetch(`${origin}/api/config`, { headers: { cookie } })).json();
+  assert.equal(publicConfig.authenticated, true);
+  assert.ok(publicConfig.models.every(model => model.ready));
+  assert.equal((await fetch(`${origin}/api/jobs`, { method: 'POST', headers })).status, 401);
+  assert.equal((await fetch(`${origin}/api/operator/state`, { method: 'POST', headers, body: '{}' })).status, 404);
+});
+
 test('every boot closed; one-shot activation, expiry and atomic two-slot reservations', () => {
   let now = 1000;
   const config = loadConfig(settings);
