@@ -1,69 +1,89 @@
 targetScope = 'resourceGroup'
 
-@description('Approved region for the app hosting environment; does not determine model availability.')
-param location string = resourceGroup().location
-
-@minLength(3)
-@maxLength(32)
-param appName string
-
-@description('Publicly pullable, immutable container image reference built from this repository. No registry is created.')
-param containerImage string
-
+param location string = 'eastus'
+param appName string = 'vto-studio-b0af194e'
+param registryName string = 'vtostudiob0af194e'
+param imageTag string = 'approved-build'
+@description('First deploy foundation only, build the private image, then deploy with true.')
+param deployApp bool = false
 @secure()
 @minLength(32)
 param accessToken string
-
-@description('Leave false until deployment, model, and inference cost approval is recorded.')
+@description('A separate generation approval is required; hosting deploy leaves false.')
 param enableInference bool = false
+@minValue(0)
+@maxValue(100)
+param maxModelAttempts int = 0
+param inferenceExpiresAt string = ''
 
-param sunburstEndpoint string = ''
-param sunburstDeployment string = ''
-param sunburstApiVersion string = '2025-04-01-preview'
-@secure()
-param sunburstApiKey string = ''
-
-param maiEndpoint string = ''
-param maiDeployment string = ''
-@allowed([
-  'MAI-Image-2.6'
-])
-param maiModel string = 'MAI-Image-2.6'
-@secure()
-param maiApiKey string = ''
-
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${appName}-identity'
+  location: location
+}
+resource registry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+  name: registryName
+  location: location
+  sku: { name: 'Basic' }
+  properties: { adminUserEnabled: false }
+}
+resource pull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(registry.id, identity.id, 'AcrPull')
+  scope: registry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+resource sunburst 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
+  name: 'vto-sunburst-eus2-b0af194e'
+}
+resource mai 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
+  name: 'vto-mai26-eus-b0af194e'
+}
+resource sunburstUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(sunburst.id, identity.id, 'OpenAIUser')
+  scope: sunburst
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+resource maiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(mai.id, identity.id, 'CognitiveServicesUser')
+  scope: mai
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: '${appName}-environment'
   location: location
   properties: {}
 }
-
-resource app 'Microsoft.App/containerApps@2024-03-01' = {
+resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
   name: appName
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${identity.id}': {} }
+  }
   properties: {
     managedEnvironmentId: environment.id
     configuration: {
       activeRevisionsMode: 'Single'
-      secrets: concat([
-        { name: 'studio-access-token', value: accessToken }
-      ], empty(sunburstApiKey) ? [] : [
-        { name: 'sunburst-key', value: sunburstApiKey }
-      ], empty(maiApiKey) ? [] : [
-        { name: 'mai-key', value: maiApiKey }
-      ])
-      ingress: {
-        external: true
-        allowInsecure: false
-        targetPort: 3000
-        transport: 'http'
-      }
+      secrets: [{ name: 'studio-access-token', value: accessToken }]
+      registries: [{ server: registry.properties.loginServer, identity: identity.id }]
+      ingress: { external: true, allowInsecure: false, targetPort: 3000, transport: 'http' }
     }
     template: {
       containers: [
         {
           name: 'studio'
-          image: containerImage
+          image: '${registry.properties.loginServer}/try-on-studio:${imageTag}'
           resources: { cpu: json('0.5'), memory: '1Gi' }
           env: [
             { name: 'HOST', value: '0.0.0.0' }
@@ -71,35 +91,31 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'APP_ORIGIN', value: 'https://${appName}.${environment.properties.defaultDomain}' }
             { name: 'APP_ACCESS_TOKEN', secretRef: 'studio-access-token' }
             { name: 'ENABLE_AZURE_INFERENCE', value: string(enableInference) }
-            { name: 'AZURE_SUNBURST_ENDPOINT', value: sunburstEndpoint }
-            { name: 'AZURE_SUNBURST_DEPLOYMENT', value: sunburstDeployment }
-            { name: 'AZURE_SUNBURST_API_VERSION', value: sunburstApiVersion }
-            empty(sunburstApiKey) ? { name: 'AZURE_SUNBURST_API_KEY', value: '' } : { name: 'AZURE_SUNBURST_API_KEY', secretRef: 'sunburst-key' }
-            { name: 'AZURE_MAI_ENDPOINT', value: maiEndpoint }
-            { name: 'AZURE_MAI_DEPLOYMENT', value: maiDeployment }
-            { name: 'AZURE_MAI_MODEL', value: maiModel }
-            empty(maiApiKey) ? { name: 'AZURE_MAI_API_KEY', value: '' } : { name: 'AZURE_MAI_API_KEY', secretRef: 'mai-key' }
+            { name: 'DEMO_MAX_MODEL_ATTEMPTS', value: string(maxModelAttempts) }
+            { name: 'DEMO_INFERENCE_EXPIRES_AT', value: inferenceExpiresAt }
+            { name: 'AZURE_AUTH_MODE', value: 'managed-identity' }
+            { name: 'AZURE_TENANT_ID', value: tenant().tenantId }
+            { name: 'AZURE_EXPECTED_PRINCIPAL_ID', value: identity.properties.principalId }
+            { name: 'AZURE_MANAGED_IDENTITY_CLIENT_ID', value: identity.properties.clientId }
+            { name: 'AZURE_SUNBURST_ENDPOINT', value: 'https://vto-sunburst-eus2-b0af194e.openai.azure.com' }
+            { name: 'AZURE_SUNBURST_DEPLOYMENT', value: 'tryon-sunburst' }
+            { name: 'AZURE_SUNBURST_API_VERSION', value: '2025-04-01-preview' }
+            { name: 'AZURE_MAI_ENDPOINT', value: 'https://vto-mai26-eus-b0af194e.services.ai.azure.com' }
+            { name: 'AZURE_MAI_DEPLOYMENT', value: 'tryon-mai26' }
+            { name: 'AZURE_MAI_MODEL', value: 'MAI-Image-2.6' }
           ]
           probes: [
-            {
-              type: 'Readiness'
-              httpGet: { path: '/healthz', port: 3000 }
-              initialDelaySeconds: 5
-              periodSeconds: 10
-            }
-            {
-              type: 'Liveness'
-              httpGet: { path: '/healthz', port: 3000 }
-              initialDelaySeconds: 15
-              periodSeconds: 30
-            }
+            { type: 'Readiness', httpGet: { path: '/healthz', port: 3000 }, initialDelaySeconds: 5, periodSeconds: 10 }
+            { type: 'Liveness', httpGet: { path: '/healthz', port: 3000 }, initialDelaySeconds: 15, periodSeconds: 30 }
           ]
         }
       ]
-      // In-memory session ownership and job state require one replica/revision.
-      scale: { minReplicas: 1, maxReplicas: 1 }
+      // Single process owns temporary sessions/jobs; scale-to-zero discards them.
+      scale: { minReplicas: 0, maxReplicas: 1, rules: [{ name: 'http', http: { metadata: { concurrentRequests: '10' } } }] }
     }
   }
+  dependsOn: [pull, sunburstUser, maiUser]
 }
-
-output studioUrl string = 'https://${app.properties.configuration.ingress.fqdn}'
+output registryLoginServer string = registry.properties.loginServer
+output identityClientId string = identity.properties.clientId
+output studioUrl string = deployApp ? 'https://${app!.properties.configuration.ingress.fqdn}' : ''

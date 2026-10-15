@@ -1,7 +1,8 @@
 # virtual-try-on-azure
 
-Azure-only virtual try-on studio for **upper-body clothing**. Upload a person
-photo and a garment reference, then explicitly select GPT Image 2.5 Sunburst,
+Azure-only virtual try-on studio for **upper-only, lower-only, or upper+lower
+full-set clothing**. Upload a person photo and the required garment references,
+then explicitly select GPT Image 2.5 Sunburst,
 MAI, or both. Only checked models run; changing the result view does not call
 a model. No user-written prompt is required.
 
@@ -147,6 +148,17 @@ References:
 [AzureCliCredential options](https://learn.microsoft.com/en-us/javascript/api/@azure/identity/azureclicredentialoptions)
 and [Azure Identity bearer token helper](https://learn.microsoft.com/en-us/javascript/api/@azure/identity/?view=azure-node-latest).
 
+`AZURE_AUTH_MODE=managed-identity` is the explicit hosted connection. It uses
+`ManagedIdentityCredential` pinned to `AZURE_MANAGED_IDENTITY_CLIENT_ID`, not a
+default credential chain or personal CLI cache. `AZURE_TENANT_ID` and
+`AZURE_EXPECTED_PRINCIPAL_ID` pin the managed identity's token claims with the
+same audience/expiry guards and process-only cache. CLI checks apply only to
+`entra-cli`. No key fallback or image retry occurs. The deployment template
+supplies all three IDs from the user-assigned identity, and grants only the
+approved resource-scoped inference roles. Actual hosted authentication remains
+unverified until a separately approved image call; disabled inference acquires
+no model token.
+
 MAI Image 2.6 basic is the **user-confirmed quality-first variant** and is shown
 as Preview. Flash and other variants are rejected rather than substituted.
 Changing a deployment name does not prove that it contains the intended model:
@@ -167,6 +179,32 @@ with the experiment track. Image 1 is the person/base photograph; image 2 is
 the garment reference. The backend asks to preserve face, body, pose, hands,
 background and garment details. These are instructions, **not guarantees**.
 This preview does not measure physical fit or size.
+
+The original baseline remains unchanged for legacy requests with `person` and
+`garment` and no `mode`. The live UI explicitly uses these new contracts:
+
+| `mode` | Required image fields (order sent) | Server-owned prompt version |
+| --- | --- | --- |
+| `upper` | `person`, `upper` | `upper-only-v2` |
+| `lower` | `person`, `lower` | `lower-only-v1` |
+| `full` | `person`, `upper`, `lower` | `upper-lower-set-v1` |
+
+`src/modes.js` preserves the non-target clothing, shoes/accessories, skin/hair,
+body/pose/hands, background, white balance and exposure in each instruction.
+Full set means separate upper and lower garments, not a dress or shoes. Missing,
+extra or duplicate references are rejected, not inferred. Use a full-body image
+showing waist, legs, feet and occlusion for lower/full tests. Three images are
+within the documented GPT Image family maximum of 16 and MAI maximum of five,
+but **lower/full edits have not been live-tested** on these deployments.
+The new prompts are not equivalent to the previous upper-body-v1 experiments.
+
+The four-column studio always shows person, garment reference(s), Sunburst and
+MAI in that order. Images use `object-fit: contain` without cropping to hide
+differences; click to enlarge. Result cells show actual state/errors/duration.
+New live outputs receive no pre-existing agent verdict or fake automatic score.
+Manual verdicts/notes are local browser memory only and reset on input changes,
+new generation, clearing or refresh. Compare skin/hair color, protected
+non-target areas and garment color/pattern/texture/logos/cut explicitly.
 
 Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096 pixels per side and
 20 megapixels. Sharp applies EXIF orientation and removes metadata by PNG
@@ -238,24 +276,45 @@ Browser tests launch `e2e/server.js` with clearly test-only colored PNG response
 These check UI wiring, **not real model fidelity**. Normal `npm start` never loads
 that fixture. CI also builds the container and compiles Bicep; it does not deploy.
 
-## Deployment configuration (approval required)
+## Approved demo hosting configuration
 
-`Dockerfile` runs the production app as a non-root user. `infra/main.bicep`
-defines HTTPS Azure Container Apps hosting, secret environment variables,
-health probes and one replica/revision because sessions/jobs are in memory.
-It does **not** create model deployments, pick a subscription, enable inference
-by default, or install Fabric. The minimum of one replica incurs hosting costs
-even when inference is disabled. The template requires an existing publicly
-pullable immutable container image reference; private-registry wiring is not
-included. Never publish photos, keys, or `.env` in the image.
+`Dockerfile` runs as a non-root user. The approved `infra/main.bicep` creates
+an eastus Consumption Container Apps environment/app (0.5 vCPU, 1 GiB),
+dedicated ACR Basic registry (admin keys disabled), and user-assigned managed
+identity. Exactly three role assignments are scoped to the Sunburst resource
+(OpenAI User), MAI resource (Cognitive Services User) and registry (AcrPull).
+Existing model resources/local-auth settings are not changed. HTTPS external
+ingress exposes the static UI, but all uploads, jobs and images require an
+invitation secret exchanged for an HttpOnly/Secure/SameSite session cookie.
+This is a closed shared-secret demo, not per-user enterprise SSO.
 
-The current container/template retains the original **key-mode hosting
-configuration** and does not install Azure CLI, provision managed identity or
-assign roles. It cannot authenticate to the currently key-disabled resources.
-Entra CLI mode is a local development connection, not a cloud hosting solution.
-Identity-based hosting requires a separate approved design/provisioning change;
-do not package personal CLI caches into a container or enable local auth to
-work around this limitation.
+Single revision/max replica 1 preserves session ownership; min replica 0
+reduces idle compute but introduces cold starts and loss of in-memory sessions/
+jobs on restart/scale-down. Registry storage has ongoing cost, even with
+inference disabled; Consumption compute/requests and image build may also incur
+charges. No fixed monthly estimate or free-service claim is made.
+
+The image contains only Dockerfile/package manifests, `src/` and `public/`
+from a clean tracked commit. Never include private reports, dataset images,
+photos, `.env`, CLI caches or access secrets in build context. Private registry
+pull is handled by the assigned managed identity, not registry passwords.
+No model deployment or Fabric is created.
+
+Hosted inference requires **separate approval** plus all of:
+`ENABLE_AZURE_INFERENCE=true`, `DEMO_MAX_MODEL_ATTEMPTS` (1-100), and future
+`DEMO_INFERENCE_EXPIRES_AT` (ISO timestamp). Zero allowance closes jobs, including
+local jobs; examples/hosting deploy default false/zero. One global active job,
+two submissions/minute, 30-second bounded uploads (max three 10 MiB images),
+180-second provider timeout and session/request-ID guards limit accidental abuse.
+An explicit two-model comparison reserves two attempts; failures/cancellations
+do not refund attempts. Clearing photos/sessions cannot reset the counter or
+free an active slot before provider completion. Reservations avoid races.
+
+**The attempt counter is per process, not a durable billing cap**: restarts and
+revisions reset it. Do not automatically restart/redeploy an enabled demo or
+treat its allowance as a monetary limit. Use a short approved expiry window,
+keep the invite secret private, monitor usage, and disable inference after the
+demo. Durable cross-restart budget enforcement is not implemented.
 
 Compile without resource changes:
 
@@ -269,12 +328,14 @@ costs and model deployments before executing a deployment. Use the existing
 approved Azure identity with explicit `--subscription`; never change a shared
 login or default. Supply secure Bicep parameters from a private, ignored file or
 secure automation input rather than exposing secrets in command history.
-Deploy to an explicitly approved resource group using `az deployment group
-create --subscription <approved-id> --resource-group <approved-group>
---template-file infra\main.bicep --parameters @<private-parameters.json>`.
-Start with `enableInference=false`, inspect `/healthz` and access control, then
-configure only verified model deployments and enable approved experiments.
-No deployment or model quality claim should be based on template compilation.
+Deploy the foundation first (`deployApp=false`), build the tracked clean image
+into its registry, then deploy with `deployApp=true` and an immutable commit tag.
+Use the same private secure-parameter file across both deployments and do not
+print it. Keep `enableInference=false`, `maxModelAttempts=0`. The deployment
+operator stores the invitation secret in an ignored local file and shares its
+location with the user, never its value in chat/logs/Git. Verify `/healthz`,
+unauthenticated API rejection, unlock/logout and mode controls without any
+image calls. Template compilation is not proof of live authentication/quality.
 
 ## Accounts
 

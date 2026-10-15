@@ -6,3 +6,5 @@ coverage/
 *.log
 test-results/
 infra/*.parameters.json
+.local-deploy/
+.deploy-context/
