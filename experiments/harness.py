@@ -382,7 +382,17 @@ def reserve(approval_path, approval, model_id, case_id=None):
     return str(bound)
 
 
+def require_active_scope():
+    restart_path = ROOT / "restart-state.json"
+    if not restart_path.is_file():
+        raise ExperimentError("Execution state is missing; acquisition/live execution remains paused.")
+    if read_json(restart_path).get("live_execution_allowed") is not True:
+        raise ExperimentError(
+            "User-directed photo reset: acquisition/live execution paused until new inputs and coordinator go.")
+
+
 def live(config, plan, inputs, approval_path, model_id, case_id, output_root):
+    require_active_scope()
     approval = read_json(approval_path)
     check_approval(approval, plan)
     model = next((m for m in config["models"] if m["id"] == model_id), None)
@@ -486,6 +496,7 @@ def sanitize_usage(usage):
 
 
 def acquire(destination):
+    require_active_scope()
     manifest = read_json(ROOT / "samples.json")
     destination.mkdir(parents=True, exist_ok=True)
     inventory = []
@@ -533,12 +544,8 @@ def main():
             cmd.add_argument("--output-root", type=Path, default=ROOT / "local" / "runs")
     args = parser.parse_args()
     try:
-        restart_path = ROOT / "restart-state.json"
-        if args.command in {"acquire", "live"} and restart_path.exists():
-            restart = read_json(restart_path)
-            if restart.get("live_execution_allowed") is not True:
-                raise ExperimentError(
-                    "User-directed photo reset: acquisition/live execution paused until new inputs and coordinator go.")
+        if args.command in {"acquire", "live"}:
+            require_active_scope()
         if args.command == "acquire":
             result = acquire(args.destination)
         else:

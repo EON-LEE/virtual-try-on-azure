@@ -32,7 +32,8 @@
       "sku": "BC6X64C75A",
       "url": "https://www.ssfshop.com/BEANPOLE-MEN/GM0026092333362/good",
       "date_evidence": "Official Product JSON-LD releaseDate 2026-09-30; release date is not the photo capture date.",
-      "season": "Exact item FW season still requires confirmation; release date alone does not certify a current-season item.",
+      "season": "Exact official item HTML goodsSeasonCd=\"FW26\"; Product.releaseDate=2026-09-30. Verified 2026-10-15. Neither field proves camera capture date.",
+      "material_and_checks": "Official material cotton 100%; brushed big multicolor check. Test check direction/spacing/colors, brushing texture, collar/buttons/seams; readable brand text not visually verified.",
       "rights": "SSF SHOP Article 21; no express AI-edit/Azure photo grant found. Link only; no photo acquired."
     },
     {
@@ -41,7 +42,8 @@
       "sku": "356841SX21",
       "url": "https://www.ssfshop.com/8-seconds/GM0026080770250/good",
       "date_evidence": "Official Product JSON-LD releaseDate 2026-08-26; not verified photo capture date.",
-      "season": "2026 recent listing; exact current-season item label remains unverified.",
+      "season": "Exact official item HTML goodsSeasonCd=\"FW26\"; Product.releaseDate=2026-08-26. Verified 2026-10-15. Photo capture date unverified.",
+      "material_and_checks": "Official polyester 64%, rayon 28%, polyurethane 8%; heart/clover print, layered jersey. Test motif identity/spacing, layer boundaries and knit texture; text/logo unverified.",
       "rights": "SSF SHOP Article 21; photo rights unresolved, link only."
     },
     {
@@ -49,16 +51,52 @@
       "product": "블루 소프트 울 플란넬 체크 셔츠",
       "sku": "HZSH6D502B2",
       "url": "https://www.hazzys.com/product.do?cmd=getProductDetail&PROD_CD=HZSH6D502B2",
-      "date_evidence": "Exact publication/capture date not verified; page/site 2026 strings alone are not sufficient.",
-      "season": "Product-page season field reads winter; global page 26FW banners are not exact-item 2026 season proof.",
+      "date_evidence": "Exact official item notice manufacturing date 2026-06. This is neither photo capture nor publication date.",
+      "season": "Exact product notice season=\"winter\" and manufacturing=\"2026-06\", verified 2026-10-15. No claim based on global 26FW banners.",
+      "material_and_checks": "Official cotton 56%, lyocell 34%, wool 10%; flannel check and embroidered logo per description. Test small-check repetition, nap/material, embroidery placement, buttons/collar; actual logo lettering not visually verified.",
       "rights": "HAZZYS Article 25; no express AI-edit/Azure photo grant found. Link only."
     }
   ],
   "new_person": {
-    "status": "not_secured",
+    "status": "two_new_licensed_source_review_previews_but_no_input_cleared",
     "source_review": "Pexels terms Section 5 explicitly permits copy/modify/adapt for commercial and noncommercial purposes subject to prohibited uses and other rights. Different from brand stores with no express adaptation grant.",
     "source_url": "https://www.pexels.com/terms-of-service/",
     "limitation": "Sections 5 and 8 require other rights review and prohibit unauthorized scraping/automated extraction/bypass. Search did not expose a verified individual new photo; direct public retrieval returned HTTP 403, not bypassed. No adult age/release/pose/capture-date claim or photo acquisition.",
     "alternative": "New user-owned photographs of consenting adult models in crossed arms, raised arm, front-hands, strong three-quarter and seated poses."
-  }
+  },
+  "person_source_candidates": [
+    {
+      "title": "Nater Kane Portrait 2026-09-07",
+      "url": "https://commons.wikimedia.org/wiki/File:Nater_Kane_Portrait_2026-09-07.jpg",
+      "pose_evidence": "Source describes crossed arms. Preview inspected: square head/upper-torso crop cuts off hands and most crossed-forearm contact. Inadequate for full hand/occlusion hard-pose assessment; adult age not independently verified.",
+      "date_evidence": "Own-work source DateTimeOriginal 2026-09-07 18:42:56, iPhone 12 Pro metadata; upload 2026-09-22. Source/EXIF claim, not independently certified capture date.",
+      "copyright": "Naterkane, CC BY-SA 4.0: adaptation allowed with attribution, license link, change notice, share-alike on distribution; do not imply endorsement.",
+      "status": "review_preview_only_excluded_for_hand_pose_coverage",
+      "blocker": "Hands/contact cropped; do not spend a hard-pose slot. Copyright adaptation permission is explicit; person consent for brand-clothing AI edit/cloud processing and adult eligibility remain unverified.",
+      "preview_path": "local/new-source-review/crossed-arms-review.png",
+      "preview_sha256": "71a513a49f2e3d7b9bb1bda2f72c1f6f7d5330cbaf7029dfb75a274321c9ec68",
+      "preview_change_notice": "Browser-rendered resized source-photo screenshot for local source review only; no AI edits or garment replacement."
+    },
+    {
+      "title": "Portrait of Marin Niehues with his arms crossed",
+      "url": "https://commons.wikimedia.org/wiki/File:Portrait_of_Marin_Niehues_with_his_arms_crossed.jpg",
+      "pose_evidence": "Source describes crossed arms in an office.",
+      "date_evidence": "Source/EXIF 2026-08-24; upload same day.",
+      "copyright": "Misoramenyum, CC BY-SA 4.0.",
+      "status": "excluded_from_unmodified_actual_photo_inputs",
+      "blocker": "File page metadata explicitly says Credit/Provider Apple Photos Clean Up and Source of digital media Edited using generative AI. Not an unmodified actual-photo baseline; age/model consent also unverified."
+    },
+    {
+      "title": "Woman asswan",
+      "url": "https://commons.wikimedia.org/wiki/File:Woman_asswan.jpg",
+      "pose_evidence": "Preview inspected: seated figure, bent elbows and hands meeting on lap; forearms visible with bag/strap across the torso. Not crossed arms at chest or raised arms; useful seated/layer-overlap candidate only.",
+      "date_evidence": "Own-work claimed photo date 2026-06-06; upload 2026-09-20. No camera metadata corroboration on the viewed page.",
+      "copyright": "Mira Fathy, CC BY-SA 4.0; attribution/change notice/share-alike requirements apply.",
+      "status": "review_preview_only_consent_and_provenance_pending",
+      "blocker": "Adult eligibility, model consent and real-photo provenance need confirmation; no camera corroboration. Own-work claim is not a model release.",
+      "preview_path": "local/new-source-review/seated-review.png",
+      "preview_sha256": "f0315c8ba72b336f345c932112eecd2ed1e6e8f5003c843b9a4eba12863d41eb",
+      "preview_change_notice": "Browser-rendered resized source-photo screenshot for local source review only; no AI edits or garment replacement."
+    }
+  ]
 }

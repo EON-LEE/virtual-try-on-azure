@@ -55,7 +55,8 @@ class ExperimentsTest(unittest.TestCase):
         Image.new("RGB", (32, 48), "green").save(output, format="PNG")
         response = payload or json.dumps({"data": [
             {"b64_json": base64.b64encode(output.getvalue()).decode()}]}).encode()
-        with patch.dict(os.environ, {"TRYON_SUNBURST_KEY": "test-secret"}), patch(
+        with patch("harness.require_active_scope"), patch.dict(
+                os.environ, {"TRYON_SUNBURST_KEY": "test-secret"}), patch(
                 "harness.fetch", return_value=response, side_effect=exception) as network:
             result = h.live(self.config, self.plan, self.inputs, self.approval_path,
                             "sunburst", self.config["cases"][0]["id"], self.root / "runs")
@@ -116,7 +117,7 @@ class ExperimentsTest(unittest.TestCase):
         state_path = self.root / "state.json"
         h.write_json(state_path, state)
         output = self.root / "report" / "index.html"
-        summary = report.generate(output, state_path)
+        summary = report.generate(output, state_path, self.root)
         page = output.read_text(encoding="utf-8")
         self.assertEqual(summary["images"], 0)
         self.assertEqual(summary["new_attempts_consumed"], 0)
@@ -127,11 +128,37 @@ class ExperimentsTest(unittest.TestCase):
         self.assertNotIn("<script>not markup</script>", page)
         self.assertIn("&lt;script&gt;not markup&lt;/script&gt;", page)
         self.assertIn("connect-src 'none'", page)
-        self.assertIn("img-src 'none'", page)
+        self.assertIn("img-src data:", page)
         state["live_execution_allowed"] = True
         h.write_json(state_path, state)
         with self.assertRaises(ValueError):
-            report.generate(output, state_path)
+            report.generate(output, state_path, self.root)
+
+    def test_report_embeds_only_hash_pinned_new_source_previews(self):
+        state = h.read_json(h.ROOT / "restart-state.json")
+        candidate = state["person_source_candidates"][0]
+        preview = self.root / candidate["preview_path"]
+        preview.parent.mkdir(parents=True)
+        Image.new("RGB", (24, 32), "white").save(preview)
+        candidate["preview_sha256"] = h.digest(preview.read_bytes())
+        state_path = self.root / "state.json"
+        h.write_json(state_path, state)
+        output = self.root / "report.html"
+        summary = report.generate(output, state_path, self.root)
+        self.assertEqual(summary["images"], 1)
+        page = output.read_text(encoding="utf-8")
+        self.assertEqual(page.count('src="data:image/png;base64,'), 1)
+        self.assertIn("object-fit:contain", page)
+        self.assertIn("showModal()", page)
+        self.assertNotIn('src="https://', page)
+        candidate["preview_sha256"] = "wrong"
+        h.write_json(state_path, state)
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            report.generate(output, state_path, self.root)
+        candidate["preview_path"] = "historical.png"
+        h.write_json(state_path, state)
+        with self.assertRaisesRegex(ValueError, "Preview must"):
+            report.generate(output, state_path, self.root)
 
     def test_restart_blocks_cli_acquisition_and_live_before_input_reads(self):
         commands = [
@@ -149,6 +176,20 @@ class ExperimentsTest(unittest.TestCase):
                 self.assertIn("photo reset", stderr.getvalue())
                 acquire.assert_not_called()
                 live.assert_not_called()
+
+    def test_restart_blocks_imported_entrypoints_and_missing_state(self):
+        with patch("harness.fetch") as network:
+            with self.assertRaisesRegex(h.ExperimentError, "photo reset"):
+                h.acquire(self.root / "blocked-acquire")
+            with self.assertRaisesRegex(h.ExperimentError, "photo reset"):
+                h.live(self.config, self.plan, self.inputs, self.approval_path,
+                       "sunburst", self.config["cases"][0]["id"], self.root / "runs")
+            with patch.object(h, "ROOT", self.root):
+                with self.assertRaisesRegex(h.ExperimentError, "state is missing"):
+                    h.require_active_scope()
+            network.assert_not_called()
+        self.assertFalse((self.root / "blocked-acquire").exists())
+        self.assertFalse((self.root / "runs").exists())
 
     def test_alpha_preserved(self):
         path = self.root / "alpha.png"
@@ -220,7 +261,8 @@ class ExperimentsTest(unittest.TestCase):
                            ("expires_utc", "2000-01-01T00:00:00Z")):
             approval = {**self.approval, key: value}
             h.write_json(self.approval_path, approval)
-            with patch("harness.fetch") as network, self.assertRaises(h.ExperimentError):
+            with patch("harness.require_active_scope"), patch("harness.fetch") as network, \
+                    self.assertRaises(h.ExperimentError):
                 h.live(self.config, self.plan, self.inputs, self.approval_path,
                        "sunburst", self.config["cases"][0]["id"], self.root / "runs")
             network.assert_not_called()

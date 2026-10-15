@@ -13,8 +13,11 @@ current-season Korean-brand product photos and completely new real adult-person
 photos. Exact source/date/season/rights review and new preview precede
 coordinator go. Current product-photo permission and new person input are
 unresolved; no inference is authorized during replacement.
-`python .\experiments\report.py` replaces `local\report\index.html` with an
-image-free new-start screen. It never reads historical pictures.
+`python .\experiments\report.py` replaces `local\report\index.html` with the
+new-start screen. It never reads historical pictures. After the blank reset,
+two newly found CC BY-SA 4.0 source-review previews were added with attribution
+and pinned hashes; they are not cleared experiment inputs or generated results.
+One cuts off hands; the seated candidate still lacks consent/provenance review.
 The exact disposal inventory/hashes are `local\disposal-2026-10-15.json`.
 No code, approvals, ledgers, result metadata or source documentation was deleted.
 
@@ -41,8 +44,8 @@ brand-photo rights and new Azure transfer/call approvals remain unresolved.
 `brand-cases.json` and `brand-candidate-review.md` extend that list to six
 combinations across three domestic brands/two companies; photos are not licensed
 for inference yet. `python .\experiments\report.py` creates the ignored,
-self-contained `local\report\index.html` now shows only the image-free restart
-state; the historical combined image report was disposed.
+self-contained `local\report\index.html` now shows only restart/new-source
+review state; the historical combined image report was disposed.
 
 ## Reproduce the offline work
 
