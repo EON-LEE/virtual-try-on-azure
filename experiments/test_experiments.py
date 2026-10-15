@@ -110,60 +110,45 @@ class ExperimentsTest(unittest.TestCase):
         self.assertIn("401 권한 오류", (self.root / "hardcase-grid.html").read_text(encoding="utf-8"))
         self.assertNotIn("No output image was returned", page)
 
-    def test_integrated_report_uses_actual_outputs_and_pending_candidate_placeholders(self):
-        person = self.root / "person.png"
-        garment = self.root / "garment.png"
-        Image.new("RGB", (24, 32), "white").save(person)
-        Image.new("RGB", (24, 32), "red").save(garment)
-        cases = []
-        for row in range(8):
-            records = {}
-            for column, model in enumerate(("sunburst", "mai")):
-                index = row * 2 + column
-                folder = self.root / "runs" / str(index)
-                folder.mkdir(parents=True)
-                record = {"model_id": model, "attempts": 1, "retries": 0, "live_inference": True,
-                          "elapsed_seconds": 1.0, "status": "failed" if index < 5 else "succeeded",
-                          "http_status": 401 if index < 4 else 429}
-                if record["status"] == "succeeded":
-                    image = folder / "output.png"
-                    Image.new("RGB", (24, 32), "blue").save(image)
-                    record["output_sha256"] = h.digest(image.read_bytes())
-                records[model] = (record, folder)
-            cases.append(("fixture", self.root,
-                          {"id": "frontal-shirt", "person": "person.png", "garment": "garment.png"},
-                          records))
-        candidates = {"cases": [], "rights": {"fixture": {"assessment": "pending"}},
-                      "person_rights": {"license": "fixture-only"}}
-        for index in range(6):
-            candidates["cases"].append({
-                "id": f"brand-{index}-front-hands", "brand": "Fixture", "company": "Fixture",
-                "pose": "front hands", "checks": "fixture", "material": "fixture",
-                "logo": "unverified", "rights_key": "fixture",
-                "person": "person.png", "person_id": "fixture.png",
-                "person_sha256": h.digest(person.read_bytes()), "sku": f"fixture-{index}",
-                "source_url": "https://example.test/product", "product": "<script>not markup</script>",
-                "status": "rights_pending_not_run"})
-        candidate_path = self.root / "candidates.json"
-        h.write_json(candidate_path, candidates)
+    def test_restart_report_never_reads_or_embeds_historical_images(self):
+        state = h.read_json(h.ROOT / "restart-state.json")
+        state["new_source_candidates"][0]["product"] = "<script>not markup</script>"
+        state_path = self.root / "state.json"
+        h.write_json(state_path, state)
         output = self.root / "report" / "index.html"
-        with patch("report.existing_cases", return_value=cases):
-            summary = report.generate(self.root, output, candidate_path)
+        summary = report.generate(output, state_path)
         page = output.read_text(encoding="utf-8")
-        self.assertEqual(summary["outputs"], 11)
-        self.assertEqual(summary["failures"], 5)
-        self.assertEqual(page.count("<tbody "), 14)
-        self.assertEqual(page.count('src="data:image/png;base64,'), 33)
-        self.assertEqual(page.count("상품 사진 권리 확인 전"), 6)
-        self.assertEqual(page.count("미실행 · 승인 전"), 12)
+        self.assertEqual(summary["images"], 0)
+        self.assertEqual(summary["new_attempts_consumed"], 0)
+        self.assertNotIn("<img", page)
+        self.assertNotIn("data:image", page)
+        self.assertNotIn("00683_00", page)
+        self.assertNotIn("hardcase-crossed-arms", page)
         self.assertNotIn("<script>not markup</script>", page)
+        self.assertIn("&lt;script&gt;not markup&lt;/script&gt;", page)
         self.assertIn("connect-src 'none'", page)
-        with Image.open(output.parent / "candidate-input-preview.jpg") as image:
-            self.assertEqual(image.size, (1000, 4200))
-        bad = cases[-1][3]["mai"][0]
-        bad["output_sha256"] = "wrong"
-        with patch("report.existing_cases", return_value=cases), self.assertRaises(ValueError):
-            report.generate(self.root, output, candidate_path)
+        self.assertIn("img-src 'none'", page)
+        state["live_execution_allowed"] = True
+        h.write_json(state_path, state)
+        with self.assertRaises(ValueError):
+            report.generate(output, state_path)
+
+    def test_restart_blocks_cli_acquisition_and_live_before_input_reads(self):
+        commands = [
+            ["harness.py", "acquire"],
+            ["harness.py", "live", "--config", "missing.json",
+             "--approval", "missing.json", "--model", "sunburst", "--case", "new-case"],
+        ]
+        for command in commands:
+            with self.subTest(command=command[1]), patch("sys.argv", command), \
+                    patch("sys.stderr", new_callable=io.StringIO) as stderr, \
+                    patch.object(h, "acquire") as acquire, patch.object(h, "live") as live:
+                with self.assertRaises(SystemExit) as stopped:
+                    h.main()
+                self.assertEqual(stopped.exception.code, 1)
+                self.assertIn("photo reset", stderr.getvalue())
+                acquire.assert_not_called()
+                live.assert_not_called()
 
     def test_alpha_preserved(self):
         path = self.root / "alpha.png"

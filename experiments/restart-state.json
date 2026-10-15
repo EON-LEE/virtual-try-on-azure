@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "effective_date": "2026-10-15",
+  "status": "awaiting_new_inputs_and_coordinator_go",
+  "historical_images_disposed": true,
+  "historical_attempts_consumed": 16,
+  "new_approval_max_attempts": 24,
+  "new_approval_attempts_consumed": 0,
+  "lifetime_attempt_cap": 40,
+  "inflight_requests": 0,
+  "live_execution_allowed": false,
+  "required_inputs": "2026 current-season Korean-brand product photos and completely new actual adult person photos; no historical Met/VITON/person/garment reuse.",
+  "conditions": [
+    "New exact input bytes, source, date/season evidence, person and photo rights reviewed before approval scope is frozen.",
+    "Recent dataset upload is not evidence of recent capture.",
+    "Brand-photo noncommercial AI edit/Azure transfer is not automatically authorized by product sale or research purpose.",
+    "New input preview and source/rights review must be reported before coordinator go.",
+    "No additional role, deployment, hosting or model substitution permission."
+  ],
+  "disposal": {
+    "local_inventory": "local/disposal-2026-10-15.json",
+    "removed_exact_files": 79,
+    "removed_bytes": 153004953,
+    "preserved_preexisting_json_files": 65,
+    "scope": "Only this assigned worktree experiments/local image files and image-embedded HTML/contact sheets. No broad directory deletion.",
+    "preserve": "Code, secret-free approvals/ledgers/results/provenance and source rights notes. Historical result records do not imply images are still retained."
+  },
+  "new_source_candidates": [
+    {
+      "brand": "BEANPOLE MEN",
+      "product": "브러쉬드 빅 멀티체크 셔츠 - 베이지",
+      "sku": "BC6X64C75A",
+      "url": "https://www.ssfshop.com/BEANPOLE-MEN/GM0026092333362/good",
+      "date_evidence": "Official Product JSON-LD releaseDate 2026-09-30; release date is not the photo capture date.",
+      "season": "Exact item FW season still requires confirmation; release date alone does not certify a current-season item.",
+      "rights": "SSF SHOP Article 21; no express AI-edit/Azure photo grant found. Link only; no photo acquired."
+    },
+    {
+      "brand": "8 seconds",
+      "product": "[민주킴] 하트 클로버 프린트 레이어드 저지탑 - 화이트",
+      "sku": "356841SX21",
+      "url": "https://www.ssfshop.com/8-seconds/GM0026080770250/good",
+      "date_evidence": "Official Product JSON-LD releaseDate 2026-08-26; not verified photo capture date.",
+      "season": "2026 recent listing; exact current-season item label remains unverified.",
+      "rights": "SSF SHOP Article 21; photo rights unresolved, link only."
+    },
+    {
+      "brand": "HAZZYS MEN",
+      "product": "블루 소프트 울 플란넬 체크 셔츠",
+      "sku": "HZSH6D502B2",
+      "url": "https://www.hazzys.com/product.do?cmd=getProductDetail&PROD_CD=HZSH6D502B2",
+      "date_evidence": "Exact publication/capture date not verified; page/site 2026 strings alone are not sufficient.",
+      "season": "Product-page season field reads winter; global page 26FW banners are not exact-item 2026 season proof.",
+      "rights": "HAZZYS Article 25; no express AI-edit/Azure photo grant found. Link only."
+    }
+  ],
+  "new_person": {
+    "status": "not_secured",
+    "source_review": "Pexels terms Section 5 explicitly permits copy/modify/adapt for commercial and noncommercial purposes subject to prohibited uses and other rights. Different from brand stores with no express adaptation grant.",
+    "source_url": "https://www.pexels.com/terms-of-service/",
+    "limitation": "Sections 5 and 8 require other rights review and prohibit unauthorized scraping/automated extraction/bypass. Search did not expose a verified individual new photo; direct public retrieval returned HTTP 403, not bypassed. No adult age/release/pose/capture-date claim or photo acquisition.",
+    "alternative": "New user-owned photographs of consenting adult models in crossed arms, raised arm, front-hands, strong three-quarter and seated poses."
+  }
+}

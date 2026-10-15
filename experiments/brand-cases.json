@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "research candidates only; no Azure transfer or inference approval",
+  "status": "superseded by user-directed photo reset 2026-10-15; historical input pairs must not be reused; restart-state.json is current",
   "reviewed_date": "2026-10-14",
   "prior_lifetime_attempts": 16,
   "new_attempts": 0,

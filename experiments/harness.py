@@ -533,6 +533,12 @@ def main():
             cmd.add_argument("--output-root", type=Path, default=ROOT / "local" / "runs")
     args = parser.parse_args()
     try:
+        restart_path = ROOT / "restart-state.json"
+        if args.command in {"acquire", "live"} and restart_path.exists():
+            restart = read_json(restart_path)
+            if restart.get("live_execution_allowed") is not True:
+                raise ExperimentError(
+                    "User-directed photo reset: acquisition/live execution paused until new inputs and coordinator go.")
         if args.command == "acquire":
             result = acquire(args.destination)
         else:

@@ -1,5 +1,25 @@
 # Azure-only try-on experiments
 
+**Current status, 2026-10-15: user-directed photo reset.** All 79 inventoried
+historical input/output images and image-embedded local artifacts were removed.
+All 65 preexisting JSON approval/result/provenance files remain intact.
+They describe historical evidence; the image bytes are no longer available
+for replay or re-review. Historical Met/VITON people and garments must not be
+downloaded again or inserted into reports. No new approved calls were submitted:
+**0/24 consumed; prior 16 consumed; lifetime cap 40**.
+
+`restart-state.json` governs the paused state. New inputs must be 2026
+current-season Korean-brand product photos and completely new real adult-person
+photos. Exact source/date/season/rights review and new preview precede
+coordinator go. Current product-photo permission and new person input are
+unresolved; no inference is authorized during replacement.
+`python .\experiments\report.py` replaces `local\report\index.html` with an
+image-free new-start screen. It never reads historical pictures.
+The exact disposal inventory/hashes are `local\disposal-2026-10-15.json`.
+No code, approvals, ledgers, result metadata or source documentation was deleted.
+
+## Historical observations (images disposed; no reuse)
+
 Status, 2026-10-14: **16 lifetime attempts, 11 PNG outputs, 5 failed attempts,
 0 retries.** The first two calls returned HTTP 401; the next two produced
 outputs but failed the preservation/cut rubric. A separately approved
@@ -10,7 +30,8 @@ unchanged-pose and exact garment-detail requirement. Historical pilot passes
 are not passes under that later criterion. See `hardcase-review.md`,
 `second-smoke-review.md` and `viton-hd-batch-review.md` for case-level reviews,
 latency, and conditional usage-based estimates—not billed costs. Every current
-approval ledger is exhausted; further inference requires a new exact approval.
+historical approval ledger is exhausted. A later up-to-24-call approval remains
+unused and paused pending the user-directed input replacement.
 This is a separate experiment track, not the application or evidence that
 virtual try-on works generally.
 
@@ -20,7 +41,8 @@ brand-photo rights and new Azure transfer/call approvals remain unresolved.
 `brand-cases.json` and `brand-candidate-review.md` extend that list to six
 combinations across three domestic brands/two companies; photos are not licensed
 for inference yet. `python .\experiments\report.py` creates the ignored,
-self-contained `local\report\index.html` with all actual attempts and candidates.
+self-contained `local\report\index.html` now shows only the image-free restart
+state; the historical combined image report was disposed.
 
 ## Reproduce the offline work
 
