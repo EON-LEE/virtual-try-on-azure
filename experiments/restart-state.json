@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "effective_date": "2026-10-15",
-  "status": "registered_dataset_return_scope",
+  "status": "dataset_return_completed_allocation_exhausted",
   "historical_images_disposed": true,
   "historical_attempts_consumed": 16,
   "new_approval_max_attempts": 24,
-  "new_approval_attempts_consumed": 0,
+  "new_approval_attempts_consumed": 24,
   "lifetime_attempt_cap": 40,
   "inflight_requests": 0,
-  "live_execution_allowed": true,
-  "required_inputs": "2026 current-season Korean-brand product photos and completely new actual adult person photos; no historical Met/VITON/person/garment reuse.",
+  "live_execution_allowed": false,
+  "required_inputs": "User-directed return to private noncommercial VTO dataset inference. Only new person/cloth IDs and bytes in registered dataset-return scope; no restoration of disposed photographs. 2026/current-season/Korean-brand restriction lifted.",
   "conditions": [
-    "New exact input bytes, source, date/season evidence, person and photo rights reviewed before approval scope is frozen.",
-    "Recent dataset upload is not evidence of recent capture.",
-    "Brand-photo noncommercial AI edit/Azure transfer is not automatically authorized by product sale or research purpose.",
-    "New input preview and source/rights review must be reported before coordinator go.",
+    "Only exact registered dataset-return plan/approval is active; no global execution bypass.",
+    "Original VITON-HD CC BY-NC 4.0 research terms, citation and modification notice apply; no training/finetuning/public redistribution.",
+    "No Korean-brand or recent capture claim; individual release/photographer/age uncertainties remain recorded.",
+    "Same unused 24-call maximum authorization, historical 16 consumed, lifetime cap 40; unknown amount/no retries; failures and uncertain sends consume slots.",
     "No additional role, deployment, hosting or model substitution permission."
   ],
   "disposal": {
@@ -105,5 +105,7 @@
     "approval_path": "local\\dataset-return\\approval.json",
     "approval_file_sha256": "1f13a11749e0d8f234ca19fac5e3900709268577afe3710a7aaf00b23cc8925c",
     "manifest_sha256": "c1e098b63cc96feea6ee5ea2df90af104a0a58cad56d432439f5653747eb1588"
-  }
+  },
+  "lifetime_attempts_consumed": 40,
+  "completed_utc": "2026-10-15T02:18:28.483776+00:00"
 }

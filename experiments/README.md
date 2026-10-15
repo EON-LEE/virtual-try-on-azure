@@ -1,5 +1,14 @@
 # Azure-only try-on experiments
 
+**Completed replacement batch:** 12 entirely new VITON-HD unpaired combinations,
+24/24 PNG outputs, 0 retries. Strict visual review: 0 verified passes, 5 visible
+failures, 19 not established; broad similarity is not exact preservation.
+Conditional list estimate USD 1.007004, actual billing unknown. Approval exhausted:
+24 new + 16 historical = 40 lifetime attempts; live execution is disabled.
+See `dataset-return-review.md`, `dataset-return-quality.json` and
+`dataset-return-results.json`. `local\report\index.html` contains only the new
+batch, large four-column images with filters and enlargement; no disposed images.
+
 **2026-10-15 later scope change:** user explicitly returned to noncommercial
 VTO dataset inference/demo mockup. The 2026 Korean-brand/current-season
 restriction was lifted. The same previously unused maximum 24 attempts apply,
@@ -9,14 +18,14 @@ VITON-HD ID combinations; local `dataset-return\manifest.json` freezes original
 and normalized hashes, rights and source URLs before calls.
 `restart-state.json` registers only that exact plan and approval-file hash.
 Other approvals/legacy sample acquisition remain blocked.
-`python .\experiments\dataset_batch.py run` uses fresh scoped Entra validation,
+During the now-completed batch, `dataset_batch.py run` used fresh scoped Entra validation,
 serial requests, model spacing >=90s and provider Retry-After, no retries.
 Reservations/failures/unknown completions consume slots; unknown completion or
 two consecutive 401s stop the remaining batch. No roles/deployments changed.
 `python .\experiments\report.py` now updates the new-dataset-only large grid;
 new brand-source review photos are not part of the experiment grid.
 
-**Current status, 2026-10-15: user-directed photo reset.** All 79 inventoried
+**Earlier status, 2026-10-15: user-directed photo reset.** All 79 inventoried
 historical input/output images and image-embedded local artifacts were removed.
 All 65 preexisting JSON approval/result/provenance files remain intact.
 They describe historical evidence; the image bytes are no longer available
@@ -24,11 +33,10 @@ for replay or re-review. Historical Met/VITON people and garments must not be
 downloaded again or inserted into reports. No new approved calls were submitted:
 **0/24 consumed; prior 16 consumed; lifetime cap 40**.
 
-`restart-state.json` governs the paused state. New inputs must be 2026
+At that earlier point, `restart-state.json` governed the paused state. Inputs were required to be 2026
 current-season Korean-brand product photos and completely new real adult-person
-photos. Exact source/date/season/rights review and new preview precede
-coordinator go. Current product-photo permission and new person input are
-unresolved; no inference is authorized during replacement.
+photos. Product-photo permissions remained unresolved. That restriction was
+later superseded by the explicit dataset-return instruction above.
 `python .\experiments\report.py` replaces `local\report\index.html` with the
 new-start screen. It never reads historical pictures. After the blank reset,
 two newly found CC BY-SA 4.0 source-review previews were added with attribution
@@ -49,8 +57,8 @@ unchanged-pose and exact garment-detail requirement. Historical pilot passes
 are not passes under that later criterion. See `hardcase-review.md`,
 `second-smoke-review.md` and `viton-hd-batch-review.md` for case-level reviews,
 latency, and conditional usage-based estimates—not billed costs. Every current
-historical approval ledger is exhausted. A later up-to-24-call approval remains
-unused and paused pending the user-directed input replacement.
+historical approval ledger is exhausted. The later 24-call allocation was also
+exhausted by the completed replacement batch described above.
 This is a separate experiment track, not the application or evidence that
 virtual try-on works generally.
 
@@ -60,8 +68,8 @@ brand-photo rights and new Azure transfer/call approvals remain unresolved.
 `brand-cases.json` and `brand-candidate-review.md` extend that list to six
 combinations across three domestic brands/two companies; photos are not licensed
 for inference yet. `python .\experiments\report.py` creates the ignored,
-self-contained `local\report\index.html` now shows only restart/new-source
-review state; the historical combined image report was disposed.
+self-contained `local\report\index.html` for the registered replacement dataset
+batch; the historical combined image report was disposed.
 
 ## Reproduce the offline work
 

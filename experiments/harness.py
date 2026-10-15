@@ -391,7 +391,9 @@ def require_active_scope(scope_sha256=None, approval_path=None):
             "User-directed photo reset: acquisition/live execution paused until new inputs and coordinator go.")
     state = read_json(restart_path)
     registered = state.get("registered_scope")
-    if scope_sha256 is not None and registered is not None:
+    if not registered:
+        raise ExperimentError("No exact replacement dataset scope is registered.")
+    if scope_sha256 is not None:
         approval = Path(approval_path).resolve()
         if (scope_sha256 != registered["scope_sha256"]
                 or approval != (ROOT / registered["approval_path"]).resolve()

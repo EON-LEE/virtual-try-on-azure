@@ -115,6 +115,7 @@ class ExperimentsTest(unittest.TestCase):
     def test_restart_report_never_reads_or_embeds_historical_images(self):
         state = h.read_json(h.ROOT / "restart-state.json")
         state["live_execution_allowed"] = False
+        state["new_approval_attempts_consumed"] = 0
         state["new_source_candidates"][0]["product"] = "<script>not markup</script>"
         state_path = self.root / "state.json"
         h.write_json(state_path, state)
@@ -240,6 +241,41 @@ class ExperimentsTest(unittest.TestCase):
             (batch / "person.png").write_bytes(b"tampered")
             with self.assertRaisesRegex(h.ExperimentError, "hash"):
                 dataset_batch.render()
+
+    def test_dataset_token_requires_exact_identity_audience_and_expiry(self):
+        account = {"id": dataset_batch.SUBSCRIPTION, "tenantId": dataset_batch.TENANT,
+                   "user": {"name": "admin@m365cpi74210306.onmicrosoft.com"}}
+        claims = {"tid": dataset_batch.TENANT, "oid": "test-principal",
+                  "aud": "https://cognitiveservices.azure.com",
+                  "upn": account["user"]["name"],
+                  "exp": (datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()}
+        for change in ({}, {"aud": "https://management.azure.com"},
+                       {"tid": "different"}, {"exp": 0}, {"upn": "other@example.test"}):
+            payload = base64.urlsafe_b64encode(json.dumps(claims | change).encode()).decode().rstrip("=")
+            token = "unit." + payload + ".not-a-real-token"
+            with patch.object(dataset_batch, "az", side_effect=[account, {"accessToken": token}]):
+                if change:
+                    with self.assertRaises(h.ExperimentError):
+                        dataset_batch.fresh_token()
+                else:
+                    self.assertEqual(dataset_batch.fresh_token(), token)
+
+    def test_dataset_unknown_completion_stops_before_any_new_token_or_call(self):
+        folder = self.root / "batch"
+        folder.mkdir()
+        path = folder / "runs" / "unknown"
+        path.mkdir(parents=True)
+        h.write_json(folder / "config.json", self.config)
+        h.write_json(path / "result.json", {"status": "submitted", "attempts": 1})
+        with patch.object(dataset_batch, "FOLDER", folder), \
+                patch.object(dataset_batch, "APPROVAL", folder / "approval.json"), \
+                patch.object(h, "build_plan", return_value=(self.plan, self.inputs)), \
+                patch.object(h, "require_active_scope"), \
+                patch.object(dataset_batch, "fresh_token") as token, patch.object(h, "live") as live:
+            with self.assertRaisesRegex(h.ExperimentError, "Unknown completion"):
+                dataset_batch.run()
+            token.assert_not_called()
+            live.assert_not_called()
 
     def test_alpha_preserved(self):
         path = self.root / "alpha.png"

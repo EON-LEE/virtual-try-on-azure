@@ -6,6 +6,7 @@ import html
 import json
 import os
 import subprocess
+import statistics
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -141,17 +142,68 @@ def summarize():
                     | {"text_input_tokens": text, "image_input_tokens": image,
                        "image_output_tokens": output, "conditional_usd_estimate": estimate,
                        "actual_billing": None})
+        rows[-1]["http_status"] = record.get("http_status", record.get("response_metadata", {}).get("http_status"))
     summary = {"scope_sha256": h.read_json(FOLDER / "plan.json")["scope_sha256"],
+               "frozen_inputs": [{"id": c["id"], "person_id": c["person_id"],
+                                  "garment_id": c["garment_id"],
+                                  "person": c["person"], "garment": c["garment"]}
+                                 for c in h.read_json(FOLDER / "manifest.json")["cases"]],
                "attempts": sum(r["attempts"] for r in rows),
                "successful_outputs": sum(r["status"] == "succeeded" for r in rows),
+               "failed_attempts": sum(r["status"] == "failed" for r in rows),
+               "submitted_unresolved": sum(r["status"] == "submitted" for r in rows),
                "retries": sum(r["retries"] for r in rows),
                "conditional_usd_estimate_successful_usage_only": round(sum(
                    r["conditional_usd_estimate"] or 0 for r in rows), 6),
                "estimate_source": "Azure Retail Prices API rates verified 2026-10-14, azure-evidence.md. USD/1M text5/image-input8/Sunburst-output30/MAI-output38. Conditional list estimate, not invoice; failed-request costs unknown.",
                "actual_billing": None, "records": rows}
+    summary["model_measurements"] = {}
+    for model in ("sunburst", "mai"):
+        group = [r for r in records() if r["model_id"] == model]
+        durations = [r["elapsed_seconds"] for r in group if r.get("elapsed_seconds") is not None]
+        starts = sorted(datetime.fromisoformat(r["started_utc"]) for r in group)
+        summary["model_measurements"][model] = {
+            "attempts": len(group), "latency_min_seconds": min(durations) if durations else None,
+            "latency_median_seconds": statistics.median(durations) if durations else None,
+            "latency_max_seconds": max(durations) if durations else None,
+            "minimum_start_gap_seconds": min((b-a).total_seconds() for a,b in zip(starts,starts[1:])) if len(starts)>1 else None,
+            "conditional_usd_estimate": round(sum(r["conditional_usd_estimate"] or 0 for r in rows if r["model_id"] == model),6)}
+    quality_path = h.ROOT / "dataset-return-quality.json"
+    if quality_path.exists():
+        quality = h.read_json(quality_path)
+        summary["strict_visual_review_counts"] = {
+            verdict: sum(v["verdict"] == verdict for case in quality["reviews"].values() for v in case.values())
+            for verdict in ("pass", "fail", "not_established")}
     h.write_json(FOLDER / "summary.json", summary)
     h.write_json(h.ROOT / "dataset-return-results.json", summary)
-    print(json.dumps({k: v for k, v in summary.items() if k != "records"}, indent=2))
+    print(json.dumps({k: v for k, v in summary.items() if k not in {"records", "frozen_inputs"}}, indent=2))
+
+
+def close():
+    ledger = h.read_json(APPROVAL.with_suffix(".ledger.json"))
+    all_records = records()
+    if (ledger["attempts"] != 24 or len(all_records) != 24
+            or any(r["status"] not in {"succeeded", "failed"} or r.get("completion_uncertain") for r in all_records)
+            or APPROVAL.with_suffix(".lock").exists()):
+        raise h.ExperimentError("Cannot close until all approved attempts are reconciled.")
+    expected = h.read_json(APPROVAL)["request_limits"]
+    if ledger["request_counts"] != expected:
+        raise h.ExperimentError("Exact model/case allocation does not reconcile.")
+    quality = h.read_json(h.ROOT / "dataset-return-quality.json")["reviews"]
+    manifest = h.read_json(FOLDER / "manifest.json")
+    if set(quality) != {c["id"] for c in manifest["cases"]} or any(
+            set(models) != {"sunburst", "mai"} for models in quality.values()):
+        raise h.ExperimentError("Every exact case/model requires strict review before closeout.")
+    state = h.read_json(h.ROOT / "restart-state.json")
+    if h.digest((FOLDER / "manifest.json").read_bytes()) != state["registered_scope"]["manifest_sha256"]:
+        raise h.ExperimentError("Frozen manifest changed.")
+    state.update(status="dataset_return_completed_allocation_exhausted",
+                 live_execution_allowed=False, new_approval_attempts_consumed=24,
+                 inflight_requests=0, lifetime_attempts_consumed=40,
+                 completed_utc=datetime.now(timezone.utc).isoformat())
+    h.write_json(h.ROOT / "restart-state.json", state)
+    summarize()
+    render()
 
 
 def run():
@@ -205,7 +257,14 @@ def render():
     manifest = h.read_json(FOLDER / "manifest.json")
     results = {(r["case_id"], r["model_id"]): r for r in records()}
     review_path = h.ROOT / "dataset-return-quality.json"
-    reviews = h.read_json(review_path)["reviews"] if review_path.exists() else {}
+    review_document = h.read_json(review_path) if review_path.exists() else {}
+    reviews = review_document.get("reviews", {})
+    corrections = review_document.get("case_check_corrections", {})
+    if set(reviews) - {case["id"] for case in manifest["cases"]}:
+        raise h.ExperimentError("Review contains a case outside the frozen dataset manifest.")
+    for model_reviews in reviews.values():
+        if set(model_reviews) - {"sunburst", "mai"}:
+            raise h.ExperimentError("Review has an unexpected model/nested case.")
 
     def image(path, label, expected_hash):
         data = Path(path).read_bytes()
@@ -225,6 +284,8 @@ def render():
                                    result["output_sha256"])
                              + '<small>' + html.escape(reviews.get(case["id"], {}).get(model, {}).get(
                                  "display", "엄격 보존 평가 대기")) + '</small>')
+            elif result and result["status"] == "submitted":
+                cells.append("처리 중 · 재호출 없음")
             elif result:
                 status = result.get("http_status")
                 cells.append("401 권한 오류" if status == 401 else "429 호출 제한" if status == 429 else "생성 실패")
@@ -232,10 +293,17 @@ def render():
                 cells.append("미실행")
         rows.append('<tbody data-tags="' + html.escape(" ".join(case["tags"]), quote=True) + '"><tr><td colspan="4"><b>'
                     + html.escape(case["id"]) + '</b> · ' + html.escape(case["pose"]) + '<br><small>'
-                    + html.escape(case["checks"]) + '</small></td></tr><tr>'
+                    + html.escape(corrections.get(case["id"], case["checks"])) + '</small></td></tr><tr>'
                     + ''.join('<td>' + cell + '</td>' for cell in cells) + '</tr></tbody>')
     used = sum(r["attempts"] for r in results.values())
     success = sum(r["status"] == "succeeded" for r in results.values())
+    failed = sum(r["status"] == "failed" for r in results.values())
+    pending = sum(r["status"] == "submitted" for r in results.values())
+    verdict_counts = {v: sum(item["verdict"] == v for case in reviews.values() for item in case.values())
+                      for v in ("pass", "fail", "not_established")}
+    usage_summary = h.read_json(FOLDER / "summary.json") if (FOLDER / "summary.json").exists() else {}
+    if usage_summary.get("attempts") != used:
+        usage_summary = {}
     tags = sorted({tag for c in manifest["cases"] for tag in c["tags"]})
     page = ('<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
             '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; connect-src \'none\'; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'">'
@@ -244,15 +312,30 @@ def render():
             'img{height:600px;width:100%;object-fit:contain}.zoom{border:0;background:none;width:100%;cursor:zoom-in}'
             'small{font-size:12px}dialog{max-width:96vw;max-height:96vh}dialog img{height:auto;max-width:90vw;max-height:85vh}'
             '.scroll{overflow:auto}details{margin:16px 0}pre{white-space:pre-wrap}</style>'
-            f'<h2>새 VTO 데이터셋 · {used}/24회 · 출력 {success}개 · 실패 {used-success}회</h2>'
+            f'<h2>새 VTO 데이터셋 · {used}/24회 · 출력 {success}개 · 실패 {failed}회 · 처리 중 {pending}회</h2>'
             '<p>출력 생성 성공 ≠ 포즈·손·의상 세부 보존 통과. 새 조합만 표시 · 기존 이미지 복원 없음.</p>'
+            f'<p>엄격 보존: 확인 통과 {verdict_counts["pass"]}개 · 명확한 실패 {verdict_counts["fail"]}개 · 미확정 {verdict_counts["not_established"]}개</p>'
             '<label>조건 <select id="filter"><option value="">전체</option>'
             + ''.join('<option>' + html.escape(t) + '</option>' for t in tags)
             + '</select></label><div class="scroll"><table><thead><tr><th>원본 인물</th><th>의상</th><th>Sunburst</th><th>MAI 2.6</th></tr></thead>'
             + ''.join(rows) + '</table></div><details><summary>출처·권리·평가 한계·사용량</summary><p>'
             + html.escape(manifest["attribution"] + " · " + manifest["license"] + " · " + manifest["use_scope"])
+            + '</p><p><a href="https://github.com/shadow2496/VITON-HD" target="_blank" rel="noopener">VITON-HD 출처/원본 사용조건</a> · '
+            '<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>'
             + '</p><p>' + html.escape(manifest["rights_uncertainty"] + " " + manifest["coverage_limit"])
             + '</p><p>모두 unpaired 별도 의상 조합; 정확한 착용 GT 없음. SSIM/LPIPS/FID 품질 증명 없음. 실청구 미확인.</p><pre>'
+            + html.escape(json.dumps({k:v for k,v in usage_summary.items() if k in (
+                "conditional_usd_estimate_successful_usage_only", "estimate_source", "actual_billing",
+                "model_measurements")}, ensure_ascii=False, indent=2))
+            + '</pre><p>단일 검토자의 비맹검 육안 평가. 정규화 랜드마크 이동량, OCR 문자 대조, 패턴 주기 수치 측정은 미실시. '
+            '측면·앉은 자세와 정밀 규칙 체크는 미검증. 가려진 손·읽기 어려운 원본 문자는 N/A.</p>'
+            '<p>학계 검증점: <a href="https://openaccess.thecvf.com/content/CVPR2021/papers/Choi_VITON-HD_High-Resolution_Virtual_Try-On_via_Misalignment-Aware_Normalization_CVPR_2021_paper.pdf" target="_blank" rel="noopener">'
+            'VITON-HD §1/§4.3</a>의 정렬·질감 문제와 '
+            '<a href="https://openaccess.thecvf.com/content/CVPR2024/papers/Yang_Texture-Preserving_Diffusion_Models_for_High-Fidelity_Virtual_Try-On_CVPR_2024_paper.pdf" target="_blank" rel="noopener">'
+            'TPD §4.1/§4.3/§5</a>의 문자·로고 및 어려운 포즈의 손/팔 왜곡을 평가축으로 사용. '
+            '이는 Azure 모델의 오류 원인·마스크 지원을 입증하는 근거가 아님.</p><pre>'
+            + html.escape(json.dumps(reviews, ensure_ascii=False, indent=2))
+            + '</pre><pre>'
             + html.escape(json.dumps([{k:v for k,v in r.items() if k in (
                 "case_id","model_id","status","usage","elapsed_seconds","http_status","response_metadata","provider_error_code","completion_uncertain")} for r in results.values()],ensure_ascii=False,indent=2))
             + '</pre></details><dialog id="viewer"><button id="close">닫기</button><div id="full"></div></dialog><script>'
@@ -267,6 +350,7 @@ def render():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("freeze", "run", "render", "sheets", "summarize"))
+    parser.add_argument("command", choices=("freeze", "run", "render", "sheets", "summarize", "close"))
     action = parser.parse_args().command
-    {"freeze": freeze, "run": run, "render": render, "sheets": sheets, "summarize": summarize}[action]()
+    {"freeze": freeze, "run": run, "render": render, "sheets": sheets,
+     "summarize": summarize, "close": close}[action]()
