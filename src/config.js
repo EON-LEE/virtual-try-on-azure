@@ -21,6 +21,10 @@ function endpoint(value, suffixes) {
 export function loadConfig(env = process.env) {
   const host = env.HOST || '127.0.0.1';
   const token = env.APP_ACCESS_TOKEN || '';
+  const operatorToken = env.DEMO_OPERATOR_TOKEN || '';
+  if (operatorToken && (operatorToken.length < 32 || operatorToken === token)) {
+    throw new Error('DEMO_OPERATOR_TOKEN must be 32+ characters and distinct from the invitation token.');
+  }
   const local = ['127.0.0.1', '::1', 'localhost'].includes(host);
   const origin = env.APP_ORIGIN || '';
   if (!local && (token.length < 32 || !origin)) {
@@ -82,7 +86,7 @@ export function loadConfig(env = process.env) {
       (auth.mode === 'key' ? model.key : identityConfigured));
     model.reason = !enabled ? 'inference-disabled' : model.ready ? null : 'not-configured';
   }
-  return { host, port, token, origin, models, auth, limits: { attemptLimit, expiresAt } };
+  return { host, port, token, operatorToken, origin, models, auth, limits: { attemptLimit, expiresAt } };
 }
 
 export function selectModels(value, config) {

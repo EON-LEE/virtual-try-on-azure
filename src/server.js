@@ -35,6 +35,8 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
   let submissions = 0;
   let loginAttempts = 0;
   let loginWindow = Date.now();
+  let operatorAttempts = 0;
+  let operatorWindow = Date.now();
   const prune = () => {
     jobs.prune();
     for (const [id, session] of sessions) {
@@ -79,6 +81,29 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
       if (!path.startsWith('/api/')) throw new AppError(404, 'not-found', 'Not found.');
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) throw new AppError(405, 'method-not-allowed', 'Method not allowed.');
       if (req.method !== 'GET' && req.headers['x-studio-request'] !== '1') throw new AppError(403, 'request-header-required', 'Studio request header required.');
+      if (path.startsWith('/api/operator/')) {
+        if (req.method !== 'POST' || !config.operatorToken) throw new AppError(404, 'not-found', 'Not found.');
+        if (new URL(req.url, expectedOrigin).search) throw new AppError(400, 'operator-query-forbidden', 'Operator requests must not contain URL query parameters.');
+        if (Date.now() - operatorWindow > 60_000) { operatorAttempts = 0; operatorWindow = Date.now(); }
+        if (++operatorAttempts > 8) throw new AppError(429, 'operator-rate-limit', 'Too many operator requests. Wait one minute.');
+        const supplied = req.headers['x-operator-token'];
+        const digest = value => createHash('sha256').update(value).digest();
+        if (typeof supplied !== 'string' || !timingSafeEqual(digest(supplied), digest(config.operatorToken))) {
+          throw new AppError(401, 'operator-unauthorized', 'Separate operator authorization is required.');
+        }
+        if (path === '/api/operator/state') return json(res, 200, jobs.gate.state());
+        if (path === '/api/operator/activate') {
+          let data;
+          try { data = JSON.parse((await bodyBytes(req, 2048)).toString()); } catch (cause) {
+            if (cause instanceof AppError) throw cause;
+            throw new AppError(400, 'invalid-activation', 'Invalid activation request.');
+          }
+          if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppError(400, 'invalid-activation', 'Invalid activation request.');
+          jobs.gate.activate(data, config);
+          return json(res, 200, { activated: true });
+        }
+        throw new AppError(404, 'not-found', 'Not found.');
+      }
       prune();
       const sessionId = req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('studio='))?.slice(7);
       let session = sessions.get(sessionId);

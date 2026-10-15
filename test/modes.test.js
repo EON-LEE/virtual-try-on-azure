@@ -7,6 +7,7 @@ import { TRY_ON_PROMPT, PROMPT_VERSION } from '../src/prompt.js';
 import { JobStore } from '../src/jobs.js';
 import { loadConfig } from '../src/config.js';
 import { createServer } from '../src/server.js';
+import { activateForTest } from './fixtures.js';
 
 const env = {
   ENABLE_AZURE_INFERENCE: 'true', DEMO_MAX_MODEL_ATTEMPTS: '10', DEMO_INFERENCE_EXPIRES_AT: '2099-01-01T00:00:00Z',
@@ -43,6 +44,7 @@ test('attempt window/count, global concurrency and dedup cannot be bypassed by c
   let finish;
   const store = new JobStore({ provider: () => new Promise(resolve => { finish = resolve; }) });
   const config = loadConfig({ ...env, DEMO_MAX_MODEL_ATTEMPTS: '1' });
+  activateForTest(store, config);
   assert.throws(() => store.create('a', 'id', 'hash', ['mai', 'sunburst'], config, Buffer.from('p'), Buffer.from('g')), /allowance/);
   const job = store.create('a', 'id', 'hash', ['mai'], config, Buffer.from('p'), Buffer.from('g'));
   assert.equal(store.create('a', 'id', 'hash', ['mai'], config, Buffer.from('p'), Buffer.from('g')).id, job.id);
@@ -61,6 +63,7 @@ test('attempt window/count, global concurrency and dedup cannot be bypassed by c
 test('global rate guard applies across new sessions and hosted enablement requires budget', async () => {
   const config = loadConfig(env);
   const store = new JobStore({ provider: async () => ({ image: Buffer.from('test') }) });
+  activateForTest(store, config);
   for (const owner of ['a', 'b']) {
     store.create(owner, owner, owner, ['mai'], config, Buffer.from('p'), Buffer.from('g'));
     await new Promise(resolve => setImmediate(resolve));
@@ -78,6 +81,7 @@ test('HTTP modes reject missing/extra refs and preserve requested three-image or
     calls.push({ id: model.id, ...options, garment });
     return { image: garment };
   } });
+  activateForTest(jobs, config);
   const server = createServer(config, { jobs });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));

@@ -9,6 +9,7 @@ import { TRY_ON_PROMPT } from '../src/prompt.js';
 import { createServer } from '../src/server.js';
 import { readFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
+import { activateForTest } from './fixtures.js';
 
 const png = () => sharp({ create: { width: 16, height: 24, channels: 3, background: '#abcdef' } }).png().toBuffer();
 const configured = () => loadConfig({
@@ -104,6 +105,7 @@ test('jobs invoke only selected models, deduplicate, isolate owners and expire i
   let now = 100;
   const calls = [];
   const store = new JobStore({ now: () => now, provider: async model => { calls.push(model.id); return { image: await png(), requestId: 'test' }; } });
+  activateForTest(store, configured());
   const job = store.create('owner', 'request', 'fingerprint', ['mai'], configured(), Buffer.from('a'), Buffer.from('b'));
   assert.equal(store.create('owner', 'request', 'fingerprint', ['mai'], configured(), Buffer.from('a'), Buffer.from('b')).id, job.id);
   assert.throws(() => store.create('owner', 'request', 'different', ['mai'], configured(), Buffer.from('a'), Buffer.from('b')), /different inputs/);
@@ -122,6 +124,7 @@ test('comparison reports partial failure without disguising it as full success',
     if (model.id === 'mai') throw new Error('secret upstream error');
     return { image: Buffer.from('test-only') };
   } });
+  activateForTest(store, configured());
   const job = store.create('owner', 'request', 'x', ['sunburst', 'mai'], configured(), Buffer.from('a'), Buffer.from('b'));
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(job.status, 'failed');
@@ -134,6 +137,7 @@ test('comparison reports partial failure without disguising it as full success',
 test('HTTP upload-to-result flow enforces consent, origin, session and exact selection', async t => {
   const calls = [];
   const jobs = new JobStore({ provider: async model => { calls.push(model.id); return { image: await png(), requestId: 'test-request' }; } });
+  activateForTest(jobs, configured());
   const server = createServer(configured(), { jobs });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));

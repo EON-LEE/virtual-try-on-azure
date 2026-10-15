@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from './errors.js';
 import { editImage } from './provider.js';
 import { modeContract } from './modes.js';
+import { InferenceGate } from './gate.js';
 
 export const RESULT_TTL_MS = 10 * 60 * 1000;
 
 export class JobStore {
-  constructor({ provider = editImage, now = Date.now, submissionsPerMinute = 2 } = {}) {
+  constructor({ provider = editImage, now = Date.now, submissionsPerMinute = 2, gate = new InferenceGate({ now }) } = {}) {
     this.provider = provider;
     this.now = now;
     this.jobs = new Map();
@@ -15,6 +16,7 @@ export class JobStore {
     this.started = [];
     this.active = 0;
     this.submissionsPerMinute = submissionsPerMinute;
+    this.gate = gate;
   }
 
   prune() {
@@ -40,6 +42,7 @@ export class JobStore {
     }
     this.started = this.started.filter(time => time > this.now() - 60_000);
     if (this.started.length >= this.submissionsPerMinute) throw new AppError(429, 'demo-rate-limit', 'At most two demo submissions per minute. No automatic retry.');
+    this.gate.reserve(models.length, config.limits);
     this.started.push(this.now());
     this.attempts += models.length;
     this.active++;

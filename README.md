@@ -279,9 +279,11 @@ that fixture. CI also builds the container and compiles Bicep; it does not deplo
 ## Approved demo hosting configuration
 
 `Dockerfile` runs as a non-root user. The approved `infra/main.bicep` creates
-an eastus Consumption Container Apps environment/app (0.5 vCPU, 1 GiB),
-dedicated ACR Basic registry (admin keys disabled), and user-assigned managed
-identity. Exactly three role assignments are scoped to the Sunburst resource
+an eastus2 Consumption Container Apps environment/app (0.5 vCPU, 1 GiB),
+dedicated eastus ACR Basic registry (admin keys disabled), and eastus user-assigned
+managed identity. The initial eastus environment failed with regional capacity
+exhaustion; the approved single eastus2 fallback succeeded. The failed eastus
+environment was not deleted. Exactly three role assignments are scoped to the Sunburst resource
 (OpenAI User), MAI resource (Cognitive Services User) and registry (AcrPull).
 Existing model resources/local-auth settings are not changed. HTTPS external
 ingress exposes the static UI, but all uploads, jobs and images require an
@@ -302,7 +304,8 @@ No model deployment or Fabric is created.
 
 Hosted inference requires **separate approval** plus all of:
 `ENABLE_AZURE_INFERENCE=true`, `DEMO_MAX_MODEL_ATTEMPTS` (1-100), and future
-`DEMO_INFERENCE_EXPIRES_AT` (ISO timestamp). Zero allowance closes jobs, including
+`DEMO_INFERENCE_EXPIRES_AT` (ISO timestamp), **and one operator activation for
+the current process boot**. Zero allowance closes jobs, including
 local jobs; examples/hosting deploy default false/zero. One global active job,
 two submissions/minute, 30-second bounded uploads (max three 10 MiB images),
 180-second provider timeout and session/request-ID guards limit accidental abuse.
@@ -310,11 +313,30 @@ An explicit two-model comparison reserves two attempts; failures/cancellations
 do not refund attempts. Clearing photos/sessions cannot reset the counter or
 free an active slot before provider completion. Reservations avoid races.
 
-**The attempt counter is per process, not a durable billing cap**: restarts and
-revisions reset it. Do not automatically restart/redeploy an enabled demo or
-treat its allowance as a monetary limit. Use a short approved expiry window,
-keep the invite secret private, monitor usage, and disable inference after the
-demo. Durable cross-restart budget enforcement is not implemented.
+Every process starts with its paid gate closed, even when environment settings
+permit inference. Restart, revision rollout and min0 cold start do **not**
+automatically replenish an enabled allowance: the new boot must be explicitly
+activated by the operator after authorization. Activation requires its current
+random boot nonce, a positive allowance within the configured cap, and a future
+expiry no later than the configured expiry. A boot can activate only once;
+exhaustion/expiry cannot be recharged or reopened on that boot.
+
+`DEMO_OPERATOR_TOKEN` is a separate 32+ character operator credential, never the
+invitation token. Only an operator can POST `/api/operator/state` to obtain the
+boot nonce, then POST `/api/operator/activate` with JSON
+`{ "nonce": "...", "allowance": 2, "expiresAt": "approved ISO timestamp" }`.
+Both endpoints require `x-studio-request: 1` and `x-operator-token` headers.
+URL query parameters are rejected. Secrets are compared in constant time after
+hashing; operator requests have a process-wide eight-per-minute limit.
+Ordinary invitations/session cookies cannot obtain the nonce or activate.
+Do not activate the deployed demo without a separate paid-generation approval.
+
+**This is not durable billing enforcement or a monetary cap.** Counters and
+operator rate limits are process-local, and an explicitly authorized new boot
+can receive a new allowance. Single revision/max replica1 is required; do not
+scale out or activate multiple revisions. Monitor usage, use a short approved
+window, and disable inference after the demo. Azure may still bill accepted work
+after expiry, timeout or cancellation. No storage or extra cloud roles were added.
 
 Compile without resource changes:
 
@@ -332,10 +354,24 @@ Deploy the foundation first (`deployApp=false`), build the tracked clean image
 into its registry, then deploy with `deployApp=true` and an immutable commit tag.
 Use the same private secure-parameter file across both deployments and do not
 print it. Keep `enableInference=false`, `maxModelAttempts=0`. The deployment
-operator stores the invitation secret in an ignored local file and shares its
+operator stores invitation and separate operator secrets in ACL-restricted,
+ignored `.local-deploy\demo-access-token.txt` and
+`.local-deploy\demo-operator-token.txt`; `scripts/prepare-deployment.js` preserves
+existing values and writes secure parameters without printing secrets. On Windows
+the directory must have an operator-only inherited ACL before running that script.
+The operator shares only the invitation file
 location with the user, never its value in chat/logs/Git. Verify `/healthz`,
 unauthenticated API rejection, unlock/logout and mode controls without any
 image calls. Template compilation is not proof of live authentication/quality.
+
+The protected demo is hosted at
+<https://vto-studio-b0af194e.purpleground-f12dc511.eastus2.azurecontainerapps.io>.
+Its deployed configuration remains inference-disabled with zero allowance;
+hosting approval is not generation approval. Upper/lower/full UI wiring is
+implemented, but real managed-identity model calls and lower/full quality have
+not yet been verified. `node scripts/check-hosted.js <HTTPS origin>` verifies
+health, invitation/session controls, disabled submission and closed operator
+state without activating or sending any image request to a provider.
 
 ## Accounts
 

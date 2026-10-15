@@ -18,4 +18,5 @@ const jobs = new JobStore({ submissionsPerMinute: 100, provider: async model => 
   const image = await sharp({ create: { width: 64, height: 96, channels: 3, background: model.id === 'mai' ? '#567abc' : '#bc7654' } }).png().toBuffer();
   return { image, requestId: 'synthetic-fixture-not-a-quality-test' };
 } });
+jobs.gate.activate({ nonce: jobs.gate.state().nonce, allowance: 100, expiresAt: '2099-01-01T00:00:00Z' }, config);
 createServer(config, { jobs }).listen(config.port, config.host);
