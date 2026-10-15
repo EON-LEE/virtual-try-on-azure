@@ -7,7 +7,7 @@ import { TRY_ON_PROMPT, PROMPT_VERSION } from '../src/prompt.js';
 import { JobStore } from '../src/jobs.js';
 import { loadConfig } from '../src/config.js';
 import { createServer } from '../src/server.js';
-import { activateForTest } from './fixtures.js';
+import { activateForTest, loginForTest } from './fixtures.js';
 
 const env = {
   ENABLE_AZURE_INFERENCE: 'true', DEMO_MAX_MODEL_ATTEMPTS: '10', DEMO_INFERENCE_EXPIRES_AT: '2099-01-01T00:00:00Z',
@@ -86,8 +86,7 @@ test('HTTP modes reject missing/extra refs and preserve requested three-image or
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const initial = await fetch(`${origin}/api/config`);
-  const cookie = initial.headers.get('set-cookie').split(';')[0];
+  const cookie = await loginForTest(origin);
   const image = await sharp({ create: { width: 8, height: 8, channels: 3, background: 'white' } }).png().toBuffer();
   for (const mode of ['upper', 'lower', 'full']) {
     const data = new FormData();

@@ -35,7 +35,7 @@ test('every boot closed; one-shot activation, expiry and atomic two-slot reserva
   assert.notEqual(restart.nonce, gate.nonce);
   assert.equal(restart.state().open, false);
   assert.throws(() => restart.reserve(1, config.limits), /closed/);
-  assert.throws(() => loadConfig({ ...settings, DEMO_OPERATOR_TOKEN: invite }), /distinct/);
+  assert.throws(() => loadConfig({ ...settings, DEMO_OPERATOR_TOKEN: 'test' }), /32/);
 });
 
 test('two-model failures consume both reserved slots without automatic retry or refund', async () => {
@@ -67,7 +67,7 @@ test('insufficient one-shot allowance sends neither comparison request', () => {
   store.close();
 });
 
-test('operator endpoint hides nonce from ordinary sessions and invitation token cannot activate', async t => {
+test('operator endpoint hides nonce from demo sessions and demo password cannot activate', async t => {
   const config = loadConfig(settings);
   let calls = 0;
   const jobs = new JobStore({ provider: async () => { calls++; } });
@@ -78,19 +78,19 @@ test('operator endpoint hides nonce from ordinary sessions and invitation token 
   const headers = { 'x-studio-request': '1', 'content-type': 'application/json', origin };
   const ordinary = await fetch(`${origin}/api/config`);
   assert.doesNotMatch(await ordinary.text(), /nonce|operator|remaining/);
-  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: invite }) });
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' }) });
   const cookie = login.headers.get('set-cookie').split(';')[0];
   assert.equal((await fetch(`${origin}/api/operator/state`, { method: 'POST', headers: { ...headers, cookie }, body: '{}' })).status, 401);
   const nonceRequest = secret => fetch(`${origin}/api/operator/state`, { method: 'POST', headers: { ...headers, ...(secret ? { 'x-operator-token': secret } : {}) }, body: '{}' });
   assert.equal((await nonceRequest()).status, 401);
-  assert.equal((await nonceRequest(invite)).status, 401);
+  assert.equal((await nonceRequest('test')).status, 401);
   assert.equal((await fetch(`${origin}/api/operator/state?token=${operator}`, { method: 'POST', headers, body: '{}' })).status, 400);
   const state = await (await nonceRequest(operator)).json();
   assert.equal(state.open, false);
   assert.ok(state.nonce);
   const activation = { nonce: state.nonce, allowance: 2, expiresAt: '2099-01-01T00:00:00Z' };
   const activate = secret => fetch(`${origin}/api/operator/activate`, { method: 'POST', headers: { ...headers, 'x-operator-token': secret }, body: JSON.stringify(activation) });
-  assert.equal((await activate(invite)).status, 401);
+  assert.equal((await activate('test')).status, 401);
   assert.equal((await activate(operator)).status, 200);
   assert.equal((await activate(operator)).status, 409);
   assert.equal((await nonceRequest(operator)).status, 200);

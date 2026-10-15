@@ -165,12 +165,15 @@ Changing a deployment name does not prove that it contains the intended model:
 the operator must verify its actual model/version in Azure. Resource endpoint
 validation only permits the supported Azure domains; there is no external fallback.
 
-Non-loopback binding requires `APP_ACCESS_TOKEN` (32+ characters) and an HTTPS
-`APP_ORIGIN`. Users unlock the UI with that token; it is exchanged for an
-HttpOnly, SameSite session cookie, not stored in browser local storage. Public
-deployments need an HTTPS reverse proxy. Do not expose the loopback development
-server with an unauthenticated tunnel. The shared-token demo is not a substitute
-for per-user enterprise identity, access auditing, or production authorization.
+Non-loopback binding requires an HTTPS `APP_ORIGIN`. The demo login is
+**username `test`, password `test`**, verified by the server before issuing an
+HttpOnly, Secure (HTTPS), SameSite=Strict session cookie. No invitation token or
+local secret-file reading is required. The old token-login request is rejected.
+These intentionally public, weak credentials are a demo convenience, **not
+private access or production security**; do not reuse them for a real service.
+Login requests are rate limited. Paid inference remains separately protected
+by the operator-only boot gate, not the demo password. The operator secret is
+never exposed in the login form or public configuration.
 
 ## Editing contract and limitations
 
@@ -205,6 +208,12 @@ New live outputs receive no pre-existing agent verdict or fake automatic score.
 Manual verdicts/notes are local browser memory only and reset on input changes,
 new generation, clearing or refresh. Compare skin/hair color, protected
 non-target areas and garment color/pattern/texture/logos/cut explicitly.
+Manual review is collapsed below each result so it does not reduce image space.
+The studio workflow is person (upload or sample), garment (upload or sample),
+model selection, then create. Samples are loaded from the same-origin
+`public/samples/manifest.json`; selection uses the actual image bytes as the
+request input, never a fake output, and does not call Azure until submission.
+Sample sources/licenses are recorded in the manifest and shown in photo help.
 
 Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096 pixels per side and
 20 megapixels. Sharp applies EXIF orientation and removes metadata by PNG
@@ -286,9 +295,9 @@ exhaustion; the approved single eastus2 fallback succeeded. The failed eastus
 environment was not deleted. Exactly three role assignments are scoped to the Sunburst resource
 (OpenAI User), MAI resource (Cognitive Services User) and registry (AcrPull).
 Existing model resources/local-auth settings are not changed. HTTPS external
-ingress exposes the static UI, but all uploads, jobs and images require an
-invitation secret exchanged for an HttpOnly/Secure/SameSite session cookie.
-This is a closed shared-secret demo, not per-user enterprise SSO.
+ingress exposes the static login and published sample assets. Uploads, jobs and
+result images require the server-issued demo login session cookie. The public
+test/test account is not per-user enterprise SSO or a private access boundary.
 
 Single revision/max replica 1 preserves session ownership; min replica 0
 reduces idle compute but introduces cold starts and loss of in-memory sessions/
@@ -321,14 +330,14 @@ random boot nonce, a positive allowance within the configured cap, and a future
 expiry no later than the configured expiry. A boot can activate only once;
 exhaustion/expiry cannot be recharged or reopened on that boot.
 
-`DEMO_OPERATOR_TOKEN` is a separate 32+ character operator credential, never the
-invitation token. Only an operator can POST `/api/operator/state` to obtain the
+`DEMO_OPERATOR_TOKEN` is a separate 32+ character operator credential, unrelated
+to the demo login. Only an operator can POST `/api/operator/state` to obtain the
 boot nonce, then POST `/api/operator/activate` with JSON
 `{ "nonce": "...", "allowance": 2, "expiresAt": "approved ISO timestamp" }`.
 Both endpoints require `x-studio-request: 1` and `x-operator-token` headers.
 URL query parameters are rejected. Secrets are compared in constant time after
 hashing; operator requests have a process-wide eight-per-minute limit.
-Ordinary invitations/session cookies cannot obtain the nonce or activate.
+Ordinary demo credentials/session cookies cannot obtain the nonce or activate.
 Do not activate the deployed demo without a separate paid-generation approval.
 
 **This is not durable billing enforcement or a monetary cap.** Counters and
@@ -354,14 +363,12 @@ Deploy the foundation first (`deployApp=false`), build the tracked clean image
 into its registry, then deploy with `deployApp=true` and an immutable commit tag.
 Use the same private secure-parameter file across both deployments and do not
 print it. Keep `enableInference=false`, `maxModelAttempts=0`. The deployment
-operator stores invitation and separate operator secrets in ACL-restricted,
-ignored `.local-deploy\demo-access-token.txt` and
-`.local-deploy\demo-operator-token.txt`; `scripts/prepare-deployment.js` preserves
+operator stores the separate operator secret in ACL-restricted,
+ignored `.local-deploy\demo-operator-token.txt`; `scripts/prepare-deployment.js` preserves
 existing values and writes secure parameters without printing secrets. On Windows
 the directory must have an operator-only inherited ACL before running that script.
-The operator shares only the invitation file
-location with the user, never its value in chat/logs/Git. Verify `/healthz`,
-unauthenticated API rejection, unlock/logout and mode controls without any
+Never share the operator secret in chat/logs/Git or with demo users.
+Verify `/healthz`, unauthenticated API rejection, test/test login/logout and mode controls without any
 image calls. Template compilation is not proof of live authentication/quality.
 
 The protected demo is hosted at
@@ -370,7 +377,7 @@ Its deployed configuration remains inference-disabled with zero allowance;
 hosting approval is not generation approval. Upper/lower/full UI wiring is
 implemented, but real managed-identity model calls and lower/full quality have
 not yet been verified. `node scripts/check-hosted.js <HTTPS origin>` verifies
-health, invitation/session controls, disabled submission and closed operator
+health, demo login/session controls, disabled submission and closed operator
 state without activating or sending any image request to a provider.
 
 ## Accounts

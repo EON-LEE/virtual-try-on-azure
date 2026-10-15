@@ -11,9 +11,6 @@ param imageTag string = 'approved-build'
 param deployApp bool = false
 @secure()
 @minLength(32)
-param accessToken string
-@secure()
-@minLength(32)
 param operatorToken string
 @description('A separate generation approval is required; hosting deploy leaves false.')
 param enableInference bool = false
@@ -82,7 +79,6 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
     configuration: {
       activeRevisionsMode: 'Single'
       secrets: [
-        { name: 'studio-access-token', value: accessToken }
         { name: 'studio-operator-token', value: operatorToken }
       ]
       registries: [{ server: registry.properties.loginServer, identity: identity.id }]
@@ -98,7 +94,6 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'HOST', value: '0.0.0.0' }
             { name: 'PORT', value: '3000' }
             { name: 'APP_ORIGIN', value: 'https://${appName}.${environment.properties.defaultDomain}' }
-            { name: 'APP_ACCESS_TOKEN', secretRef: 'studio-access-token' }
             { name: 'DEMO_OPERATOR_TOKEN', secretRef: 'studio-operator-token' }
             { name: 'ENABLE_AZURE_INFERENCE', value: enableInference ? 'true' : 'false' }
             { name: 'DEMO_MAX_MODEL_ATTEMPTS', value: string(maxModelAttempts) }

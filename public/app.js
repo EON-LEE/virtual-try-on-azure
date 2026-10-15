@@ -2,6 +2,21 @@ const $ = id => document.getElementById(id);
 const roles = ['person', 'upper', 'lower'];
 const models = ['sunburst', 'mai'];
 const labels = { sunburst: 'Sunburst', mai: 'MAI Image 2.6' };
+const messages = {
+  'model-unavailable': '현재 생성을 사용할 수 없습니다.',
+  'demo-budget-closed': '현재 생성을 사용할 수 없습니다.',
+  'login-rate-limit': '로그인 시도가 많습니다. 잠시 후 다시 시도해 주세요.',
+  'demo-rate-limit': '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+  busy: '다른 사진을 처리 중입니다. 잠시 후 다시 시도해 주세요.',
+  'azure-400': '사진을 처리하지 못했습니다. 다른 사진을 선택해 주세요.',
+  'azure-401': '모델에 연결하지 못했습니다.',
+  'azure-403': '모델을 사용할 권한이 없습니다.',
+  'azure-404': '모델을 사용할 수 없습니다.',
+  'azure-429': '모델의 요청 한도에 도달했습니다.',
+  'azure-connection': '모델 응답을 받지 못했습니다. 전송된 요청은 과금될 수 있습니다.',
+  'invalid-provider-response': '모델의 결과를 불러오지 못했습니다.',
+  'generation-failed': '사진을 생성하지 못했습니다.'
+};
 const modeFields = { upper: ['upper'], lower: ['lower'], full: ['upper', 'lower'] };
 const state = { config: null, files: {}, urls: {}, results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
 const selected = () => models.filter(id => $(`select-${id}`).checked);
@@ -14,8 +29,9 @@ async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { 'x-studio-request': '1', ...options.headers }, signal });
   const data = await response.json();
   if (!response.ok) {
-    const cause = new Error(data.error?.message || `요청 실패 (${response.status})`);
+    const cause = new Error(messages[data.error?.code] || data.error?.message || `요청 실패 (${response.status})`);
     cause.status = response.status;
+    cause.code = data.error?.code;
     throw cause;
   }
   return data;
@@ -24,29 +40,35 @@ async function api(path, options = {}) {
 function controls() {
   $('input-fields').disabled = state.busy || !state.config?.authenticated;
   $('generate').disabled = state.busy || state.loading > 0 || !state.config?.authenticated ||
-    required().some(role => !state.files[role]) || !selected().length || !$('consent').checked;
-  $('generate').textContent = state.busy ? '생성 중… 자동 재시도 없음' : `선택한 모델로 생성 · ${selected().length}회 호출`;
+    required().some(role => !state.files[role]) || !selected().length || !$('consent').checked ||
+    selected().some(id => !state.config.models.find(model => model.id === id)?.ready);
+  $('generate').textContent = state.busy ? '만드는 중…' : '만들기';
+  $('call-note').textContent = selected().length ? `선택한 모델 ${selected().length}개 · ${selected().length}회 생성` : '모델을 선택해 주세요.';
   $('clear').disabled = !state.config?.authenticated;
+  const ids = selected();
+  $('preview-grid').dataset.columns = ids.length === 2 ? '4' : '3';
+  models.forEach(id => {
+    const cell = $(`${id}-result`).closest('article');
+    cell.hidden = !ids.includes(id) && !(ids.length === 0 && id === 'sunburst') && !state.results[id];
+  });
+  $('sunburst-title').textContent = ids.length || state.results.sunburst ? 'Sunburst' : '결과';
   const fields = modeFields[$('mode').value];
   for (const role of ['upper', 'lower']) {
     $(`${role}-upload`).hidden = !fields.includes(role);
-    $(role).required = fields.includes(role);
     $(`${role}-reference`).hidden = !fields.includes(role);
   }
   $('mode-guidance').textContent = $('mode').value === 'upper'
-    ? '상의만 교체합니다. 하의·신발·액세서리는 유지하도록 지시합니다.'
-    : '허리·다리·발과 가려진 부분을 확인할 수 있는 전신 사진을 사용하세요. 풀세트는 상의+하의이며 원피스·신발·액세서리는 포함하지 않습니다.';
+    ? '' : '허리와 다리가 보이는 전신 사진을 선택하세요.';
 }
 
 async function initialize() {
   state.config = await api('/api/config');
   $('unlock').hidden = state.config.authenticated;
+  $('workspace').hidden = !state.config.authenticated;
   const count = state.config.models.filter(model => model.ready).length;
-  $('connection').textContent = count ? `${count}개 모델 설정됨 · 품질 보장 아님` : '생성 비활성 · 운영자 승인 필요';
+  $('connection').textContent = count ? '피팅 준비 완료' : '현재 생성을 사용할 수 없습니다';
   for (const model of state.config.models) {
-    $(`select-${model.id}`).disabled = !model.ready;
-    if (!model.ready) $(`select-${model.id}`).checked = false;
-    $(`${model.id}-state`).textContent = model.ready ? `${model.model} · 설정됨` : '호출 비활성 또는 설정 미완료';
+    $(`select-${model.id}`).disabled = false;
   }
   controls();
 }
@@ -65,7 +87,6 @@ function clearResults() {
     $(`${id}-verdict`).value = '';
     $(`${id}-notes`).value = '';
   }
-  $('technical').textContent = '새 결과에는 자동 평가를 붙이지 않습니다.';
   render();
 }
 
@@ -85,11 +106,11 @@ function render() {
     else image.removeAttribute('src');
     const empty = $(`${id}-empty`);
     empty.hidden = Boolean(result?.url);
-    empty.textContent = !result ? '미선택 또는 아직 생성하지 않음' : result.status === 'running'
-      ? '생성 중…' : result.error?.message || '결과 확인 실패';
+    empty.textContent = !result ? '피팅 결과가 여기에 표시됩니다' : result.status === 'running'
+      ? '만드는 중…' : messages[result.error?.code] || result.error?.message || '결과를 불러오지 못했습니다';
     $(`${id}-summary`).textContent = result?.url
-      ? `${(result.durationMs / 1000).toFixed(1)}초 · ${result.dimensions || '크기 확인 중'} · 수동 검토 필요`
-      : result?.status === 'failed' ? '실패 · 자동 재시도하지 않음' : '평가 전';
+      ? `${(result.durationMs / 1000).toFixed(1)}초`
+      : result?.status === 'failed' ? '생성 실패' : '';
     $(`${id}-download`).hidden = !result?.url;
     if (result?.url) $(`${id}-download`).href = result.url;
     else $(`${id}-download`).removeAttribute('href');
@@ -104,18 +125,16 @@ async function discard() {
   state.job = null;
 }
 
-for (const role of roles) {
-  let revision = 0;
-  $(role).addEventListener('change', async () => {
-    const current = ++revision, epoch = state.epoch;
+const revisions = Object.fromEntries(roles.map(role => [role, 0]));
+async function chooseFile(role, file, sampleId = null) {
+    const current = ++revisions[role], epoch = state.epoch;
     state.loading++;
     controls();
     error('');
-    const file = $(role).files[0];
     let newUrl;
     try {
       await discard();
-      if (current !== revision || epoch !== state.epoch) return;
+      if (current !== revisions[role] || epoch !== state.epoch) return;
       clearResults();
       if (state.urls[role]) URL.revokeObjectURL(state.urls[role]);
       delete state.files[role]; delete state.urls[role];
@@ -127,20 +146,58 @@ for (const role of roles) {
         image.src = newUrl;
         await image.decode();
         if (image.naturalWidth > 4096 || image.naturalHeight > 4096 || image.naturalWidth * image.naturalHeight > 20_000_000) throw new Error('한 변 4096px 이하, 20메가픽셀 이하 사진을 사용하세요.');
-        if (current !== revision || epoch !== state.epoch) return;
+        if (current !== revisions[role] || epoch !== state.epoch) return;
         state.files[role] = file;
         state.urls[role] = newUrl;
         newUrl = null;
       }
-      status('참조 사진과 호출할 모델을 확인하세요.');
+      document.querySelectorAll(`#${role}-samples button`).forEach(button => button.setAttribute('aria-pressed', String(button.dataset.id === sampleId)));
+      status('모델을 선택하고 만들어 보세요.');
     } catch (cause) {
-      if (current === revision && epoch === state.epoch) { $(role).value = ''; error(cause.message); }
+      if (current === revisions[role] && epoch === state.epoch) { $(role).value = ''; error(cause.message); }
     } finally {
       if (newUrl) URL.revokeObjectURL(newUrl);
       state.loading--;
       render();
     }
-  });
+}
+for (const role of roles) {
+  $(role).addEventListener('change', () => chooseFile(role, $(role).files[0]));
+}
+
+async function loadSamples() {
+  const response = await fetch('/samples/manifest.json', { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error('샘플을 불러오지 못했습니다.');
+  const manifest = await response.json();
+  for (const item of manifest.items) {
+    if (!roles.includes(item.category) || !/^\/samples\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/.test(item.src)) throw new Error('샘플 목록을 확인해 주세요.');
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'sample'; button.dataset.id = item.id; button.dataset.label = item.label;
+    button.setAttribute('aria-label', `${item.label} 선택`); button.setAttribute('aria-pressed', 'false');
+    const image = document.createElement('img');
+    image.src = item.src; image.alt = ''; image.loading = 'lazy';
+    button.append(image);
+    button.addEventListener('click', async () => {
+      if (state.busy) return;
+      button.disabled = true;
+      const epoch = state.epoch;
+      const revision = ++revisions[item.category];
+      state.loading++; controls();
+      try {
+        const result = await fetch(item.src, { signal: AbortSignal.timeout(30_000) });
+        if (!result.ok) throw new Error('샘플 사진을 불러오지 못했습니다.');
+        const blob = await result.blob();
+        if (epoch !== state.epoch || revision !== revisions[item.category]) return;
+        $(item.category).value = '';
+        await chooseFile(item.category, new File([blob], item.src.split('/').pop(), { type: blob.type }), item.id);
+      } catch (cause) { error(cause.message); } finally { button.disabled = false; state.loading--; controls(); }
+    });
+    $(`${item.category}-samples`).append(button);
+    if (item.attribution) {
+      const credit = document.createElement('p'); credit.textContent = item.attribution;
+      $('sample-credits').append(credit);
+    }
+  }
 }
 
 $('mode').addEventListener('change', async () => {
@@ -169,8 +226,6 @@ async function applyJob(job, epoch) {
     }
     state.results[id] = { ...result, url, dimensions };
   }
-  $('technical').textContent = `지시 버전: ${job.promptVersion}. ` + Object.entries(job.results).map(([id, result]) =>
-    `${labels[id]}: ${result.model}, ${result.status}${result.requestId ? `, 요청 ID ${result.requestId}` : ''}`).join(' / ');
   render();
   if (job.status !== 'running') {
     clearTimeout(state.expiry);
@@ -190,7 +245,7 @@ $('try-on-form').addEventListener('submit', async event => {
     clearResults();
     for (const id of ids) state.results[id] = { status: 'running' };
     render();
-    status(`${ids.map(id => labels[id]).join(' / ')} 호출 중 · ${ids.length}회 호출 · 자동 재시도 없음`);
+    status(`${ids.map(id => labels[id]).join(' · ')} 만드는 중…`);
     const form = new FormData();
     for (const role of ['person', ...modeFields[mode]]) form.set(role, state.files[role]);
     form.set('mode', mode); form.set('models', JSON.stringify(ids)); form.set('consent', 'true');
@@ -205,11 +260,11 @@ $('try-on-form').addEventListener('submit', async event => {
       if (epoch !== state.epoch) return;
       job = await api(`/api/jobs/${job.id}`, { signal: state.controller.signal });
     }
-    if (epoch === state.epoch) status(job.status === 'succeeded' ? '생성 완료 · 색상과 비대상 영역까지 원본과 비교해 수동 평가하세요.' : '일부 또는 모든 모델 실패 · 각 셀의 오류를 확인하세요.');
+    if (epoch === state.epoch) status(job.status === 'succeeded' ? '완성했어요. 사진을 눌러 크게 확인하세요.' : '생성하지 못한 결과가 있습니다. 오류를 확인해 주세요.');
   } catch (cause) {
     if (epoch !== state.epoch) return;
-    error(`${cause.message} 전송된 요청은 과금될 수 있습니다. 자동 재호출하지 않았습니다.`);
-    status('결과 확인을 완료하지 못했습니다.');
+    error(`${cause.message}${!cause.status || cause.status >= 500 && cause.code !== 'model-unavailable' ? ' 전송된 요청은 과금될 수 있습니다.' : ''} 자동 재시도하지 않았습니다.`);
+    status('결과를 확인하지 못했습니다.');
     for (const result of Object.values(state.results)) if (result.status === 'running') {
       result.status = 'failed'; result.error = { message: '결과 미확인 · 서버 또는 Azure 처리는 계속될 수 있습니다.' };
     }
@@ -219,10 +274,11 @@ $('try-on-form').addEventListener('submit', async event => {
   }
 });
 
-$('clear').addEventListener('click', async () => {
+async function clearStudio(logout = false) {
   error('');
   try {
-    await api('/api/session', { method: 'DELETE' });
+    if (logout) await api('/api/session', { method: 'DELETE' });
+    else await discard();
     state.epoch++; state.controller?.abort(); state.busy = false; state.job = null;
     clearResults();
     for (const role of roles) {
@@ -230,18 +286,28 @@ $('clear').addEventListener('click', async () => {
       $(role).value = '';
     }
     state.files = {}; state.urls = {}; $('consent').checked = false;
+    document.querySelectorAll('.sample').forEach(button => button.setAttribute('aria-pressed', 'false'));
+    models.forEach(id => { $(`select-${id}`).checked = false; });
     render(); await initialize();
-    status('사진과 결과를 비웠습니다. 이미 수락된 Azure 처리·과금 취소는 보장하지 않습니다.');
+    status('사진과 결과를 비웠습니다.');
   } catch (cause) { error(`비우기 실패: ${cause.message}`); }
-});
+}
+$('clear').addEventListener('click', () => clearStudio());
+$('logout').addEventListener('click', () => clearStudio(true));
 
 $('unlock-form').addEventListener('submit', async event => {
-  event.preventDefault(); error('');
+  event.preventDefault();
+  $('login-error').hidden = true;
+  const submit = event.currentTarget.querySelector('button');
+  submit.disabled = true;
   try {
-    const token = $('access-token').value; $('access-token').value = '';
-    await api('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
+    const username = $('username').value, password = $('password').value;
+    $('password').value = '';
+    await api('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) });
     await initialize();
-  } catch (cause) { error(cause.message); }
+    $('mode').focus();
+  } catch (cause) { $('login-error').textContent = cause.message; $('login-error').hidden = false; }
+  finally { submit.disabled = false; }
 });
 document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListener('click', () => {
   const image = $(button.dataset.zoom);
@@ -255,3 +321,4 @@ $('zoom-close').addEventListener('click', closeZoom);
 $('zoom').addEventListener('close', () => $('zoom-image').removeAttribute('src'));
 render();
 initialize().catch(cause => { $('connection').textContent = '서버 연결 실패'; error(cause.message); controls(); });
+loadSamples().catch(cause => error(cause.message));

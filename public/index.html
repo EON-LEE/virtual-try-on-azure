@@ -2,50 +2,55 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f8f6f2"><title>입어보다 · Azure 피팅 스튜디오</title>
+  <meta name="theme-color" content="#f5f5f3"><title>입어보다 · Virtual Try-On</title>
   <link rel="stylesheet" href="/styles.css"><script src="/app.js" type="module"></script>
 </head>
 <body>
   <a class="skip" href="#studio">피팅 화면으로 이동</a>
-  <header><div class="brand">입어보다 <span>FITTING STUDIO</span></div><span id="connection" class="pill">연결 확인 중</span></header>
-  <main id="studio">
-    <section class="intro"><p class="eyebrow">AZURE VIRTUAL TRY-ON</p><h1>같은 사람, 다른 옷. 직접 비교하세요.</h1><p class="muted">상의·하의·상하의 풀세트를 선택합니다. 선택한 모델만 호출하며 프롬프트는 백엔드가 적용합니다.</p></section>
-    <section id="unlock" class="unlock" hidden><h2>초대된 데모 사용자 접속</h2><form id="unlock-form"><label for="access-token">운영자가 별도로 전달한 접속 토큰</label><div class="unlock-row"><input id="access-token" type="password" autocomplete="off" required maxlength="1024"><button class="primary" type="submit">접속</button></div></form></section>
-    <form id="try-on-form" class="controls">
-      <fieldset id="input-fields">
-        <legend class="sr-only">피팅 입력</legend>
-        <label class="mode-field" for="mode">교체 범위<select id="mode"><option value="upper">상의만</option><option value="lower">하의만</option><option value="full">풀세트 · 상의 + 하의</option></select></label>
-        <label class="file-field" for="person">원본 사람 사진<input id="person" type="file" accept="image/png,image/jpeg" required></label>
-        <label id="upper-upload" class="file-field" for="upper">상의 참조 사진<input id="upper" type="file" accept="image/png,image/jpeg" required></label>
-        <label id="lower-upload" class="file-field" for="lower" hidden>하의 참조 사진<input id="lower" type="file" accept="image/png,image/jpeg"></label>
-        <fieldset class="model-picker"><legend>호출 모델 · 직접 선택</legend>
-          <label><input id="select-sunburst" type="checkbox" value="sunburst" disabled> Sunburst <small id="sunburst-state">연결 확인 중</small></label>
-          <label><input id="select-mai" type="checkbox" value="mai" disabled> MAI Image 2.6 <em>Preview</em><small id="mai-state">연결 확인 중</small></label>
-        </fieldset>
-        <div class="submit-area"><label class="consent"><input id="consent" type="checkbox" required>사진 사용 권한과 선택한 Azure 모델 전송에 동의합니다.</label><button id="generate" class="primary" type="submit" disabled>선택한 모델로 생성</button><p class="hint">두 모델 선택 = 2회 호출·각각 과금. 자동 재시도 없음.</p></div>
-        <p id="mode-guidance" class="hint wide"></p><p class="hint wide">PNG/JPEG · 장당 10 MiB 이하 · 한 변 4096px 이하. 상의/하의는 별도 사진이며 누락된 의류를 추측해 생성하지 않습니다. 하의·풀세트의 실제 모델 품질은 아직 검증하지 않았습니다.</p>
-      </fieldset>
-    </form>
-    <p class="caution">피부색·헤어·포즈·비대상 의류·무늬·재질·로고·재단 보존은 보장되지 않습니다. 참조에 없는 글자나 브랜드가 생성될 수도 있습니다.</p>
-    <section class="view" aria-label="원본과 모델별 피팅 비교">
-      <div id="preview-grid" class="preview-grid">
-        <article class="case-cell"><h2>원본 사람</h2><button type="button" class="stage" data-zoom="before" aria-label="원본 사람 사진 확대"><img id="before" alt="원본 사람 사진" hidden><span id="person-empty" class="empty">사람 사진을 선택하세요</span></button><p class="cell-note">색상·실루엣·손·배경 비교 기준</p></article>
-        <article class="case-cell"><h2>의류 참조</h2><div class="references">
-          <div id="upper-reference"><button type="button" class="stage" data-zoom="upper-preview" aria-label="상의 참조 확대"><img id="upper-preview" alt="상의 참조 사진" hidden><span id="upper-empty" class="empty">상의 참조를 선택하세요</span></button><p class="cell-note">상의</p></div>
-          <div id="lower-reference" hidden><button type="button" class="stage" data-zoom="lower-preview" aria-label="하의 참조 확대"><img id="lower-preview" alt="하의 참조 사진" hidden><span id="lower-empty" class="empty">하의 참조를 선택하세요</span></button><p class="cell-note">하의</p></div>
-        </div><p class="cell-note">풀세트는 상의와 하의 참조를 함께 표시</p></article>
-        <article class="case-cell"><h2>Sunburst</h2><button type="button" class="stage" data-zoom="sunburst-result" aria-label="Sunburst 결과 확대"><img id="sunburst-result" alt="Sunburst 생성 결과" hidden><span id="sunburst-empty" class="empty">아직 생성하지 않음</span></button><p id="sunburst-summary" class="cell-note">평가 전</p><a id="sunburst-download" class="secondary" download="try-on-sunburst.png" hidden>결과 저장</a>
-          <fieldset id="sunburst-review" class="manual-review" disabled><legend>내 수동 평가 · 자동 평가 아님</legend><label>판정<select id="sunburst-verdict"><option value="">평가 전</option><option>허용 가능</option><option>수정 필요</option><option>판단 보류</option></select></label><label>관찰<textarea id="sunburst-notes" maxlength="2000" placeholder="피부/헤어 색, 비대상 영역, 무늬/로고/재질/재단"></textarea></label></fieldset>
-        </article>
-        <article class="case-cell"><h2>MAI Image 2.6 · Preview</h2><button type="button" class="stage" data-zoom="mai-result" aria-label="MAI 결과 확대"><img id="mai-result" alt="MAI 생성 결과" hidden><span id="mai-empty" class="empty">아직 생성하지 않음</span></button><p id="mai-summary" class="cell-note">평가 전</p><a id="mai-download" class="secondary" download="try-on-mai.png" hidden>결과 저장</a>
-          <fieldset id="mai-review" class="manual-review" disabled><legend>내 수동 평가 · 자동 평가 아님</legend><label>판정<select id="mai-verdict"><option value="">평가 전</option><option>허용 가능</option><option>수정 필요</option><option>판단 보류</option></select></label><label>관찰<textarea id="mai-notes" maxlength="2000" placeholder="피부/헤어 색, 비대상 영역, 무늬/로고/재질/재단"></textarea></label></fieldset>
-        </article>
+  <section id="unlock" class="login-screen">
+    <div class="login-card"><a class="brand" href="/">입어보다<span>VIRTUAL TRY-ON</span></a><div class="login-art" aria-hidden="true"><span>옷을 바꾸는<br>새로운 방법.</span><i></i><i></i></div>
+      <h1>로그인</h1><p class="muted">데모 계정으로 시작하세요.</p>
+      <form id="unlock-form"><label for="username">아이디</label><input id="username" autocomplete="username" required maxlength="128" placeholder="test"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="test"><p id="login-error" class="error" role="alert" hidden></p><button class="primary" type="submit">로그인</button></form><p class="login-hint">아이디 test · 비밀번호 test</p>
+    </div>
+  </section>
+  <div id="workspace" hidden>
+    <header><a class="brand" href="/">입어보다<span>VIRTUAL TRY-ON</span></a><nav><span class="nav-current">피팅 스튜디오</span><button id="logout" class="text-button" type="button">로그아웃</button></nav></header>
+    <main id="studio">
+      <div class="page-title"><div><p class="eyebrow">YOUR NEXT LOOK</p><h1>오늘은 어떤 옷을 입어볼까요?</h1></div><span id="connection" class="connection" role="status">연결 중</span></div>
+      <div class="studio-layout">
+        <form id="try-on-form" class="controls">
+          <fieldset id="input-fields"><legend class="sr-only">피팅 입력</legend>
+            <section class="input-section"><h2><b>01</b> 사람</h2><label class="upload-button" for="person">사진 업로드<input id="person" type="file" accept="image/png,image/jpeg"></label><div id="person-samples" class="sample-gallery" aria-label="사람 샘플"></div></section>
+            <section class="input-section"><h2><b>02</b> 의상</h2><label class="sr-only" for="mode">교체 범위</label><select id="mode"><option value="upper">상의</option><option value="lower">하의</option><option value="full">풀세트(상의+하의)</option></select>
+              <div id="upper-upload" class="garment-input"><label class="upload-button" for="upper">상의 사진 업로드<input id="upper" type="file" accept="image/png,image/jpeg"></label><div id="upper-samples" class="sample-gallery" aria-label="상의 샘플"></div></div>
+              <div id="lower-upload" class="garment-input" hidden><label class="upload-button" for="lower">하의 사진 업로드<input id="lower" type="file" accept="image/png,image/jpeg"></label><div id="lower-samples" class="sample-gallery" aria-label="하의 샘플"></div></div>
+              <p id="mode-guidance" class="hint"></p>
+            </section>
+            <section class="input-section"><h2><b>03</b> 모델</h2><fieldset class="model-picker"><legend class="sr-only">생성 모델 선택</legend><label><input id="select-sunburst" type="checkbox" value="sunburst"><span>Sunburst<small id="sunburst-state">GPT Image 2.5</small></span></label><label><input id="select-mai" type="checkbox" value="mai"><span>MAI<small id="mai-state">Image 2.6 · Preview</small></span></label></fieldset><p class="hint">두 모델을 선택하면 결과를 비교할 수 있어요.</p></section>
+            <div class="submit-area"><label class="consent"><input id="consent" type="checkbox" required>사진 사용 및 Azure 전송에 동의합니다.</label><button id="generate" class="primary" type="submit" disabled>만들기</button><p id="call-note" class="hint"></p></div>
+          </fieldset>
+          <details class="help"><summary>사진 선택 도움말</summary><p>PNG/JPEG · 장당 10 MiB · 한 변 4096px 이하.</p><p>하의와 풀세트는 전신 사진을 사용하세요. 풀세트에는 상의와 하의 사진이 각각 필요합니다.</p><p>결과의 색상과 디테일은 원본과 다를 수 있습니다. 실제 사이즈나 착용감을 예측하지 않습니다.</p><div id="sample-credits"></div></details>
+        </form>
+        <section class="view" aria-label="원본과 피팅 결과">
+          <div class="view-heading"><h2>피팅 룸</h2><button id="clear" class="text-button" type="button">비우기</button></div>
+          <div id="preview-grid" class="preview-grid">
+            <article class="case-cell"><h3>원본 <span>BEFORE</span></h3><button type="button" class="stage" data-zoom="before" aria-label="원본 사진 확대"><img id="before" alt="원본 사람 사진" hidden><span id="person-empty" class="empty"><i>+</i>사람 사진을 선택하세요</span></button></article>
+            <article class="case-cell reference-cell"><h3>의상 <span>GARMENT</span></h3><div class="references">
+              <div id="upper-reference"><button type="button" class="stage" data-zoom="upper-preview" aria-label="상의 사진 확대"><img id="upper-preview" alt="상의 사진" hidden><span id="upper-empty" class="empty"><i>+</i>상의 사진을 선택하세요</span></button></div>
+              <div id="lower-reference" hidden><button type="button" class="stage" data-zoom="lower-preview" aria-label="하의 사진 확대"><img id="lower-preview" alt="하의 사진" hidden><span id="lower-empty" class="empty"><i>+</i>하의 사진을 선택하세요</span></button></div>
+            </div></article>
+            <article class="case-cell result-cell"><h3><strong id="sunburst-title">결과</strong> <span>AFTER</span></h3><button type="button" class="stage" data-zoom="sunburst-result" aria-label="Sunburst 결과 확대"><img id="sunburst-result" alt="Sunburst 피팅 결과" hidden><span id="sunburst-empty" class="empty"></span></button><p id="sunburst-summary" class="cell-note"></p><a id="sunburst-download" class="secondary" download="try-on-sunburst.png" hidden>저장</a>
+              <details class="review-details"><summary>결과 평가</summary><fieldset id="sunburst-review" class="manual-review" disabled><legend class="sr-only">Sunburst 수동 평가</legend><label>판정<select id="sunburst-verdict"><option value="">평가 전</option><option>허용 가능</option><option>수정 필요</option><option>판단 보류</option></select></label><label>메모<textarea id="sunburst-notes" maxlength="2000" placeholder="원본과 비교해 기록하세요."></textarea></label></fieldset></details>
+            </article>
+            <article class="case-cell result-cell"><h3>MAI <span>AFTER</span></h3><button type="button" class="stage" data-zoom="mai-result" aria-label="MAI 결과 확대"><img id="mai-result" alt="MAI 피팅 결과" hidden><span id="mai-empty" class="empty"></span></button><p id="mai-summary" class="cell-note"></p><a id="mai-download" class="secondary" download="try-on-mai.png" hidden>저장</a>
+              <details class="review-details"><summary>결과 평가</summary><fieldset id="mai-review" class="manual-review" disabled><legend class="sr-only">MAI 수동 평가</legend><label>판정<select id="mai-verdict"><option value="">평가 전</option><option>허용 가능</option><option>수정 필요</option><option>판단 보류</option></select></label><label>메모<textarea id="mai-notes" maxlength="2000" placeholder="원본과 비교해 기록하세요."></textarea></label></fieldset></details>
+            </article>
+          </div>
+          <p id="status" class="status" role="status" aria-live="polite">사람과 의상을 선택해 주세요.</p><p id="error" class="error" role="alert" hidden></p>
+        </section>
       </div>
-      <div class="bottom-actions"><p id="status" role="status" aria-live="polite">사진과 모델을 선택하세요.</p><button id="clear" class="secondary" type="button">사진과 결과 비우기</button></div><p id="error" class="error" role="alert" hidden></p>
-      <details><summary>처리·평가·보관의 한계</summary><p>사진은 제출 전까지 이 브라우저에서만 미리 봅니다. 제출하면 EXIF 방향 반영·메타데이터 제거 PNG를 선택한 Azure 모델에 전송합니다. 결과와 원본은 크기나 비율이 달라질 수 있으며 잘라 맞추지 않고 전체를 표시합니다. 사진을 클릭해 확대할 수 있습니다.</p><p>이전 실험의 사전 평가는 이 화면의 새 결과에 적용하지 않습니다. 각 결과 아래 수동 평가는 브라우저 메모리에만 있으며 업로드·새 생성·비우기·새로고침 시 사라집니다. 자동 품질 점수나 통과 판정을 생성하지 않습니다. 실제 사이즈·착용감 예측이 아니며 MAI Preview는 프로덕션에 권장하지 않습니다.</p><p>서버 사진 파일 저장 없음. 결과는 완료 후 최대 10분, 세션은 최대 30분 보관합니다. 단일 인스턴스 데모는 재시작·축소 시 결과와 세션이 사라집니다. 비우기는 이미 수락된 Azure 처리·과금 취소를 보장하지 않습니다. Global 모델 배포는 리소스 지역 밖에서 처리할 수 있으며 Azure 자체 정책은 별도로 적용됩니다.</p><p id="technical">새 결과에는 자동 평가를 붙이지 않습니다.</p></details>
-    </section>
-    <footer>초대된 사용자용 데모 · 외형 미리보기이며 보존 보장 아님 · 데이터셋 사진과 비공개 실험 리포트는 포함하지 않습니다.</footer>
-  </main>
+    </main>
+  </div>
   <dialog id="zoom" aria-labelledby="zoom-title"><div class="zoom-bar"><h2 id="zoom-title">사진 확대</h2><button id="zoom-close" class="secondary" type="button">닫기</button></div><img id="zoom-image" alt=""></dialog>
 </body>
 </html>

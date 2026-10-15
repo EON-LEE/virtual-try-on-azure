@@ -73,6 +73,15 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
       const expectedOrigin = config.origin || origin.origin;
       if (req.headers.origin && req.headers.origin !== expectedOrigin) throw new AppError(403, 'cross-origin', 'Cross-origin requests are not allowed.');
       const path = new URL(req.url, expectedOrigin).pathname;
+      if (req.method === 'GET' && /^\/samples\/(?:manifest\.json|[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png))$/.test(path)) {
+        let bytes;
+        try { bytes = await readFile(new URL(`.${path}`, publicDir)); } catch (cause) {
+          if (cause.code !== 'ENOENT') throw cause;
+          throw new AppError(404, 'sample-not-found', '샘플을 찾을 수 없습니다.');
+        }
+        res.setHeader('Content-Type', path.endsWith('.json') ? 'application/json; charset=utf-8' : path.endsWith('.png') ? 'image/png' : 'image/jpeg');
+        return res.end(bytes);
+      }
       if (req.method === 'GET' && staticFiles[path]) {
         const [name, type] = staticFiles[path];
         res.setHeader('Content-Type', type);
@@ -117,8 +126,10 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
         }
         if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppError(400, 'invalid-request', 'Invalid access request.');
         const digest = value => createHash('sha256').update(value).digest();
-        if (config.token && (typeof data.token !== 'string' || !timingSafeEqual(digest(data.token), digest(config.token)))) {
-          throw new AppError(401, 'unauthorized', 'Incorrect studio access token.');
+        const usernameMatches = typeof data.username === 'string' && timingSafeEqual(digest(data.username), digest('test'));
+        const passwordMatches = typeof data.password === 'string' && timingSafeEqual(digest(data.password), digest('test'));
+        if (!usernameMatches || !passwordMatches || Object.keys(data).some(key => !['username', 'password'].includes(key))) {
+          throw new AppError(401, 'unauthorized', '아이디 또는 비밀번호를 확인해 주세요.');
         }
         if (sessionId && session) { jobs.clearOwner(sessionId); sessions.delete(sessionId); }
         if (sessions.size >= 256) throw new AppError(503, 'session-capacity', 'Studio session capacity reached.');
@@ -126,17 +137,10 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
         sessions.set(id, { expiresAt: Date.now() + SESSION_TTL });
         return json(res, 200, { authenticated: true }, { 'Set-Cookie': cookie(id) });
       }
-      if (!session && !config.token && req.method === 'GET' && path === '/api/config') {
-        if (sessions.size >= 256) throw new AppError(503, 'session-capacity', 'Studio session capacity reached.');
-        const id = randomBytes(32).toString('hex');
-        session = { expiresAt: Date.now() + SESSION_TTL };
-        sessions.set(id, session);
-        res.setHeader('Set-Cookie', cookie(id));
-      }
       if (path === '/api/config' && req.method === 'GET') {
         return json(res, 200, { authenticated: Boolean(session), models: publicModels(config), maxImageMiB: 10, retentionMinutes: 10 });
       }
-      if (!session) throw new AppError(401, 'unauthorized', 'Studio session expired. Unlock or reload the studio.');
+      if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
       if (path === '/api/session' && req.method === 'DELETE') {
         jobs.clearOwner(sessionId);
         sessions.delete(sessionId);

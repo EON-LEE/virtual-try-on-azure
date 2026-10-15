@@ -20,15 +20,14 @@ function endpoint(value, suffixes) {
 
 export function loadConfig(env = process.env) {
   const host = env.HOST || '127.0.0.1';
-  const token = env.APP_ACCESS_TOKEN || '';
   const operatorToken = env.DEMO_OPERATOR_TOKEN || '';
-  if (operatorToken && (operatorToken.length < 32 || operatorToken === token)) {
-    throw new Error('DEMO_OPERATOR_TOKEN must be 32+ characters and distinct from the invitation token.');
+  if (operatorToken && operatorToken.length < 32) {
+    throw new Error('DEMO_OPERATOR_TOKEN must be 32+ characters.');
   }
   const local = ['127.0.0.1', '::1', 'localhost'].includes(host);
   const origin = env.APP_ORIGIN || '';
-  if (!local && (token.length < 32 || !origin)) {
-    throw new Error('Non-loopback binding requires APP_ACCESS_TOKEN (32+ characters) and APP_ORIGIN.');
+  if (!local && !origin) {
+    throw new Error('Non-loopback binding requires APP_ORIGIN.');
   }
   if (origin && (new URL(origin).origin !== origin ||
       (!local && !origin.startsWith('https://')))) {
@@ -86,7 +85,7 @@ export function loadConfig(env = process.env) {
       (auth.mode === 'key' ? model.key : identityConfigured));
     model.reason = !enabled ? 'inference-disabled' : model.ready ? null : 'not-configured';
   }
-  return { host, port, token, operatorToken, origin, models, auth, limits: { attemptLimit, expiresAt } };
+  return { host, port, operatorToken, origin, models, auth, limits: { attemptLimit, expiresAt } };
 }
 
 export function selectModels(value, config) {

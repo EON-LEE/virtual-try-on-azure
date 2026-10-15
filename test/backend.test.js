@@ -9,7 +9,7 @@ import { TRY_ON_PROMPT } from '../src/prompt.js';
 import { createServer } from '../src/server.js';
 import { readFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
-import { activateForTest } from './fixtures.js';
+import { activateForTest, loginForTest } from './fixtures.js';
 
 const png = () => sharp({ create: { width: 16, height: 24, channels: 3, background: '#abcdef' } }).png().toBuffer();
 const configured = () => loadConfig({
@@ -143,8 +143,8 @@ test('HTTP upload-to-result flow enforces consent, origin, session and exact sel
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
   const origin = `http://127.0.0.1:${server.address().port}`;
   const initial = await fetch(`${origin}/api/config`);
-  const cookie = initial.headers.get('set-cookie').split(';')[0];
-  assert.equal((await initial.json()).authenticated, true);
+  assert.equal((await initial.json()).authenticated, false);
+  const cookie = await loginForTest(origin);
   const bytes = await png();
   const form = (consent = 'true') => {
     const data = new FormData();
@@ -175,7 +175,7 @@ test('HTTP upload-to-result flow enforces consent, origin, session and exact sel
   assert.equal((await fetch(`${origin}/api/jobs/${job.id}`, { headers: { cookie } })).status, 404);
 });
 
-test('access token is exchanged for a session; no key leaks; disabled calls never execute', async t => {
+test('demo username/password is server-verified; no token login or key leaks; disabled calls never execute', async t => {
   const config = loadConfig({ APP_ACCESS_TOKEN: 'test-access-token', AZURE_SUNBURST_API_KEY: 'private-test-key' });
   let calls = 0;
   const jobs = new JobStore({ provider: async () => { calls++; throw new Error('should not run'); } });
@@ -191,7 +191,8 @@ test('access token is exchanged for a session; no key leaks; disabled calls neve
   const headers = { 'content-type': 'application/json', 'x-studio-request': '1', origin };
   assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: 'null' })).status, 400);
   assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'wrong' }) })).status, 401);
-  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'test-access-token' }) });
+  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'wrong' }) })).status, 401);
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' }) });
   assert.equal(login.status, 200);
   const cookieHeader = login.headers.get('set-cookie');
   assert.match(cookieHeader, /HttpOnly/);
@@ -209,6 +210,8 @@ test('access token is exchanged for a session; no key leaks; disabled calls neve
   assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'a'.repeat(3000) }) })).status, 413);
   await fetch(`${origin}/api/session`, { method: 'DELETE', headers: { cookie, 'x-studio-request': '1' } });
   assert.equal((await (await fetch(`${origin}/api/config`, { headers: { cookie } })).json()).authenticated, false);
+  for (let i = 0; i < 20; i++) await fetch(`${origin}/api/session`, { method: 'POST', headers, body: '{"username":"wrong","password":"wrong"}' });
+  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: '{"username":"test","password":"test"}' })).status, 429);
 });
 
 test('image size/frame limits, malicious payloads and multiple provider images fail explicitly', async () => {

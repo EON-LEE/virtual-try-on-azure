@@ -7,16 +7,16 @@ const options = { signal: AbortSignal.timeout(60_000) };
 const health = await fetch(`${origin}/healthz`, options);
 assert.equal(health.status, 200);
 const page = await (await fetch(origin, options)).text();
-for (const marker of ['value="upper"', 'value="lower"', 'value="full"', 'data-zoom="mai-result"', '수동 평가']) assert.ok(page.includes(marker));
+for (const marker of ['value="upper"', 'value="lower"', 'value="full"', 'data-zoom="mai-result"', '결과 평가', 'id="username"']) assert.ok(page.includes(marker));
 const config = await (await fetch(`${origin}/api/config`, options)).json();
 assert.equal(config.authenticated, false);
 assert.ok(config.models.every(model => !model.ready));
 const headers = { 'x-studio-request': '1', 'content-type': 'application/json', origin };
 assert.equal((await fetch(`${origin}/api/jobs`, { ...options, method: 'POST', headers, body: '{}' })).status, 401);
-const wrong = await fetch(`${origin}/api/session`, { ...options, method: 'POST', headers, body: '{"token":"intentionally-invalid-test"}' });
+const wrong = await fetch(`${origin}/api/session`, { ...options, method: 'POST', headers, body: '{"username":"test","password":"wrong"}' });
 assert.equal(wrong.status, 401);
-const token = (await readFile(new URL('../.local-deploy/demo-access-token.txt', import.meta.url), 'utf8')).trim();
-const login = await fetch(`${origin}/api/session`, { ...options, method: 'POST', headers, body: JSON.stringify({ token }) });
+assert.equal((await fetch(`${origin}/api/session`, { ...options, method: 'POST', headers, body: '{"token":"obsolete-token-login"}' })).status, 401);
+const login = await fetch(`${origin}/api/session`, { ...options, method: 'POST', headers, body: '{"username":"test","password":"test"}' });
 assert.equal(login.status, 200);
 const cookie = login.headers.get('set-cookie');
 assert.match(cookie, /HttpOnly/); assert.match(cookie, /Secure/); assert.match(cookie, /SameSite=Strict/);
@@ -34,7 +34,7 @@ assert.equal((await blocked.json()).error.code, 'model-unavailable');
 assert.equal((await fetch(`${origin}/api/session`, { ...options, method: 'DELETE', headers: { cookie: session, origin, 'x-studio-request': '1' } })).status, 200);
 const operatorState = secret => fetch(`${origin}/api/operator/state`, { ...options, method: 'POST',
   headers: { ...headers, 'x-operator-token': secret }, body: '{}' });
-assert.equal((await operatorState(token)).status, 401);
+assert.equal((await operatorState('test')).status, 401);
 const operatorToken = (await readFile(new URL('../.local-deploy/demo-operator-token.txt', import.meta.url), 'utf8')).trim();
 const stateResponse = await operatorState(operatorToken);
 assert.equal(stateResponse.status, 200);
@@ -43,5 +43,5 @@ assert.equal(state.activated, false);
 assert.equal(state.open, false);
 assert.equal(state.remaining, 0);
 console.log(JSON.stringify({ origin, health: 'ok', threeModes: true, fourColumnZoom: true, unauthorizedJobs: 401,
-  wrongInvite: 401, inviteSession: 'secure-cookie', disabledGeneration: 503, logout: 'ok',
-  invitationCannotOperate: true, bootGate: 'closed-unactivated-zero', activationRequests: 0, imageCalls: 0 }));
+  wrongPassword: 401, demoLogin: 'secure-cookie', disabledGeneration: 503, logout: 'ok',
+  demoLoginCannotOperate: true, bootGate: 'closed-unactivated-zero', activationRequests: 0, imageCalls: 0 }));
