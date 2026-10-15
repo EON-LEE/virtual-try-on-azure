@@ -13,6 +13,6 @@ export default defineConfig({
     command: 'node e2e/server.js',
     url: 'http://127.0.0.1:4317/healthz',
     reuseExistingServer: false,
-    timeout: 20_000
+    timeout: 60_000
   }
 });

@@ -15,10 +15,12 @@ const messages = {
   'azure-429': '모델의 요청 한도에 도달했습니다.',
   'azure-connection': '모델 응답을 받지 못했습니다. 전송된 요청은 과금될 수 있습니다.',
   'invalid-provider-response': '모델의 결과를 불러오지 못했습니다.',
+  'invalid-provider-image': '모델의 결과 사진을 읽지 못했습니다.',
+  'invalid-image': '사진을 읽을 수 없습니다. PNG/JPEG, 장당 10 MiB, 한 변 4096px 이하로 선택해 주세요.',
   'generation-failed': '사진을 생성하지 못했습니다.'
 };
 const modeFields = { upper: ['upper'], lower: ['lower'], full: ['upper', 'lower'] };
-const state = { config: null, files: {}, urls: {}, results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
+const state = { config: null, files: {}, urls: {}, sampleIds: {}, samples: [], results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
 const selected = () => models.filter(id => $(`select-${id}`).checked);
 const required = () => ['person', ...modeFields[$('mode').value]];
 const error = message => { $('error').textContent = message; $('error').hidden = !message; };
@@ -38,19 +40,24 @@ async function api(path, options = {}) {
 }
 
 function controls() {
+  const personSample = state.samples.find(item => item.id === state.sampleIds.person);
+  const unsupportedPerson = personSample?.supportsModes && !personSample.supportsModes.includes($('mode').value);
   $('input-fields').disabled = state.busy || !state.config?.authenticated;
   $('generate').disabled = state.busy || state.loading > 0 || !state.config?.authenticated ||
     required().some(role => !state.files[role]) || !selected().length || !$('consent').checked ||
     selected().some(id => !state.config.models.find(model => model.id === id)?.ready);
+  if (unsupportedPerson) $('generate').disabled = true;
   $('generate').textContent = state.busy ? '만드는 중…' : '만들기';
   $('call-note').textContent = selected().length ? `선택한 모델 ${selected().length}개 · ${selected().length}회 생성` : '모델을 선택해 주세요.';
   $('clear').disabled = !state.config?.authenticated;
   const ids = selected();
-  $('preview-grid').dataset.columns = ids.length === 2 ? '4' : '3';
+  let visibleResults = 0;
   models.forEach(id => {
     const cell = $(`${id}-result`).closest('article');
     cell.hidden = !ids.includes(id) && !(ids.length === 0 && id === 'sunburst') && !state.results[id];
+    if (!cell.hidden) visibleResults++;
   });
+  $('preview-grid').dataset.columns = String(2 + visibleResults);
   $('sunburst-title').textContent = ids.length || state.results.sunburst ? 'Sunburst' : '결과';
   const fields = modeFields[$('mode').value];
   for (const role of ['upper', 'lower']) {
@@ -59,6 +66,22 @@ function controls() {
   }
   $('mode-guidance').textContent = $('mode').value === 'upper'
     ? '' : '허리와 다리가 보이는 전신 사진을 선택하세요.';
+  if (unsupportedPerson) $('mode-guidance').textContent = '이 샘플은 상의용입니다. 전신 사진을 선택하세요.';
+  for (const item of state.samples) {
+    if (item.category !== 'person' || !item.supportsModes) continue;
+    const button = [...$('person-samples').querySelectorAll('button')].find(button => button.dataset.id === item.id);
+    if (button) {
+      button.disabled = state.busy || !item.supportsModes.includes($('mode').value);
+      button.title = `${item.supportsModes.length === 1 ? '상의용 사진. ' : ''}${item.notes || item.label}`;
+    }
+  }
+  if (!state.busy && !state.job && state.config?.authenticated) {
+    const missing = required().find(role => !state.files[role]);
+    status(missing ? `${{ person: '사람', upper: '상의', lower: '하의' }[missing]} 사진을 선택해 주세요.` :
+      !ids.length ? '모델을 선택해 주세요.' :
+      ids.some(id => !state.config.models.find(model => model.id === id)?.ready) ? '' :
+      !$('consent').checked ? '사진 전송에 동의해 주세요.' : '준비됐어요. 만들기를 눌러 주세요.');
+  }
 }
 
 async function initialize() {
@@ -86,6 +109,7 @@ function clearResults() {
   for (const id of models) {
     $(`${id}-verdict`).value = '';
     $(`${id}-notes`).value = '';
+    $(`${id}-review`).closest('details').open = false;
   }
   render();
 }
@@ -96,6 +120,7 @@ function render() {
     image.hidden = !state.urls[role];
     if (state.urls[role]) image.src = state.urls[role];
     else image.removeAttribute('src');
+    image.closest('button').setAttribute('aria-label', `${{ person: '사람', upper: '상의', lower: '하의' }[role]} 사진 ${image.hidden ? '선택' : '확대'}`);
     $(`${role}-empty`).hidden = Boolean(state.urls[role]);
   }
   for (const id of models) {
@@ -138,6 +163,7 @@ async function chooseFile(role, file, sampleId = null) {
       clearResults();
       if (state.urls[role]) URL.revokeObjectURL(state.urls[role]);
       delete state.files[role]; delete state.urls[role];
+      delete state.sampleIds[role];
       render();
       if (file) {
         if (!['image/png', 'image/jpeg'].includes(file.type) || !file.size || file.size > 10 * 1024 * 1024) throw new Error('PNG/JPEG 사진을 장당 10 MiB 이하로 선택하세요.');
@@ -149,6 +175,7 @@ async function chooseFile(role, file, sampleId = null) {
         if (current !== revisions[role] || epoch !== state.epoch) return;
         state.files[role] = file;
         state.urls[role] = newUrl;
+        if (sampleId) state.sampleIds[role] = sampleId;
         newUrl = null;
       }
       document.querySelectorAll(`#${role}-samples button`).forEach(button => button.setAttribute('aria-pressed', String(button.dataset.id === sampleId)));
@@ -169,10 +196,13 @@ async function loadSamples() {
   const response = await fetch('/samples/manifest.json', { signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error('샘플을 불러오지 못했습니다.');
   const manifest = await response.json();
+  if (!Array.isArray(manifest.items)) throw new Error('샘플 목록을 확인해 주세요.');
+  state.samples = manifest.items;
   for (const item of manifest.items) {
     if (!roles.includes(item.category) || !/^\/samples\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/.test(item.src)) throw new Error('샘플 목록을 확인해 주세요.');
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'sample'; button.dataset.id = item.id; button.dataset.label = item.label;
+    button.title = item.notes || item.label;
     button.setAttribute('aria-label', `${item.label} 선택`); button.setAttribute('aria-pressed', 'false');
     const image = document.createElement('img');
     image.src = item.src; image.alt = ''; image.loading = 'lazy';
@@ -195,9 +225,18 @@ async function loadSamples() {
     $(`${item.category}-samples`).append(button);
     if (item.attribution) {
       const credit = document.createElement('p'); credit.textContent = item.attribution;
+      for (const [value, label] of [[item.sourceUrl, '원본'], [item.licenseUrl, item.license]]) {
+        if (!value) continue;
+        if (new URL(value).protocol !== 'https:') throw new Error('샘플 출처를 확인해 주세요.');
+        const link = document.createElement('a'); link.href = value; link.textContent = ` · ${label}`;
+        link.target = '_blank'; link.rel = 'noopener noreferrer'; credit.append(link);
+      }
+      if (item.changes) credit.append(document.createTextNode(` · ${item.changes}`));
+      if (item.notes) credit.append(document.createTextNode(` · ${item.notes}`));
       $('sample-credits').append(credit);
     }
   }
+  controls();
 }
 
 $('mode').addEventListener('change', async () => {
@@ -285,7 +324,7 @@ async function clearStudio(logout = false) {
       if (state.urls[role]) URL.revokeObjectURL(state.urls[role]);
       $(role).value = '';
     }
-    state.files = {}; state.urls = {}; $('consent').checked = false;
+    state.files = {}; state.urls = {}; state.sampleIds = {}; $('consent').checked = false;
     document.querySelectorAll('.sample').forEach(button => button.setAttribute('aria-pressed', 'false'));
     models.forEach(id => { $(`select-${id}`).checked = false; });
     render(); await initialize();
@@ -311,7 +350,11 @@ $('unlock-form').addEventListener('submit', async event => {
 });
 document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListener('click', () => {
   const image = $(button.dataset.zoom);
-  if (image.hidden || !image.src) return;
+  if (image.hidden || !image.src) {
+    const role = { before: 'person', 'upper-preview': 'upper', 'lower-preview': 'lower' }[button.dataset.zoom];
+    if (role && state.config?.authenticated && !state.busy) $(role).click();
+    return;
+  }
   $('zoom-image').src = image.src;
   $('zoom-image').alt = image.alt;
   $('zoom-title').textContent = image.alt;

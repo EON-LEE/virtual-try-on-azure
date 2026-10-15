@@ -110,3 +110,48 @@ test('login is separate, keyboard accessible and logout invalidates the session'
   expect((await page.request.get('/api/config')).status()).toBe(200);
   expect((await (await page.request.get('/api/config')).json()).authenticated).toBe(false);
 });
+
+test('sample galleries use fetched bytes, require each full-set reference and never submit on selection', async ({ page }) => {
+  const bytes = await sharp({ create: { width: 30, height: 50, channels: 3, background: '#67856a' } }).png().toBuffer();
+  const items = ['person', 'upper', 'lower'].flatMap(category => [1, 2].map(index => ({
+    id: `${category}-${index}`, category, label: `${category} ${index}`, src: `/samples/${category}-${index}.png`,
+    attribution: 'Synthetic browser-test fixture', supportsModes: category === 'person' && index === 2 ? ['upper'] : ['upper', 'lower', 'full']
+  })));
+  await page.route('**/samples/manifest.json', route => route.fulfill({ json: { items } }));
+  await page.route(/\/samples\/(?:person|upper|lower)-[12]\.png$/, route => route.fulfill({ body: bytes, contentType: 'image/png' }));
+  let requests = 0;
+  page.on('request', request => { if (request.url().endsWith('/api/jobs') && request.method() === 'POST') requests++; });
+  await page.goto('/');
+  await page.locator('#username').fill('test');
+  await page.locator('#password').fill('test');
+  await page.locator('#password').press('Enter');
+  await page.locator('#mode').selectOption('full');
+  await expect(page.locator('#person-samples button')).toHaveCount(2);
+  await page.locator('#person-samples button').first().click();
+  await page.locator('#upper-samples button').last().click();
+  await page.locator('#select-mai').check();
+  await page.locator('#consent').check();
+  await expect(page.locator('#generate')).toBeDisabled();
+  await page.locator('#lower-samples button').first().click();
+  await expect(page.locator('#generate')).toBeEnabled();
+  await expect(page.locator('#before')).toHaveAttribute('src', /^blob:/);
+  await expect(page.locator('#upper-preview')).toBeVisible();
+  await expect(page.locator('#lower-preview')).toBeVisible();
+  expect(requests).toBe(0);
+  const pending = page.waitForRequest(request => request.url().endsWith('/api/jobs') && request.method() === 'POST');
+  await page.locator('#generate').click();
+  const request = await pending;
+  const form = await new Request('http://localhost', { method: 'POST', headers: { 'content-type': request.headers()['content-type'] }, body: request.postDataBuffer() }).formData();
+  for (const role of ['person', 'upper', 'lower']) expect(Buffer.from(await form.get(role).arrayBuffer())).toEqual(bytes);
+  expect(form.get('models')).toBe('["mai"]');
+  await expect(page.locator('#status')).toContainText('완성');
+  await page.locator('#clear').click();
+  await expect(page.locator('.sample[aria-pressed=true]')).toHaveCount(0);
+  await page.locator('#mode').selectOption('upper');
+  await page.locator('#person-samples button').last().click();
+  await expect(page.locator('#person-samples button').last()).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#mode').selectOption('full');
+  await expect(page.locator('#person-samples button').last()).toBeDisabled();
+  await expect(page.locator('#mode-guidance')).toContainText('상의용');
+  await expect(page.locator('#generate')).toBeDisabled();
+});

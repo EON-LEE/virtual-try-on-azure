@@ -7,6 +7,7 @@ import { AppError } from './errors.js';
 import { MAX_REQUEST_BYTES, sanitizeImage } from './images.js';
 import { JobStore, publicJob } from './jobs.js';
 import { modeContract } from './modes.js';
+import sampleManifest from '../public/samples/manifest.json' with { type: 'json' };
 
 const publicDir = new URL('../public/', import.meta.url);
 const staticFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/styles.css': ['styles.css', 'text/css; charset=utf-8'] };
@@ -73,13 +74,14 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
       const expectedOrigin = config.origin || origin.origin;
       if (req.headers.origin && req.headers.origin !== expectedOrigin) throw new AppError(403, 'cross-origin', 'Cross-origin requests are not allowed.');
       const path = new URL(req.url, expectedOrigin).pathname;
-      if (req.method === 'GET' && /^\/samples\/(?:manifest\.json|[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png))$/.test(path)) {
+      if (req.method === 'GET' && /^\/samples\/(?:manifest\.json|NOTICES\.txt|[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png))$/.test(path)) {
         let bytes;
         try { bytes = await readFile(new URL(`.${path}`, publicDir)); } catch (cause) {
           if (cause.code !== 'ENOENT') throw cause;
           throw new AppError(404, 'sample-not-found', '샘플을 찾을 수 없습니다.');
         }
-        res.setHeader('Content-Type', path.endsWith('.json') ? 'application/json; charset=utf-8' : path.endsWith('.png') ? 'image/png' : 'image/jpeg');
+        res.setHeader('Content-Type', path.endsWith('.json') ? 'application/json; charset=utf-8' :
+          path.endsWith('.txt') ? 'text/plain; charset=utf-8' : path.endsWith('.png') ? 'image/png' : 'image/jpeg');
         return res.end(bytes);
       }
       if (req.method === 'GET' && staticFiles[path]) {
@@ -175,8 +177,16 @@ export function createServer(config = loadConfig(), { jobs = new JobStore(), log
           try { selected = JSON.parse(form.get('models')); } catch {
             throw new AppError(400, 'invalid-models', 'Invalid model selection.');
           }
+          const personInput = form.get('person');
+          if (personInput instanceof File) {
+            const hash = createHash('sha256').update(Buffer.from(await personInput.arrayBuffer())).digest('hex');
+            const sample = sampleManifest.items.find(item => item.category === 'person' && item.sha256 === hash);
+            if (sample?.supportsModes && !sample.supportsModes.includes(mode === 'baseline' ? 'upper' : mode)) {
+              throw new AppError(400, 'sample-mode-mismatch', '이 샘플은 상의용입니다. 전신 사진을 선택해 주세요.');
+            }
+          }
           const models = selectModels(selected, config);
-          const person = await sanitizeImage(form.get('person'), 'person');
+          const person = await sanitizeImage(personInput, 'person');
           const garment = await sanitizeImage(form.get(contract.fields[0]), contract.fields[0]);
           const lowerGarment = mode === 'full' ? await sanitizeImage(form.get('lower'), 'lower') : undefined;
           const fingerprint = createHash('sha256').update(JSON.stringify([mode, models])).update(person).update(garment).update(lowerGarment || '').digest('hex');

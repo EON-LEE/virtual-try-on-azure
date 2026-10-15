@@ -8,6 +8,13 @@ const health = await fetch(`${origin}/healthz`, options);
 assert.equal(health.status, 200);
 const page = await (await fetch(origin, options)).text();
 for (const marker of ['value="upper"', 'value="lower"', 'value="full"', 'data-zoom="mai-result"', '결과 평가', 'id="username"']) assert.ok(page.includes(marker));
+assert.ok(!page.includes('access-token'));
+const samplesResponse = await fetch(`${origin}/samples/manifest.json`, options);
+assert.equal(samplesResponse.status, 200);
+const samples = await samplesResponse.json();
+const sampleCounts = Object.fromEntries(['person', 'upper', 'lower'].map(category => [category, samples.items.filter(item => item.category === category).length]));
+assert.ok(Object.values(sampleCounts).every(count => count >= 2));
+for (const item of samples.items) assert.equal((await fetch(`${origin}${item.src}`, options)).status, 200);
 const config = await (await fetch(`${origin}/api/config`, options)).json();
 assert.equal(config.authenticated, false);
 assert.ok(config.models.every(model => !model.ready));
@@ -44,4 +51,4 @@ assert.equal(state.open, false);
 assert.equal(state.remaining, 0);
 console.log(JSON.stringify({ origin, health: 'ok', threeModes: true, fourColumnZoom: true, unauthorizedJobs: 401,
   wrongPassword: 401, demoLogin: 'secure-cookie', disabledGeneration: 503, logout: 'ok',
-  demoLoginCannotOperate: true, bootGate: 'closed-unactivated-zero', activationRequests: 0, imageCalls: 0 }));
+  sampleCounts, demoLoginCannotOperate: true, bootGate: 'closed-unactivated-zero', activationRequests: 0, imageCalls: 0 }));

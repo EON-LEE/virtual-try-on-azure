@@ -201,8 +201,9 @@ within the documented GPT Image family maximum of 16 and MAI maximum of five,
 but **lower/full edits have not been live-tested** on these deployments.
 The new prompts are not equivalent to the previous upper-body-v1 experiments.
 
-The four-column studio always shows person, garment reference(s), Sunburst and
-MAI in that order. Images use `object-fit: contain` without cropping to hide
+The studio shows person, garment reference(s) and the selected model's result;
+selecting both models expands the workspace to four columns, with Sunburst then
+MAI. Images use `object-fit: contain` without cropping to hide
 differences; click to enlarge. Result cells show actual state/errors/duration.
 New live outputs receive no pre-existing agent verdict or fake automatic score.
 Manual verdicts/notes are local browser memory only and reset on input changes,
@@ -214,6 +215,17 @@ model selection, then create. Samples are loaded from the same-origin
 `public/samples/manifest.json`; selection uses the actual image bytes as the
 request input, never a fake output, and does not call Azure until submission.
 Sample sources/licenses are recorded in the manifest and shown in photo help.
+The published pack has three person photos, four upper garments and three lower
+garments. The seated person sample supports upper mode only; the client disables
+it for lower/full, and the server rejects its known input hash even if uploaded
+under another filename. This is a known-sample guard, not automatic full-body
+detection for arbitrary uploads. A folded striped shirt, partially occluded
+skirt and low-resolution shorts have reference limitations recorded in photo help.
+Sources, changes and license obligations are available through the footer's
+`사진 출처` link to `/samples/NOTICES.txt`. BY-SA assets and shared adaptations
+retain applicable attribution/ShareAlike obligations; generated images are not
+universally unrestricted. The stock platform's uploader assurances were used;
+individual model releases and age records were not independently inspected.
 
 Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096 pixels per side and
 20 megapixels. Sharp applies EXIF orientation and removes metadata by PNG
