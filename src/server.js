@@ -34,7 +34,7 @@ function json(res, status, value, headers = {}) {
 }
 
 export function createServer(config = loadConfig(), {
-  jobs, logger = console, samples = defaultSamples, sampleDirectory = samplesDir
+  jobs, logger = console, samples = defaultSamples, sampleDirectory = samplesDir, loginAttemptsPerMinute = 20
 } = {}) {
   jobs ??= new JobStore({ logger });
   const sessions = new Map();
@@ -124,7 +124,7 @@ export function createServer(config = loadConfig(), {
       let session = sessions.get(sessionId);
       if (path === '/api/session' && req.method === 'POST') {
         if (Date.now() - loginWindow > 60_000) { loginAttempts = 0; loginWindow = Date.now(); }
-        if (++loginAttempts > 20) throw new AppError(429, 'login-rate-limit', 'Too many access attempts. Wait one minute.');
+        if (++loginAttempts > loginAttemptsPerMinute) throw new AppError(429, 'login-rate-limit', 'Too many access attempts. Wait one minute.');
         let data;
         try { data = JSON.parse((await bodyBytes(req, 2048)).toString()); } catch (error) {
           if (error instanceof AppError) throw error;

@@ -22,7 +22,7 @@ const jobs = new JobStore({ submissionsPerMinute: 100, provider: async model => 
 } });
 jobs.gate.activate({ nonce: jobs.gate.state().nonce, allowance: 100, expiresAt: '2099-01-01T00:00:00Z' }, config);
 const fixture = existsSync(new URL('../sample-images/', import.meta.url)) ? null : await syntheticSamples();
-const server = createServer(config, { jobs, ...fixture });
+const server = createServer(config, { jobs, ...fixture, loginAttemptsPerMinute: 100 });
 server.listen(config.port, config.host);
 if (fixture) {
   const stop = () => server.close(() => { void fixture.close().finally(() => process.exit(0)); });
