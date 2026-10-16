@@ -134,6 +134,7 @@ test('mode segments work with arrows and reduced motion disables the loading ani
 
 test('login is separate, keyboard accessible and logout invalidates the session', async ({ page }) => {
   await page.goto('/');
+  await expect(page).toHaveTitle('Virtual Try-On · 데모');
   await expect(page.locator('#workspace')).toBeHidden();
   await expect(page.locator('#unlock img, #unlock a, #unlock .login-art')).toHaveCount(0);
   await expect(page.locator('.sample')).toHaveCount(0);
@@ -144,6 +145,7 @@ test('login is separate, keyboard accessible and logout invalidates the session'
   await page.locator('#password').fill('test');
   await page.locator('#password').press('Enter');
   await expect(page.locator('#workspace')).toBeVisible();
+  await expect(page.locator('.brand')).toHaveText('Virtual Try-On');
   await page.locator('#logout').click();
   await expect(page.locator('#unlock')).toBeVisible();
   await expect(page.locator('#workspace')).toBeHidden();
@@ -166,6 +168,75 @@ test('a rejected session cookie stays on login and explains how to recover', asy
   await expect(page.locator('#unlock')).toBeVisible();
   await expect(page.locator('#workspace')).toBeHidden();
   await expect(page.locator('#login-error')).toContainText('새 브라우저 탭');
+});
+
+test('login waits beyond 30 seconds, prevents duplicate submissions and loads samples before opening studio', async ({ page }) => {
+  test.setTimeout(65_000);
+  let submissions = 0;
+  await page.route('**/api/session', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    submissions++;
+    await new Promise(resolve => setTimeout(resolve, 31_000));
+    await route.continue();
+  });
+  await page.goto('/');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#unlock-form button')).toHaveText('연결 중…');
+  await expect(page.locator('#unlock-form button')).toBeDisabled();
+  await page.locator('#unlock-form').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  await expect(page.locator('#workspace')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('.sample')).toHaveCount(14);
+  await expect(page.locator('#password')).toHaveValue('');
+  expect(submissions).toBe(1);
+});
+
+test('login timeout is Korean, keeps inputs for a manual retry and never retries automatically', async ({ page }) => {
+  await page.addInitScript(() => {
+    const timeout = AbortSignal.timeout.bind(AbortSignal);
+    let armed = false;
+    document.addEventListener('submit', () => { armed = true; }, true);
+    AbortSignal.timeout = milliseconds => timeout(armed && milliseconds === 120_000 ? 100 : milliseconds);
+  });
+  let submissions = 0;
+  await page.route('**/api/session', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    submissions++;
+    if (submissions === 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return route.abort();
+    }
+    await route.continue();
+  });
+  await page.goto('/');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#login-error')).toContainText('로그인 버튼을 다시');
+  await expect(page.locator('#unlock-form button')).toBeEnabled();
+  await expect(page.locator('#password')).toHaveValue('test');
+  expect(submissions).toBe(1);
+  await page.locator('#unlock-form button').click();
+  await expect(page.locator('#workspace')).toBeVisible();
+  expect(submissions).toBe(2);
+});
+
+test('a late startup config cannot overwrite a completed login', async ({ page }) => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let requests = 0;
+  await page.route('**/api/config', async route => {
+    if (++requests !== 1) return route.continue();
+    const response = await route.fetch();
+    await gate;
+    await route.fulfill({ response });
+  });
+  await page.goto('/');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#workspace')).toBeVisible();
+  release();
+  await expect(page.locator('.sample')).toHaveCount(14);
+  await expect(page.locator('#unlock')).toBeHidden();
 });
 
 test('logout returns to login even after the process session has been lost', async ({ page }) => {

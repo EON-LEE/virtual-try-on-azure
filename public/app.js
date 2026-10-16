@@ -26,8 +26,8 @@ const required = () => ['person', ...modeFields[$('mode').value]];
 const error = message => { $('error').textContent = message; $('error').hidden = !message; };
 const status = message => { $('status').textContent = message; };
 
-async function api(path, options = {}) {
-  const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000);
+async function api(path, options = {}, timeoutMs = 30_000) {
+  const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
   const response = await fetch(path, { ...options, headers: { 'x-studio-request': '1', ...options.headers }, signal });
   const data = await response.json();
   if (!response.ok) {
@@ -93,17 +93,24 @@ function controls() {
   }
 }
 
-async function initialize() {
-  state.config = await api('/api/config');
-  $('unlock').hidden = state.config.authenticated;
-  $('workspace').hidden = !state.config.authenticated;
+let initialization = 0;
+async function initialize(timeoutMs = 30_000) {
+  const current = ++initialization;
+  let config;
+  try { config = await api('/api/config', {}, timeoutMs); }
+  catch (cause) { if (current !== initialization) return; throw cause; }
+  if (current !== initialization) return;
+  state.config = config;
   const count = state.config.models.filter(model => model.ready).length;
   $('connection').textContent = count ? '피팅 준비 완료' : '현재 생성을 사용할 수 없습니다';
   $('connection').dataset.ready = String(count > 0);
   for (const model of state.config.models) {
     $(`select-${model.id}`).disabled = false;
   }
-  if (state.config.authenticated && !state.samples.length) await loadSamples();
+  if (state.config.authenticated && !state.samples.length) await loadSamples(timeoutMs);
+  if (current !== initialization) return;
+  $('unlock').hidden = state.config.authenticated;
+  $('workspace').hidden = !state.config.authenticated;
   controls();
 }
 
@@ -204,8 +211,8 @@ for (const role of roles) {
   $(role).addEventListener('change', () => chooseFile(role, $(role).files[0]));
 }
 
-async function loadSamples() {
-  const manifest = await api('/api/samples/manifest');
+async function loadSamples(timeoutMs = 30_000) {
+  const manifest = await api('/api/samples/manifest', {}, timeoutMs);
   if (!Array.isArray(manifest.items)) throw new Error('샘플 목록을 확인해 주세요.');
   for (const role of roles) $(`${role}-samples`).replaceChildren();
   $('sample-credits').replaceChildren();
@@ -362,20 +369,39 @@ async function clearStudio(logout = false) {
 $('clear').addEventListener('click', () => clearStudio());
 $('logout').addEventListener('click', () => clearStudio(true));
 
+let loggingIn = false;
 $('unlock-form').addEventListener('submit', async event => {
   event.preventDefault();
+  if (loggingIn) return;
+  loggingIn = true;
+  initialization++;
   $('login-error').hidden = true;
   const submit = event.currentTarget.querySelector('button');
   submit.disabled = true;
+  submit.textContent = '연결 중…';
+  $('unlock-form').setAttribute('aria-busy', 'true');
   try {
     const username = $('username').value, password = $('password').value;
-    $('password').value = '';
-    await api('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) });
-    await initialize();
+    await api('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) }, 120_000);
+    await initialize(120_000);
     if (!state.config.authenticated) throw new Error('로그인이 유지되지 않았습니다. 새 브라우저 탭에서 다시 로그인해 주세요.');
+    $('password').value = '';
     document.querySelector('[name="clothing-mode"]:checked').focus();
-  } catch (cause) { $('login-error').textContent = cause.message; $('login-error').hidden = false; }
-  finally { submit.disabled = false; }
+  } catch (cause) {
+    $('workspace').hidden = true;
+    $('unlock').hidden = false;
+    $('login-error').textContent = cause.name === 'TimeoutError'
+      ? '서버 연결이 지연되고 있습니다. 로그인 버튼을 다시 눌러 주세요.'
+      : cause instanceof TypeError || cause.status >= 500
+        ? '서버에 연결하지 못했습니다. 잠시 후 다시 로그인해 주세요.'
+        : cause.message;
+    $('login-error').hidden = false;
+  } finally {
+    loggingIn = false;
+    submit.disabled = false;
+    submit.textContent = '로그인';
+    $('unlock-form').removeAttribute('aria-busy');
+  }
 });
 document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListener('click', () => {
   const image = $(button.dataset.zoom);
@@ -392,7 +418,7 @@ document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListen
 $('zoom-close').addEventListener('click', closeZoom);
 $('zoom').addEventListener('close', () => $('zoom-image').removeAttribute('src'));
 render();
-initialize().catch(cause => {
+initialize(120_000).catch(cause => {
   $('connection').textContent = '서버 연결 실패';
   $('login-error').textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 로그인해 주세요.';
   $('login-error').hidden = false;

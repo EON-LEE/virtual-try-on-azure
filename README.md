@@ -437,6 +437,12 @@ the verification budget. This option does not authorize additional user calls.
 Do not activate a bounded deployment without a paid-generation approval.
 
 After login, the browser verifies that the session cookie was actually retained.
+The Virtual Try-On demo waits up to 120 seconds per login/startup request so
+min0 startup is not cut off by the ordinary 30-second API timeout. Login shows
+a busy button, ignores duplicate submissions, and opens the studio only after
+its sample manifest loads. A timeout shows a Korean message and keeps inputs
+for a manual retry; neither login nor paid image requests retry automatically.
+An earlier startup config response cannot overwrite a newer login state.
 If an embedded browser blocks it, the login screen asks the user to retry in a
 standalone browser tab; cookie policy is not weakened. Session expiry returns to
 login. Logout also succeeds when a restart has already discarded the session,
