@@ -443,6 +443,18 @@ a busy button, ignores duplicate submissions, and opens the studio only after
 its sample manifest loads. A timeout shows a Korean message and keeps inputs
 for a manual retry; neither login nor paid image requests retry automatically.
 An earlier startup config response cannot overwrite a newer login state.
+Generation submission also allows 120 seconds for a cold start, without
+automatically resubmitting. The collapsed `실행 기록` shows timestamps, model,
+stage, safe error code and correlation ID; it never contains photos, session
+cookies, credentials or raw Azure response bodies. Server JSON logs correlate
+input processing, job ID, identity acquisition, model request and terminal
+status. A whole-job 210-second deadline also covers stalled identity acquisition.
+Expired sessions, lost jobs and polling failures stop the busy display and
+report an unknown outcome instead of claiming that an Azure request was cancelled
+or free. Paid requests are never retried. Static responses remain `no-store`;
+newly opened pages compare a client fingerprint with config and show a manual
+refresh notice when versions differ. An already-open older script cannot be
+patched in place or used to recover a job lost with a process restart.
 If an embedded browser blocks it, the login screen asks the user to retry in a
 standalone browser tab; cookie policy is not weakened. Session expiry returns to
 login. Logout also succeeds when a restart has already discarded the session,

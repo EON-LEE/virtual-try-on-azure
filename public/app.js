@@ -19,6 +19,26 @@ const messages = {
   'invalid-image': '사진을 읽을 수 없습니다. PNG/JPEG, 장당 10 MiB, 한 변 4096px 이하로 선택해 주세요.',
   'generation-failed': '사진을 생성하지 못했습니다.'
 };
+messages['generation-timeout'] = messages['azure-timeout'] = '처리 시간이 초과됐습니다. 완료 여부와 과금은 확인되지 않았습니다.';
+messages['job-not-found'] = '실행 기록이 만료됐거나 서버가 다시 시작됐습니다. 완료 여부는 확인되지 않았습니다.';
+const stages = { submitted: '전송', accepted: '접수', 'input-processing': '입력 처리', identity: '모델 인증',
+  'model-request': '모델 요청', 'result-preparation': '결과 준비', completed: '완료', polling: '상태 확인' };
+const clientVersion = document.querySelector('meta[name="studio-version"]')?.content || 'local';
+$('client-version').textContent = `· ${clientVersion}`;
+let executionStarted = 0;
+const seenEvents = new Set();
+function recordExecution({ timestamp = Date.now(), model = '', stage, status: resultStatus, code = '', jobId = '', requestId = '', providerStatus, retryAfterSeconds }) {
+  const entry = document.createElement('li');
+  entry.textContent = `${new Date(timestamp).toLocaleTimeString('ko-KR')} · ${model || '요청'} · ${stages[stage] || stage} · ${{ running: '진행', succeeded: '성공', failed: '실패' }[resultStatus] || resultStatus}${code ? ` · ${code}` : ''}${providerStatus ? ` · HTTP ${providerStatus}` : ''}${retryAfterSeconds !== undefined ? ` · ${retryAfterSeconds}초 후 재시도 가능` : ''}${jobId || requestId ? ` · 참조 ${jobId || requestId}` : ''}`;
+  $('execution-log').append(entry);
+  while ($('execution-log').children.length > 50) $('execution-log').firstElementChild.remove();
+}
+function receiveEvents(job) {
+  for (const event of job.events || []) {
+    const key = JSON.stringify(event);
+    if (!seenEvents.has(key)) { seenEvents.add(key); recordExecution(event); }
+  }
+}
 const modeFields = { upper: ['upper'], lower: ['lower'], full: ['upper', 'lower'] };
 const state = { config: null, files: {}, urls: {}, sampleIds: {}, samples: [], results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
 const selected = () => models.filter(id => $(`select-${id}`).checked);
@@ -101,6 +121,7 @@ async function initialize(timeoutMs = 30_000) {
   catch (cause) { if (current !== initialization) return; throw cause; }
   if (current !== initialization) return;
   state.config = config;
+  $('version-notice').hidden = !config.clientVersion || clientVersion === config.clientVersion;
   const count = state.config.models.filter(model => model.ready).length;
   $('connection').textContent = count ? '피팅 준비 완료' : '현재 생성을 사용할 수 없습니다';
   $('connection').dataset.ready = String(count > 0);
@@ -272,6 +293,7 @@ $('consent').addEventListener('change', controls);
 
 async function applyJob(job, epoch) {
   state.job = job;
+  receiveEvents(job);
   for (const [id, result] of Object.entries(job.results)) {
     let url = state.results[id]?.url, dimensions = state.results[id]?.dimensions;
     if (result.status === 'succeeded' && !url) {
@@ -301,6 +323,18 @@ $('try-on-form').addEventListener('submit', async event => {
   const epoch = ++state.epoch, ids = selected(), mode = $('mode').value;
   state.controller = new AbortController();
   state.busy = true; error(''); controls();
+  executionStarted = Date.now();
+  seenEvents.clear();
+  const requestId = crypto.randomUUID();
+  recordExecution({ stage: 'submitted', status: 'running', requestId });
+  const elapsedTimer = setInterval(() => {
+    if (!state.busy || epoch !== state.epoch) return;
+    const seconds = Math.floor((Date.now() - executionStarted) / 1000);
+    const latest = state.job?.events?.at(-1);
+    const stage = latest ? stages[latest.stage] || '처리' : '접수 대기';
+    status(`${stage} · ${seconds}초 경과`);
+    for (const id of ids) if (state.results[id]?.status === 'running') $(`${id}-empty`).textContent = `${stage} · ${seconds}초 경과`;
+  }, 1000);
   try {
     await discard();
     if (epoch !== state.epoch) return;
@@ -311,8 +345,9 @@ $('try-on-form').addEventListener('submit', async event => {
     const form = new FormData();
     for (const role of ['person', ...modeFields[mode]]) form.set(role, state.files[role]);
     form.set('mode', mode); form.set('models', JSON.stringify(ids)); form.set('consent', 'true');
-    let job = await api('/api/jobs', { method: 'POST', headers: { 'x-request-id': crypto.randomUUID() }, body: form, signal: state.controller.signal });
-    const deadline = Date.now() + 210_000;
+    let job = await api('/api/jobs', { method: 'POST', headers: { 'x-request-id': requestId }, body: form, signal: state.controller.signal }, 120_000);
+    recordExecution({ stage: 'accepted', status: job.status, jobId: job.id });
+    const deadline = Date.now() + 240_000;
     while (epoch === state.epoch) {
       await applyJob(job, epoch);
       if (epoch !== state.epoch) return;
@@ -325,20 +360,24 @@ $('try-on-form').addEventListener('submit', async event => {
     if (epoch === state.epoch) status(job.status === 'succeeded' ? '완성했어요. 사진을 눌러 크게 확인하세요.' : '생성하지 못한 결과가 있습니다. 오류를 확인해 주세요.');
   } catch (cause) {
     if (epoch !== state.epoch) return;
-    error(`${cause.message}${!cause.status || cause.status >= 500 && cause.code !== 'model-unavailable' ? ' 전송된 요청은 과금될 수 있습니다.' : ''} 자동 재시도하지 않았습니다.`);
+    const message = messages[cause.code] || (cause.name === 'TimeoutError' ? '서버 응답 시간이 초과됐습니다.' : cause instanceof TypeError ? '서버에 연결하지 못했습니다.' : cause.message);
+    error(`${message}${!cause.status || cause.status >= 500 && cause.code !== 'model-unavailable' ? ' 완료 여부는 확인되지 않았으며, 전송된 요청은 과금될 수 있습니다.' : ''} 자동 재시도하지 않았습니다.`);
+    recordExecution({ stage: 'polling', status: 'failed', code: cause.code || (cause.name === 'TimeoutError' ? 'request-timeout' : 'network-error'), requestId, jobId: state.job?.id });
     status('결과를 확인하지 못했습니다.');
     for (const result of Object.values(state.results)) if (result.status === 'running') {
       result.status = 'failed'; result.error = { message: '결과 미확인 · 서버 또는 Azure 처리는 계속될 수 있습니다.' };
     }
     render();
   } finally {
+    clearInterval(elapsedTimer);
     if (epoch === state.epoch) {
+      state.busy = false; controls();
       try { await initialize(); } catch (cause) {
         if (state.config) state.config.models = state.config.models.map(model => ({ ...model, ready: false }));
         $('connection').textContent = '서버 연결 실패';
         error(`생성 가능 상태를 확인하지 못했습니다. ${cause.message}`);
       }
-      state.busy = false; controls();
+      controls();
     }
   }
 });

@@ -70,6 +70,50 @@ test('both models cost two calls; full mode requires both references', async ({ 
   await page.locator('#clear').click();
 });
 
+for (const failure of ['network', '401', '404', '500']) {
+  test(`generation ${failure} stops the spinner and records a failure without resubmitting`, async ({ page }) => {
+    await prepare(page);
+    await page.locator('#select-mai').check();
+    let submissions = 0;
+    await page.route('**/api/jobs', async route => {
+      if (route.request().method() !== 'POST') return route.continue();
+      submissions++;
+      if (failure === 'network') return route.abort('failed');
+      if (failure === '401') await page.context().clearCookies();
+      await route.fulfill({ status: Number(failure), contentType: 'application/json',
+        body: JSON.stringify({ error: { code: failure === '401' ? 'unauthorized' : failure === '404' ? 'job-not-found' : 'internal-error', message: '다시 로그인해 주세요.' } }) });
+    });
+    await page.locator('#generate').click();
+    await expect(page.locator('#generate')).toHaveText('만들기');
+    if (failure === '401') await expect(page.locator('#unlock')).toBeVisible();
+    else await expect(page.locator('#error')).toContainText('자동 재시도하지 않았습니다');
+    await expect(page.locator('#execution-log')).toContainText('실패');
+    expect(submissions).toBe(1);
+  });
+}
+
+test('polling a lost job ends the busy state and records the unknown outcome', async ({ page }) => {
+  await prepare(page);
+  await page.locator('#select-mai').check();
+  await page.route('**/api/jobs/*', async route => {
+    await route.fulfill({ status: 404, contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'job-not-found', message: 'Result unavailable.' } }) });
+  });
+  await page.locator('#generate').click();
+  await expect(page.locator('#generate')).toHaveText('만들기');
+  await expect(page.locator('#error')).toContainText('완료 여부는 확인되지');
+  await expect(page.locator('#execution-log')).toContainText('job-not-found');
+});
+
+test('a changed client version shows a manual refresh notice without submitting a job', async ({ page }) => {
+  await page.route('**/api/config', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ json: { ...await response.json(), clientVersion: 'new-version' } });
+  });
+  await prepare(page);
+  await expect(page.locator('#version-notice')).toBeVisible();
+});
+
 test('mobile full references and clear during generation leave no stale output', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page, 'full');
