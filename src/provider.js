@@ -37,12 +37,14 @@ const providerMessages = {
   429: 'Azure quota or rate limit reached. No automatic retry was made.'
 };
 
-export async function editImage(model, person, garment, { fetchImpl = fetch, signal, getAuthHeaders = authHeaders, mode = 'baseline', lowerGarment } = {}) {
+export async function editImage(model, person, garment, { fetchImpl = fetch, signal, getAuthHeaders = authHeaders, mode = 'baseline', lowerGarment, onStage = () => {} } = {}) {
   if (!model.ready) throw new AppError(503, 'model-unavailable', 'Inference is disabled or this model is not configured.');
   signal?.throwIfAborted();
   const request = buildRequest(model, person, garment, { mode, lowerGarment });
+  onStage('identity');
   const headers = await getAuthHeaders(model);
   signal?.throwIfAborted();
+  onStage('model-request');
   let response;
   try {
     response = await fetchImpl(request.url, {
@@ -51,15 +53,19 @@ export async function editImage(model, person, garment, { fetchImpl = fetch, sig
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(180_000)]) : AbortSignal.timeout(180_000)
     });
   } catch (error) {
-    throw new AppError(502, 'azure-connection', error.name === 'TimeoutError' || error.name === 'AbortError'
+    throw new AppError(502, error.name === 'TimeoutError' || error.name === 'AbortError' ? 'azure-timeout' : 'azure-connection', error.name === 'TimeoutError' || error.name === 'AbortError'
       ? 'Azure request timed out or was cancelled. It may still be billed; no retry was made.'
       : 'Azure connection failed. No retry was made.');
   }
-  const requestId = response.headers.get('x-request-id') || response.headers.get('apim-request-id');
+  const requestId = (response.headers.get('x-request-id') || response.headers.get('apim-request-id'))?.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 128) || null;
+  const retryAfter = response.headers.get('retry-after');
+  const details = { providerStatus: response.status, ...(requestId ? { providerRequestId: requestId } : {}),
+    ...(/^\d{1,6}$/.test(retryAfter || '') ? { retryAfterSeconds: Number(retryAfter) } : {}) };
   if (!response.ok) {
     await response.body?.cancel();
-    throw new AppError(502, `azure-${response.status}`, providerMessages[response.status] || 'Azure generation failed. No retry was made.');
+    throw new AppError(502, `azure-${response.status}`, providerMessages[response.status] || 'Azure generation failed. No retry was made.', details);
   }
+  onStage('result-preparation');
   const reader = response.body.getReader();
   const chunks = [];
   let size = 0;
@@ -74,7 +80,7 @@ export async function editImage(model, person, garment, { fetchImpl = fetch, sig
     const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if (!Array.isArray(data.data) || data.data.length !== 1) throw new Error('Expected one result');
     const image = await sanitizeOutput(data.data[0].b64_json);
-    return { image, requestId: requestId?.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 128) || null };
+    return { image, requestId, providerStatus: response.status };
   } catch (error) {
     await reader.cancel().catch(() => {});
     if (error instanceof AppError) throw error;

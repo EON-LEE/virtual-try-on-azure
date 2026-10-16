@@ -13,6 +13,7 @@ const publicDir = new URL('../public/', import.meta.url);
 const samplesDir = new URL('../sample-images/', import.meta.url);
 const staticFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/styles.css': ['styles.css', 'text/css; charset=utf-8'] };
 const SESSION_TTL = 30 * 60 * 1000;
+const clientVersion = createHash('sha256').update(await readFile(new URL('app.js', publicDir))).digest('hex').slice(0, 12);
 
 async function bodyBytes(req, limit) {
   const length = Number(req.headers['content-length']);
@@ -33,8 +34,9 @@ function json(res, status, value, headers = {}) {
 }
 
 export function createServer(config = loadConfig(), {
-  jobs = new JobStore(), logger = console, samples = defaultSamples, sampleDirectory = samplesDir
+  jobs, logger = console, samples = defaultSamples, sampleDirectory = samplesDir
 } = {}) {
+  jobs ??= new JobStore({ logger });
   const sessions = new Map();
   let submissions = 0;
   let loginAttempts = 0;
@@ -85,7 +87,8 @@ export function createServer(config = loadConfig(), {
       if (req.method === 'GET' && staticFiles[path]) {
         const [name, type] = staticFiles[path];
         res.setHeader('Content-Type', type);
-        return res.end(await readFile(new URL(name, publicDir)));
+        const content = await readFile(new URL(name, publicDir));
+        return res.end(name === 'index.html' ? content.toString().replace('</head>', `<meta name="studio-version" content="${clientVersion}"></head>`) : content);
       }
       if (!path.startsWith('/api/')) throw new AppError(404, 'not-found', 'Not found.');
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) throw new AppError(405, 'method-not-allowed', 'Method not allowed.');
@@ -142,7 +145,7 @@ export function createServer(config = loadConfig(), {
       }
       if (path === '/api/config' && req.method === 'GET') {
         const open = config.limits.mode === 'unlimited' || jobs.gate.isOpenFor(sessionId);
-        return json(res, 200, { authenticated: Boolean(session),
+        return json(res, 200, { authenticated: Boolean(session), clientVersion,
           models: publicModels(config).map(model => model.ready && !open ? { ...model, ready: false, reason: 'demo-budget-closed' } : model),
           maxImageMiB: 10, retentionMinutes: 10 });
       }
@@ -171,6 +174,7 @@ export function createServer(config = loadConfig(), {
         try {
           const requestId = req.headers['x-request-id'];
           if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,64}$/.test(requestId)) throw new AppError(400, 'invalid-request-id', 'A unique request ID is required.');
+          logger.info?.(JSON.stringify({ event: 'studio-request', timestamp: Date.now(), requestId, stage: 'input-processing', status: 'running' }));
           if (!req.headers['content-type']?.startsWith('multipart/form-data;')) throw new AppError(400, 'invalid-upload', 'Use multipart form data.');
           const bytes = await bodyBytes(req, MAX_REQUEST_BYTES);
           let form;
@@ -208,6 +212,7 @@ export function createServer(config = loadConfig(), {
           const lowerGarment = mode === 'full' ? await sanitizeImage(form.get('lower'), 'lower') : undefined;
           const fingerprint = createHash('sha256').update(JSON.stringify([mode, models])).update(person).update(garment).update(lowerGarment || '').digest('hex');
           const job = jobs.create(sessionId, requestId, fingerprint, models, config, person, garment, { mode, lowerGarment });
+          logger.info?.(JSON.stringify({ event: 'studio-request', timestamp: Date.now(), requestId, jobId: job.id, stage: 'accepted', status: 'running' }));
           return json(res, 202, publicJob(job));
         } finally {
           submissions--;
@@ -231,6 +236,12 @@ export function createServer(config = loadConfig(), {
       throw new AppError(404, 'not-found', 'Not found.');
     } catch (error) {
       const known = error instanceof AppError;
+      const requestId = req.headers['x-request-id'];
+      if (req.url?.startsWith('/api/jobs')) logger.error(JSON.stringify({ event: 'studio-request',
+        timestamp: Date.now(), stage: 'request', status: 'failed', code: known ? error.code : 'internal-error',
+        httpStatus: known ? error.status : 500,
+        ...(typeof requestId === 'string' && /^[a-zA-Z0-9-]{16,64}$/.test(requestId) ? { requestId } : {})
+      }));
       if (!known) logger.error('studio-request-failed', { code: 'internal-error' });
       if (!res.headersSent && !res.destroyed) {
         json(res, known ? error.status : 500, { error: { code: known ? error.code : 'internal-error', message: known ? error.message : 'An internal error occurred.' } });

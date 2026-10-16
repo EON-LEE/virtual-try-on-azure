@@ -7,7 +7,7 @@ import { InferenceGate } from './gate.js';
 export const RESULT_TTL_MS = 10 * 60 * 1000;
 
 export class JobStore {
-  constructor({ provider = editImage, now = Date.now, submissionsPerMinute = 2, gate = new InferenceGate({ now }) } = {}) {
+  constructor({ provider = editImage, now = Date.now, submissionsPerMinute = 2, gate = new InferenceGate({ now }), logger = console, timeoutMs = 210_000 } = {}) {
     this.provider = provider;
     this.now = now;
     this.jobs = new Map();
@@ -17,6 +17,14 @@ export class JobStore {
     this.active = 0;
     this.submissionsPerMinute = submissionsPerMinute;
     this.gate = gate;
+    this.logger = logger;
+    this.timeoutMs = timeoutMs;
+  }
+
+  record(job, model, stage, status, details = {}) {
+    const event = { timestamp: this.now(), jobId: job.id, requestId: job.requestId, model, stage, status, ...details };
+    job.events.push(event);
+    this.logger.info?.(JSON.stringify({ event: 'studio-job', ...event }));
   }
 
   prune() {
@@ -53,10 +61,11 @@ export class JobStore {
     const job = {
       id: randomUUID(), owner, requestId, fingerprint, status: 'running',
       createdAt: this.now(), expiresAt: this.now() + RESULT_TTL_MS,
-      promptVersion: contract.version, mode,
+      promptVersion: contract.version, mode, events: [],
       results: Object.fromEntries(models.map(id => [id, { status: 'running', model: config.models[id].model }]))
     };
     this.jobs.set(job.id, job);
+    for (const id of models) this.record(job, id, 'accepted', 'running');
     const controller = new AbortController();
     this.controllers.set(job.id, controller);
     void this.execute(job, models, config, person, garment, controller.signal, { mode, lowerGarment });
@@ -66,15 +75,38 @@ export class JobStore {
   async execute(job, models, config, person, garment, signal, options) {
     await Promise.all(models.map(async id => {
       const start = this.now();
+      let timer;
+      const controller = new AbortController();
+      const combined = AbortSignal.any([signal, controller.signal]);
       try {
-        const result = await this.provider(config.models[id], person, garment, { signal, ...options });
+        const deadline = new Promise((resolve, reject) => {
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new AppError(504, 'generation-timeout', 'Generation completion could not be verified. No retry was made.'));
+          }, this.timeoutMs);
+        });
+        const result = await Promise.race([deadline, this.provider(config.models[id], person, garment, {
+          signal: combined, ...options,
+          onStage: stage => {
+            if (!combined.aborted && this.jobs.has(job.id)) this.record(job, id, stage, 'running');
+          }
+        })]);
         job.results[id] = { status: 'succeeded', model: config.models[id].model, ...result, durationMs: this.now() - start };
+        this.record(job, id, 'completed', 'succeeded', { durationMs: this.now() - start,
+          ...(result.providerStatus ? { providerStatus: result.providerStatus } : {}),
+          ...(result.requestId ? { providerRequestId: result.requestId } : {}) });
       } catch (error) {
         job.results[id] = {
           status: 'failed', model: config.models[id].model, durationMs: this.now() - start,
           error: { code: error instanceof AppError ? error.code : 'generation-failed',
             message: error instanceof AppError ? error.message : 'Generation failed unexpectedly. No retry was made.' }
         };
+        this.record(job, id, 'completed', 'failed', {
+          code: job.results[id].error.code, durationMs: this.now() - start,
+          ...(error instanceof AppError ? error.details : {})
+        });
+      } finally {
+        clearTimeout(timer);
       }
     }));
     this.active--;
@@ -113,7 +145,7 @@ export class JobStore {
 export function publicJob(job) {
   return {
     id: job.id, status: job.status, createdAt: job.createdAt, expiresAt: job.expiresAt,
-    promptVersion: job.promptVersion, mode: job.mode,
+    promptVersion: job.promptVersion, mode: job.mode, events: job.events,
     results: Object.fromEntries(Object.entries(job.results).map(([id, result]) => {
       const { image, ...metadata } = result;
       return [id, { ...metadata, ...(image ? { imageUrl: `/api/jobs/${job.id}/images/${id}` } : {}) }];
