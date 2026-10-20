@@ -3,6 +3,7 @@ import { AppError } from './errors.js';
 import { editImage } from './provider.js';
 import { modeContract } from './modes.js';
 import { InferenceGate } from './gate.js';
+import { logEvent } from './logging.js';
 
 export const RESULT_TTL_MS = 10 * 60 * 1000;
 
@@ -24,7 +25,7 @@ export class JobStore {
   record(job, model, stage, status, details = {}) {
     const event = { timestamp: this.now(), jobId: job.id, requestId: job.requestId, model, stage, status, ...details };
     job.events.push(event);
-    this.logger.info?.(JSON.stringify({ event: 'studio-job', ...event }));
+    logEvent(this.logger, 'info', 'studio-job', event);
   }
 
   prune() {
