@@ -21,6 +21,13 @@ import dataset_batch
 
 
 class ExperimentsTest(unittest.TestCase):
+    def test_evaluation_requires_existing_directory_but_allows_empty_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(evaluate.summarize(root, {})["quality_conclusion"], "no live outputs")
+            with self.assertRaisesRegex(h.ExperimentError, "directory does not exist"):
+                evaluate.summarize(root / "missing", {})
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -530,6 +537,7 @@ class ExperimentsTest(unittest.TestCase):
         self.assertFalse(evaluate.validate_review(review, result))
 
     def test_report_no_live_no_success_claim(self):
+        (self.root / "empty").mkdir()
         report = evaluate.summarize(self.root / "empty", {})
         self.assertEqual(report["quality_conclusion"], "no live outputs")
         self.assertFalse(report["fit_size_claim"])
