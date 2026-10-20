@@ -105,6 +105,24 @@ test('polling a lost job ends the busy state and records the unknown outcome', a
   await expect(page.locator('#execution-log')).toContainText('job-not-found');
 });
 
+test('a result image 401 returns to login without resubmitting generation', async ({ page }) => {
+  await prepare(page);
+  await page.locator('#select-mai').check();
+  let submissions = 0;
+  page.on('request', request => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/jobs')) submissions++;
+  });
+  await page.route('**/api/jobs/*/images/*', async route => {
+    await page.context().clearCookies();
+    await route.fulfill({ status: 401, json: { error: { code: 'unauthorized', message: '다시 로그인해 주세요.' } } });
+  });
+  await page.locator('#generate').click();
+  await expect(page.locator('#unlock')).toBeVisible();
+  await expect(page.locator('#generate')).toHaveText('만들기');
+  await expect(page.locator('#mai-result')).toBeHidden();
+  expect(submissions).toBe(1);
+});
+
 test('a changed client version shows a manual refresh notice without submitting a job', async ({ page }) => {
   await page.route('**/api/config', async route => {
     const response = await route.fetch();
@@ -336,6 +354,47 @@ test('sample galleries use fetched bytes, require each full-set reference and ne
   await expect(page.locator('#person-samples')).toBeHidden();
   await expect(page.locator('#person-guidance')).toContainText('전신 사진을 업로드');
   await expect(page.locator('#generate')).toBeDisabled();
+});
+
+test('an expired sample fetch returns to login without generation', async ({ page }) => {
+  await prepare(page);
+  let submissions = 0;
+  page.on('request', request => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/jobs')) submissions++;
+  });
+  await page.route(/\/api\/samples\/[^/]+\.jpg$/, async route => {
+    if (route.request().resourceType() !== 'fetch') return route.continue();
+    await page.context().clearCookies();
+    await route.fulfill({ status: 401, json: { error: { code: 'unauthorized' } } });
+  });
+  await page.locator('#person-samples button').first().click();
+  await expect(page.locator('#unlock')).toBeVisible();
+  await expect(page.locator('#login-error')).toContainText('만료');
+  expect(submissions).toBe(0);
+});
+
+test('a late sample error cannot replace a newer uploaded selection', async ({ page }) => {
+  await prepare(page);
+  let pending;
+  const requested = new Promise(resolve => { pending = resolve; });
+  await page.route(/\/api\/samples\/[^/]+\.jpg$/, route => {
+    if (route.request().resourceType() !== 'fetch') return route.continue();
+    pending(route);
+  });
+  await page.locator('#person-samples button').first().click();
+  const route = await requested;
+  const previous = await page.locator('#before').getAttribute('src');
+  const buffer = await sharp({ create: { width: 41, height: 53, channels: 3, background: '#123456' } }).png().toBuffer();
+  await page.locator('#person').setInputFiles({ name: 'newer.png', mimeType: 'image/png', buffer });
+  await expect(page.locator('#before')).not.toHaveAttribute('src', previous);
+  const responded = page.waitForResponse(response => response.url() === route.request().url() &&
+    response.request().resourceType() === 'fetch');
+  await route.fulfill({ status: 500, json: { error: { code: 'internal-error' } } });
+  await responded;
+  await page.locator('#select-mai').check();
+  await expect(page.locator('#generate')).toBeEnabled();
+  await expect(page.locator('#error')).toBeHidden();
+  await expect(page.locator('.sample[aria-pressed=true]')).toHaveCount(0);
 });
 
 test('the VITON-HD gallery sends the actual unpaired JPEG files only when generate is pressed', async ({ page }) => {

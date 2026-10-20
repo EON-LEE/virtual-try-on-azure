@@ -118,6 +118,14 @@ it does not acquire research photos, deploy or call models.
 | `docs/operations.md` | Current authentication, hosting, timeout and cost controls |
 | `docs/history/` | Superseded application observations, not instructions |
 
+HTTP routes use `src/http.js`, `sessions.js`, `upload.js` and `logging.js`
+for bounded parsing, session ownership, upload contracts and safe events.
+`src/assets.js` explicitly serves browser modules and fingerprints HTML, CSS
+and JavaScript together. Browser `app.js` coordinates state; `network.js`,
+`images.js`, `samples.js` and `execution.js` own requests, blob previews,
+gallery selection and execution records. JSON and image requests share
+session-expiry handling; neither retries generation.
+
 See the [experiment guide](experiments/README.md) for its distinct approval
 policy and historical evaluation criteria.
 
