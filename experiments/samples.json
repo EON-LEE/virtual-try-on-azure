@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "source_policy": "https://metmuseum.github.io/",
+  "license": "CC0 / public domain Open Access images; verify isPublicDomain and primaryImage at download time",
+  "samples": [
+    {
+      "id": "person-standing",
+      "role": "person",
+      "object_id": 764794,
+      "title": "[Studio Portrait: Self-Portrait Standing by a Mirror]",
+      "creator": "Pierre Petit",
+      "date": "1860s",
+      "source": "https://www.metmuseum.org/art/collection/search/764794",
+      "limitations": "Historical monochrome image; mirror may contain another depiction; not a modern single-person benchmark."
+    },
+    {
+      "id": "person-turned",
+      "role": "person",
+      "object_id": 269256,
+      "title": "[Female Portrait, Standing, Looking Left]",
+      "creator": "Franz Antoine",
+      "date": "1850s-60s",
+      "source": "https://www.metmuseum.org/art/collection/search/269256",
+      "limitations": "Historical monochrome portrait; inspect actual visible torso, hands, and occlusion before selecting pairs."
+    },
+    {
+      "id": "person-portrait",
+      "role": "person",
+      "object_id": 286070,
+      "title": "Jules Janin",
+      "creator": "Nadar",
+      "date": "ca. 1856",
+      "source": "https://www.metmuseum.org/art/collection/search/286070",
+      "limitations": "Historical monochrome portrait; framing may not expose the complete garment or hands."
+    },
+    {
+      "id": "garment-shirt",
+      "role": "garment",
+      "object_id": 84219,
+      "title": "Shirt",
+      "creator": "Unrecorded",
+      "date": "1880",
+      "source": "https://www.metmuseum.org/art/collection/search/84219",
+      "limitations": "Historic cotton shirt, not modern branded apparel; plain/pattern coverage requires visual labeling."
+    },
+    {
+      "id": "garment-linen",
+      "role": "garment",
+      "object_id": 80714,
+      "title": "Shirt",
+      "creator": "Unrecorded",
+      "date": "19th century",
+      "source": "https://www.metmuseum.org/art/collection/search/80714",
+      "limitations": "Historic linen garment; mannequin/background must not transfer."
+    },
+    {
+      "id": "garment-jacket",
+      "role": "garment",
+      "object_id": 102528,
+      "title": "Jacket",
+      "creator": "Unrecorded",
+      "date": "19th century",
+      "source": "https://www.metmuseum.org/art/collection/search/102528",
+      "limitations": "Historic silk jacket; pattern details and pose suitability require visual labeling."
+    }
+  ]
+}

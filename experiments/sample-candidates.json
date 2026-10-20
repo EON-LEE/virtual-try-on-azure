@@ -1,0 +1,315 @@
+{
+  "schema_version": 1,
+  "purpose": "Local sample provenance and rights notes; not an inference approval.",
+  "selected_unpaired_candidate": {
+    "dataset": "VITON-HD",
+    "upstream": {
+      "repository": "https://github.com/shadow2496/VITON-HD",
+      "paper": "https://arxiv.org/abs/2103.16874",
+      "paper_citation": "Choi, S.; Park, S.; Lee, M.; Choo, J. VITON-HD: High-Resolution Virtual Try-On via Misalignment-Aware Normalization. CVPR 2021.",
+      "dataset_description": "Official README describes a 1024x768 research dataset of frontal-view woman and top-clothing pairs.",
+      "license": "CC BY-NC 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+      "conditions": "Non-commercial purposes only; cite the paper and indicate changes.",
+      "official_download": "https://github.com/shadow2496/VITON-HD"
+    },
+    "retrieved_from": {
+      "repository": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST",
+      "revision": "fbec00f2f68cacbcdd7e1dee047405e7319226c6",
+      "mirror_card_claim": "CC BY 4.0",
+      "license_conflict": "The Hugging Face mirror claims the broader CC BY 4.0, while the original VITON-HD upstream states CC BY-NC 4.0. This review relies only on the original, narrower non-commercial terms; no broader mirror grant is assumed.",
+      "provenance_limit": "The selected mirror files were not byte-compared with the original authors' linked Google Drive archive."
+    },
+    "rights_review": {
+      "noncommercial_scope": "Private technical research only; no commercial use or public image/output publication.",
+      "explicit_third_party_processing_prohibition_found": false,
+      "individual_subject_release_verified": false,
+      "photographer_or_catalog_rights_independently_verified": false,
+      "age_record_verified": false,
+      "visual_age_observation": "The selected catalog-model image appears adult; this is visual observation only, not verified age.",
+      "remaining_uncertainty": "The upstream dataset license permits non-commercial reuse to the extent the licensor controls the relevant rights. It does not by itself establish all subject, photographer, catalog, privacy, or likeness permissions.",
+      "azure_transfer_approved": true,
+      "approval_scope": "User approved this exact pair for private non-commercial Azure research: two requests total, one per selected model, no retries; this is not a blanket rights grant.",
+      "inference_calls_for_this_candidate": 2
+    },
+    "pair": {
+      "type": "cross-paired unpaired try-on input",
+      "ground_truth_for_this_exact_person_garment_pair": false,
+      "evaluation_limit": "No exact target-wearing ground truth exists for this cross-pair. Assess output visually against the two inputs only; do not report a ground-truth similarity score."
+    },
+    "person": {
+      "dataset_path": "image/00006_00.jpg",
+      "appearance": "Modern color catalog-model portrait, front-facing with a slight body angle, head to hip visible, one hand visible; wears a plain black long-sleeve top distinct from the target.",
+      "local_path": "experiments/local/viton-hd-unpaired/person.jpg",
+      "sha256": "c29753ccb0e245ea96920afce565548bddee173494b4e044510f95b5b2daa9ce",
+      "dimensions": [
+        768,
+        1024
+      ]
+    },
+    "garment": {
+      "dataset_path": "cloth/00151_00.jpg",
+      "appearance": "Isolated white and navy horizontal-striped top with yellow neckline and sleeve-cuff trim; stripe spacing and direction, neckline, sleeves, and hem are visible.",
+      "local_path": "experiments/local/viton-hd-unpaired/garment.jpg",
+      "sha256": "d8ad0a63cdacfa9e7876c25624195def2f4005cc9eb8e63b3f8f275b4fa0d7f7",
+      "dimensions": [
+        768,
+        1024
+      ]
+    },
+    "preview": {
+      "local_path": "experiments/local/viton-hd-unpaired/preview.jpg",
+      "sha256": "bd43f6b4a7cec34d3a0852b0824774c0e5ca492a3bda2b46b683f63e76c658a6",
+      "local_only": true
+    }
+  },
+  "other_reviewed_candidate": {
+    "dataset": "Glance VTON Synthetic Dataset",
+    "repository": "https://huggingface.co/datasets/glanceai/VTON-Synthetic-Pairs",
+    "revision": "7ae72513413932dbfdb15d02c924f3be9739b0c4",
+    "license": "CC BY 4.0 as declared by the card",
+    "limitation": "Synthetic person and garment; the person already wears the target garment, so the pair tests only trivial same-garment reconstruction. Not a replacement for the VITON-HD real catalog-model photo.",
+    "not_selected_for_real_photo_trial": true
+  },
+  "excluded_candidate": {
+    "dataset": "DressCode",
+    "repository": "https://github.com/aimagelab/dress-code",
+    "reason": "Official upstream requires a signed release agreement, disallows release to private companies, and requires institutional email. Do not access until those conditions are met."
+  },
+  "approved_viton_hd_batch": {
+    "dataset": "TryOnVirtual/VITON-HD-TEST",
+    "dataset_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST",
+    "revision": "fbec00f2f68cacbcdd7e1dee047405e7319226c6",
+    "upstream_license": "CC BY-NC 4.0; rely on the original upstream's narrower non-commercial terms rather than the mirror's broader CC BY 4.0 claim.",
+    "attribution": "Cite Choi et al., VITON-HD, CVPR 2021, and indicate changes.",
+    "rights_limitations": {
+      "individual_subject_release_verified": false,
+      "photographer_or_catalog_rights_independently_verified": false,
+      "age_records_verified": false,
+      "visual_adult_appearance_only": true,
+      "mirror_bytes_compared_with_official_archive": false,
+      "explicit_third_party_processing_prohibition_found": false,
+      "remaining_uncertainty": "The dataset license does not establish that licensors control every subject, photographer, catalog, privacy, or likeness right. User approved only private non-commercial research and Azure transfer for this exact batch; no blanket rights grant or public release is implied."
+    },
+    "authorization": {
+      "existing_stripe_pair": "Two approved requests total, one per model; no retries; unknown monetary ceiling explicitly accepted.",
+      "three_additional_pairs": "Six additional approved requests total, one per model for each listed pair; no retries; unknown monetary ceiling explicitly accepted.",
+      "total_this_batch": 8,
+      "maximum_lifetime_attempts": 12,
+      "scope": "Private non-commercial research only. No commercial/promotional use, public image publication, extra calls, deployment changes, hosting, or permission changes.",
+      "ground_truth": false,
+      "evaluation_limit": "These cross-pairs have no exact target-wearing ground truth. Evaluate outputs against person and garment inputs; do not claim a ground-truth similarity score."
+    },
+    "execution": {
+      "attempts": 8,
+      "successful_png_outputs": 5,
+      "failed_attempts": 3,
+      "automatic_retries": 0,
+      "all_approval_ledgers_exhausted": true,
+      "case_level_review": "viton-hd-batch-review.md",
+      "case_outcomes": {
+        "vitonhd-stripe": {
+          "sunburst": "PNG; accepted under the visual pilot rubric",
+          "mai": "HTTP 401 PermissionDenied; no output"
+        },
+        "vitonhd-graphic-stripe": {
+          "sunburst": "HTTP 401 PermissionDenied; no output",
+          "mai": "PNG; rejected for an invented BOSS wordmark"
+        },
+        "vitonhd-floral": {
+          "sunburst": "PNG; rejected for collar/placket mismatch",
+          "mai": "PNG; rejected for collar/placket mismatch"
+        },
+        "vitonhd-lettered-print": {
+          "sunburst": "HTTP 429 RateLimitReached; no output",
+          "mai": "PNG; accepted under the visual pilot rubric"
+        }
+      },
+      "additional_pattern_coverage_limit": "No clear check/plaid garment was included; check-pattern fidelity remains untested."
+    },
+    "cases": [
+      {
+        "id": "vitonhd-graphic-stripe",
+        "person": {
+          "dataset_record": "train row offset 802, label 5",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-graphic-stripe-person.jpg",
+          "sha256_original": "127adecf44a4205a90a724875fd3b9f64e7727afc8b04916257a1dab2319834f",
+          "sha256_normalized_png": "e5d579953cb659e5e680332376c57449ca7a8ef251bdd7019c7b577275aec04c",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "description": "Catalog model in a plain pink tee, slight angle with one hand at hip; adult appearance is visual only."
+        },
+        "garment": {
+          "dataset_record": "train row offset 466, label 1",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-graphic-stripe-garment.jpg",
+          "sha256_original": "8ff3c75e0fcae791b47e335df4b16f655a86d49e596ee896e87c28a29e99bebe",
+          "sha256_normalized_png": "55ec7230a309827652ef159d0aac5ca1f1b3096ba5f06f44e9df7a46f6399149",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "description": "White tee with a large multicolor banded circular graphic and horizontal stripe elements."
+        },
+        "pair_type": "Cross-paired unpaired; no exact ground truth.",
+        "approval": "One Sunburst and one MAI request; no retries."
+      },
+      {
+        "id": "vitonhd-floral",
+        "person": {
+          "dataset_record": "train row offset 815, label 5",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-floral-person.jpg",
+          "sha256_original": "21f019fc25d629df2bf9fe253b6928ac304b742ded4509843abfffaaed15c97e",
+          "sha256_normalized_png": "dd380ce2e1a75e0b68a4c4b01873f8e71973e35e005c079c70c66e3dee9458de",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "description": "Catalog model facing camera in a plain light-gray long-sleeve top, arms at sides; adult appearance is visual only."
+        },
+        "garment": {
+          "dataset_record": "train row offset 494, label 1",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-floral-garment.jpg",
+          "sha256_original": "7144c1293813e2d5a1a7150898696b2aca0f805bcb8d7e80dcfd9fab20fd500f",
+          "sha256_normalized_png": "2334e91beadf147984a8b4e25061607470b50206ef9f53194e064a7bc00be85d",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "description": "Bright yellow long-sleeve blouse with repeated dark floral pattern, collar, and placket."
+        },
+        "pair_type": "Cross-paired unpaired; no exact ground truth.",
+        "approval": "One Sunburst and one MAI request; no retries."
+      },
+      {
+        "id": "vitonhd-lettered-print",
+        "person": {
+          "dataset_record": "train row offset 801, label 5",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-lettered-print-person.jpg",
+          "sha256_original": "a44b484773f6fa5e2d4e93c55d97012e3e0317ea64eceac0f779d8892cbb0722",
+          "sha256_normalized_png": "c970d4a529cc3d2b04a0a0ec98f061ee76d25fb92b2a18e5db810191c7576579",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "description": "Catalog model in a red athletic top, standing front/three-quarter with arms down; adult appearance is visual only."
+        },
+        "garment": {
+          "dataset_record": "train row offset 475, label 1",
+          "local_path": "experiments/local/viton-hd-approved-batch/inputs/vitonhd-lettered-print-garment.jpg",
+          "sha256_original": "502f93296f738625b18c7000b3ee3aba80d588f876803c70fd5d26d32c8a88d0",
+          "sha256_normalized_png": "c83122d57319e02616b89a3dcc54f78bb875d93be8ee81471b3bb17f65e95ae8",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "description": "Beige short-sleeve tee with red illustrated faces and readable “HAPPY WEEKEND” print."
+        },
+        "pair_type": "Cross-paired unpaired; no exact ground truth.",
+        "approval": "One Sunburst and one MAI request; no retries."
+      }
+    ]
+  },
+  "approved_hardcase_batch": {
+    "dataset": "TryOnVirtual/VITON-HD-TEST",
+    "revision": "fbec00f2f68cacbcdd7e1dee047405e7319226c6",
+    "upstream_license": "CC BY-NC 4.0; rely only on the original VITON-HD non-commercial terms, not the mirror’s broader CC BY claim.",
+    "attribution": "Choi et al., VITON-HD, CVPR 2021; indicate changes.",
+    "approval": {
+      "authorized_calls": 4,
+      "models": [
+        "GPT Image 2.5 Sunburst",
+        "MAI-Image-2.6"
+      ],
+      "calls_per_case_per_model": 1,
+      "retries": 0,
+      "unknown_amount_accepted": true,
+      "lifetime_prior_attempts": 12,
+      "lifetime_attempt_cap": 16,
+      "private_noncommercial_only": true
+    },
+    "scope_sha256": "eed35a7c4d84afded6fbf2e260d72ad114c7cd8d7bb09870c499972f409687f6",
+    "rights_limitations": {
+      "individual_subject_release_verified": false,
+      "age_record_verified": false,
+      "photographer_or_catalog_rights_independently_verified": false,
+      "mirror_bytes_compared_with_official_archive": false,
+      "explicit_third_party_processing_prohibition_found": false,
+      "remaining_uncertainty": "Dataset license does not establish all subject, photographer, catalog, privacy, or likeness permissions; approval is limited to exact private non-commercial Azure research."
+    },
+    "ground_truth": false,
+    "cases": [
+      {
+        "id": "hardcase-crossed-arms",
+        "person": {
+          "repo_path": "image/00287_00.jpg",
+          "local_path": "inputs/hardcase-crossed-arms-person.jpg",
+          "sha256_original": "dc633c3899b94cdb6889bc23aee68e9fb95420e7e36942061d5e98badf9ab1db",
+          "sha256_normalized_png": "0d303895f1e5e7fe91bd88e99cdff34803cdead9c45aa32762c32da5f68b407d",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00287_00.jpg"
+        },
+        "garment": {
+          "repo_path": "cloth/00075_00.jpg",
+          "local_path": "inputs/hardcase-crossed-arms-garment.jpg",
+          "sha256_original": "c93206314620769c7acfef8b6cc059fcc3ab420830425da8cad1d12edfdb615b",
+          "sha256_normalized_png": "5991d5b99286a8770acc422ba958c86ff1b7e62e915e74b7ea4fbd8b859cb6d0",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00075_00.jpg"
+        },
+        "person_visual_review": "Adult appearance only; arms crossed over the torso, hands grip/overlap opposite forearms, creating visible garment/hand occlusion; wears a different narrow-stripe turtleneck.",
+        "garment_visual_review": "White short-sleeve tee with a large blue/red Champion wordmark centered on the chest and a small sleeve mark; text, colors, and placement are measurable.",
+        "pair_type": "Cross-paired unpaired; no exact target-wearing ground truth."
+      },
+      {
+        "id": "hardcase-raised-arm-lace",
+        "person": {
+          "repo_path": "image/00311_00.jpg",
+          "local_path": "inputs/hardcase-raised-arm-lace-person.jpg",
+          "sha256_original": "c11733a1ed424879697933b0f660f40007e2a8a39fe771ffca4a68708eb37398",
+          "sha256_normalized_png": "f4d1c67426f6d5c4b9c584f7bbfd219ca21c1b4844a1fc4321d4bff748ad336a",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00311_00.jpg"
+        },
+        "garment": {
+          "repo_path": "cloth/00611_00.jpg",
+          "local_path": "inputs/hardcase-raised-arm-lace-garment.jpg",
+          "sha256_original": "0763253dc31ddef73f936afc3b934860d3953acba20dd02f3121986950619b34",
+          "sha256_normalized_png": "e3bf95ead7c880cf72659813566b509e38e6440da48dbf514c27de2ab9a59e46",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00611_00.jpg"
+        },
+        "person_visual_review": "Adult appearance only; one arm raised with hand at hair/head and the other down; target garment is a different color-block sleeveless top.",
+        "garment_visual_review": "Burgundy long-sleeve high-neck top with a fine floral lace yoke and semi-sheer knit-like body; assess lace motif, transparency, sleeve/neckline cut, and surface texture. No prominent external logo is visible.",
+        "pair_type": "Cross-paired unpaired; no exact target-wearing ground truth."
+      }
+    ],
+    "models": {
+      "current_maI": "MAI-Image-2.6 basic remains the only approved MAI deployment for this 4-call batch. MAI-Image-2.5-Pro was catalog/documented as a separate higher-quality 2.5-series tier but is not authorized for deployment or inference."
+    },
+    "execution": {
+      "attempts": 4,
+      "successful_png_outputs": 4,
+      "failures": 0,
+      "automatic_retries": 0,
+      "status": "all four exact approved attempts consumed; HTTP 200 outputs verified; no retries or unresolved requests",
+      "lifetime_attempts": 16,
+      "all_approval_ledgers_exhausted": true,
+      "case_level_review": "hardcase-review.md",
+      "strict_acceptance": "No output establishes unchanged pose/hands and exact garment-detail preservation."
+    }
+  }
+}

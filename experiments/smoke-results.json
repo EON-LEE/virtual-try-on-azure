@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-14",
+  "scope_sha256": "8dadb601a5235ff6410e9cb4cf43c36a8e0fcafb422ffc8ba3cb8951980b91b3",
+  "prompt_version": "upper-body-v1",
+  "prompt_sha256": "a8be583f45310cd688f11c6ec4a72f417df52fc0a3596a2575b834528d89971f",
+  "case_id": "frontal-shirt",
+  "person_met_object": 286070,
+  "garment_met_object": 84219,
+  "use_scope": "User-approved Azure transfer and private technical research only; no commercial/promotional publication; not a blanket personality-rights grant",
+  "cost_mode": "explicit_unknown_cost",
+  "user_accepted_unknown_amount_ceiling": true,
+  "approved_requests": 2,
+  "consumed_requests": 2,
+  "automatic_retries": 0,
+  "generated_outputs": 0,
+  "quality_evaluated": false,
+  "quality_conclusion": "Cannot evaluate face/body/pose/hands/background or garment fidelity without outputs",
+  "billed_cost": null,
+  "currency": "USD",
+  "runs": [
+    {
+      "model": "gpt-image-2.5-sunburst",
+      "deployment": "tryon-sunburst",
+      "model_version": "2026-09-08",
+      "run_id": "8dc9999c5cc74f63b3beacb2476661f6",
+      "started_utc": "2026-10-14T05:00:18.457772+00:00",
+      "attempts": 1,
+      "status": "failed",
+      "http_status": 401,
+      "provider_error_code": "PermissionDenied",
+      "elapsed_seconds": 5.097,
+      "usage": null,
+      "output": null
+    },
+    {
+      "model": "MAI-Image-2.6",
+      "deployment": "tryon-mai26",
+      "model_version": "2026-07-31",
+      "run_id": "6463b4946bc84765a3976c4fc484bd33",
+      "started_utc": "2026-10-14T05:00:27.800368+00:00",
+      "attempts": 1,
+      "status": "failed",
+      "http_status": 401,
+      "provider_error_code": "PermissionDenied",
+      "elapsed_seconds": 3.976,
+      "usage": null,
+      "output": null
+    }
+  ]
+}

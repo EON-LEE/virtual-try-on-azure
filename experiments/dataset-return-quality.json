@@ -1,0 +1,202 @@
+{
+  "method": "Single-reviewer visual inspection of full-aspect 2000px local contact sheets, with original input/result images available in click-zoom report. Not blinded, no landmark/OCR quantitative measurement, no exact wearing ground truth. Strict verified pass requires all mandatory axes; broad-pose similarity alone is not a pass.",
+  "statuses": "fail = visible mandatory discrepancy; not_established = no gross failure established but exact preservation/detail evidence incomplete; not_applicable = feature absent or source unreadable.",
+  "case_check_corrections": {
+    "new07-hands-planttext": "Yellow botanical frame and PASSIVE EXISTENCE wording, with truth and honesty below; frozen manifest's initial PARALLEL reading was a thumbnail transcription error. Source bytes/prompt/call scope unchanged.",
+    "new10-waist-eyelet": "White sleeveless top with tiny grey cactus-like motifs and shoulder detail. Initial eyelet/openwork thumbnail description and mnemonic case ID were incorrect; eyelet structure is not established. Source bytes/prompt unchanged."
+  },
+  "reviews": {
+    "new01-hair-stripe": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Head-down hand-on-hair configuration and lowered hand retained at broad level. Exact finger joints/contact and unchanged face not quantitatively established.",
+        "garment_pattern_text": "Red/blue narrow horizontal stripes and red neck retained; local stripe spacing/direction follows folds rather than flat pixels. Small chest label not legibly verified.",
+        "material_cut": "Short sleeve and round collar recognizable; knit fiber/texture not established. Logo characters N/A at inspected scale.",
+        "display": "미확정 · 머리손 포즈·줄무늬 유사, 미세 손/작은 로고·질감 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Hand-on-hair and lowered-hand configuration retained broadly. Fine fingertips and source-face identity unchanged not measured.",
+        "garment_pattern_text": "Thin red/blue horizontal repeat retained; fold/spacing and chest mark re-rendered, no exact letter match established.",
+        "material_cut": "Round red neck and sleeve shape present; output hem drapes lower/looser than Sunburst. Material identity cannot be certified from these images.",
+        "display": "미확정 · 큰 포즈 유지, 줄 간격·작은 라벨·소재 동일성 미검증"
+      }
+    },
+    "new02-head-wordmark": {
+      "sunburst": {
+        "verdict": "fail",
+        "pose_hands_occlusion": "Raised elbow moves inward/right relative to the source's outward sleeve silhouette; exposed arm geometry is regenerated during long-to-short sleeve change. Hand/hair broad contact remains.",
+        "garment_pattern_text": "VANS word is legible and lavender/dark blocks retained, but rectangle/logo proportions are not verified exact.",
+        "material_cut": "Short sleeves generated plausibly; exposed skin is synthesized, not preserved source skin.",
+        "display": "실패 · 올린 팔꿈치 위치/팔 윤곽 변경; VANS 글자는 읽힘"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Raised elbow more outward than Sunburst and broad source hand/head arrangement retained; exact finger shape and new exposed forearm preservation unverified.",
+        "garment_pattern_text": "VANS lettering legible; dark rectangular block becomes higher contrast than reference. Exact font/placement/material not established.",
+        "material_cut": "New short-sleeve/skin transition looks plausible but is generated content. No physical-fit claim.",
+        "display": "미확정 · 큰 팔 포즈·VANS 읽힘, 미세 손·로고 대비/질감 미검증"
+      }
+    },
+    "new03-folded-microprint": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Chin fingers and crossed supporting forearm remain recognizable with correct broad foreground ordering. Fine chin-contact and lower wrist geometry not measured.",
+        "garment_pattern_text": "Red/white dense small motif family and dark background retained; individual motif geometry and repeat density regenerated, no exact correspondences established.",
+        "material_cut": "V-neck, gathered waist and long sleeves present. Fine ruffled cuff/cloth texture not established; text/logo N/A.",
+        "display": "미확정 · 턱손/겹친 팔 유지 경향, 미세 무늬·커프·질감 동일성 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Broad chin-hand and folded-forearm depth ordering retained. Exact source finger/contact preservation is not verified.",
+        "garment_pattern_text": "Micro-motif colors/family present; arrangement is synthesized rather than matched motif by motif. No text/logo in source.",
+        "material_cut": "Gathered waist/peplum and cuffs visible; target cloth natural drape differs from flat reference as expected, fiber texture unresolved.",
+        "display": "미확정 · 팔 가림 순서 유사, 촘촘한 모티프·소재 완전 보존 미입증"
+      }
+    },
+    "new04-chest-lace": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Crossed forearm and hand-at-neck configuration remain broadly recognizable. Newly exposed forearms are synthesized after long-to-short sleeve replacement; exact elbow/finger geometry not established.",
+        "garment_pattern_text": "Black lace neck, flutter sleeves and peplum family retained. Mesh holes and larger repeated front motifs are regenerated; exact lace geometry is not established. No readable front logo in target.",
+        "material_cut": "Transparency and scalloped hem appear plausible but do not prove material identity; not a physical-fit validation.",
+        "display": "미확정 · 교차팔/목손 유사, 레이스 구멍·미세 손·소재 동일성 미입증"
+      },
+      "mai": {
+        "verdict": "fail",
+        "pose_hands_occlusion": "Broad crossed-arm ordering retained; precise hands/new exposed forearms not proven identical.",
+        "garment_pattern_text": "Back-neck inner city chic label from flat reference appears at the visible front neckline/throat. This is label relocation, not correct worn front detail.",
+        "material_cut": "Lace/peplum plausible at a glance, but wrong label placement fails garment construction/detail requirement.",
+        "display": "실패 · 의상 안쪽 목 라벨을 앞목에 노출/이동; 레이스 미세 형상도 미검증"
+      }
+    },
+    "new05-wrist-logotext": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Waist-level wrist grip and head-back angle broadly retained. Fine fingers and exposed forearms are not proven identical after sleeve removal.",
+        "garment_pattern_text": "THE NORTH FACE three-line wording and curved symbol recognizable. Exact logo outlines, relative spacing and cloth print scale not measured.",
+        "material_cut": "White crewneck tee with short sleeves present. Material knit and unchanged pants/belt geometry not established.",
+        "display": "미확정 · 손목잡기/문구 유지 경향, 미세 손·로고 형상·소재 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Grip/arm overlap retained at broad level; face/head tilt similar. Fine joint/contact and body contour invariance not measured.",
+        "garment_pattern_text": "THE NORTH FACE wording legible; black curved mark appears heavier/larger relative to text than Sunburst. No exact outline or scale validation.",
+        "material_cut": "Shirt hem covers more of belt than source clothing; possible garment drape rather than proof of body movement. Fine texture remains unverified.",
+        "display": "미확정 · 큰 포즈/문구 유사, 로고 비율·밑단 가림·소재 미검증"
+      }
+    },
+    "new06-forearm-floral": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Foreground gripping hand and lowered hand remain broadly in the source arrangement. Exact contact/finger anatomy unmeasured.",
+        "garment_pattern_text": "Coral flowers, cyan blossoms and green stems over dark base recognizable. Individual flower identities/spacing and repeat phase not established; no logo/text to score.",
+        "material_cut": "High ruffled collar and sleeve cuffs retained at broad level. Fine material/mesh appearance not certified.",
+        "display": "미확정 · 팔잡기·꽃 배색 유지 경향, 꽃 간격/미세 모양·소재 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Forearm grip broadly retained. Lower free hand outline is re-rendered; exact unchanged contour is not established.",
+        "garment_pattern_text": "Floral palette recognizable but motif density/flower arrangement differs visibly from Sunburst; exact reference repeat geometry not measured.",
+        "material_cut": "Ruffled collar/cuffs present; wrinkle/texture synthesis is not evidence of original material transfer.",
+        "display": "미확정 · 팔 가림 유사, 꽃 반복밀도·손 윤곽·질감 동일성 미입증"
+      }
+    },
+    "new07-hands-planttext": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Both hands meet in front with bent arms in broadly original configuration; fingertip and unchanged face checks are visual only.",
+        "garment_pattern_text": "PASSIVE / EXISTENCE and small truth and honesty wording legible at inspected scale; botanical frame recognizable. Font/letter shapes and individual stems not verified exact.",
+        "material_cut": "Navy crewneck shirt drapes plausibly; knit weave and exact hem/sleeve details unverified.",
+        "display": "미확정 · 앞손·PASSIVE EXISTENCE 읽힘, 꽃줄기/서체·질감 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Front-hand arrangement broadly retained; no measured landmark or fine-contact equivalence.",
+        "garment_pattern_text": "PASSIVE / EXISTENCE and small wording readable; print becomes more compact/darker shirt than reference. Exact frame/stem geometry and material identity unverified.",
+        "material_cut": "Shirt/lighting appears plausible, but color/texture fidelity is not independently established.",
+        "display": "미확정 · 앞손/큰 문구 유사, 프린트 비율·바탕색/질감 미검증"
+      }
+    },
+    "new08-angle-polo": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Modest three-quarter torso, elbow grip and lowered open palm retained broadly. Full side pose not tested; fine palm/finger identity unmeasured.",
+        "garment_pattern_text": "Blue polo, white buttons and small pink chest emblem present. Exact embroidered logo geometry too small for verification.",
+        "material_cut": "Collar and extended placket recognizable; no calibrated button-layout/knit-texture match. Exposed forearm is synthesized where source had long sleeves.",
+        "display": "미확정 · 3/4·팔잡기·폴로 구조 유사, 작은 자수/미세 손·질감 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Broad grip/open-palm arrangement retained; exact source fingers/face/body are not quantitatively established.",
+        "garment_pattern_text": "Blue/pink/white garment features recognizable; embroidery scale appears different from Sunburst and is not verified exact.",
+        "material_cut": "Collar/placket/button family visible; fine knit composition/texture and exact sewing details unverified.",
+        "display": "미확정 · 큰 포즈/카라·단추 유지 경향, 자수/질감 동일성 미입증"
+      }
+    },
+    "new09-outward-word": {
+      "sunburst": {
+        "verdict": "fail",
+        "pose_hands_occlusion": "Outward arm endpoint stays broadly similar, but lowered visible hand is re-posed into a more exposed curled-finger configuration when the sleeve is removed.",
+        "garment_pattern_text": "NØRGAARD word is readable; exact glyph widths/curvature not measured. Pink tone broadly retained.",
+        "material_cut": "Reference long straight tee becomes tucked/short at waist, hiding its original hem. Natural-looking styling is not exact garment-cut evidence.",
+        "display": "실패 · 내린 손 모양 변경·티셔츠 밑단을 넣어 입힘; 큰 문구는 읽힘"
+      },
+      "mai": {
+        "verdict": "fail",
+        "pose_hands_occlusion": "Outward arm broad configuration remains, but lowered visible fingers/hand silhouette differ from source sleeve-end hand.",
+        "garment_pattern_text": "NØRGAARD text recognizable; shirt shifts toward a darker magenta appearance. Exact typography/material not established.",
+        "material_cut": "Untucked loose tee more apparent than Sunburst; that does not repair the strict hand-preservation discrepancy.",
+        "display": "실패 · 내린 손/손가락 윤곽 변경; 문구 유사하나 분홍색·질감 차이"
+      }
+    },
+    "new10-waist-eyelet": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Elbows-out hands-at-waist configuration retained broadly; exact pressing fingers/contact unmeasured.",
+        "garment_pattern_text": "Tiny grey cactus-like motifs over white retained at family level. Not eyelet/lace: initial thumbnail label corrected rather than claiming openwork transfer.",
+        "material_cut": "Target long top is tucked behind skirt, so original long hem is not visible for verification. Shoulder detail/fine cloth texture not established; text/logo N/A.",
+        "display": "미확정 · 허리손 유사, 작은 선인장 무늬·밑단/질감 미검증(아일릿 아님)"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Both hands remain at waist but exact fingertip contour and pressure relation not verified.",
+        "garment_pattern_text": "Grey cactus-like repeat recognizable; tiny motif count and geometry unresolved. No readable brand text to score.",
+        "material_cut": "Untucked long hem covers original skirt waist, unlike Sunburst. This can be garment drape but is not proof of unchanged body/garment geometry; fine texture unverified.",
+        "display": "미확정 · 허리손/작은 무늬 유사, 손가락·밑단 가림·소재 미검증"
+      }
+    },
+    "new11-back-graphic": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Head turn and elbows-out arms-behind configuration retained broadly. Hands are hidden in the source, so finger/contact preservation is N/A, not a passed check.",
+        "garment_pattern_text": "Irregular black/white crossed graphics, illustrated elements and gold script remain recognizable. Not regular plaid. Stylized/partly cut source script is not reliably transcribed, so exact characters N/A.",
+        "material_cut": "Overall shirt print layout transfers plausibly; exact fine print scale and jersey material texture are not established.",
+        "display": "미확정 · 뒤팔/큰 그래픽 유사, 손은 원본에서 안 보임·금색 필기체 정확성 미검증"
+      },
+      "mai": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Broad head/elbow geometry retained; fine hidden-hand preservation cannot be inspected. No full side pose claim.",
+        "garment_pattern_text": "Graphic face/crossed lines/gold script recognizable but fine geometry not matched explicitly; script accuracy N/A due stylized/cut source.",
+        "material_cut": "Print family and short-sleeve silhouette present. Cotton/metallic fabric identity cannot be inferred from printed metallic-looking artwork.",
+        "display": "미확정 · 큰 포즈/그래픽 유사, 필기체·미세 배치/소재 미검증(정밀 체크 아님)"
+      }
+    },
+    "new12-front-sheer": {
+      "sunburst": {
+        "verdict": "not_established",
+        "pose_hands_occlusion": "Two front hands and bent elbows remain broadly recognizable. Fine fingertip/nail alignment and unchanged face/body not established.",
+        "garment_pattern_text": "Fine diamond mesh, light bead/dot embellishments and opaque inner layer retained at family level. Exact mesh frequency/bead placement not measured; logo/text N/A.",
+        "material_cut": "Neck closure is rendered as a visible front detail; front/back closure interpretation is uncertain from the single flat translucent reference. No exact construction pass.",
+        "display": "미확정 · 앞손/얇은 망사층 유사, 구슬 배치·목 여밈 앞뒤/미세 손 미검증"
+      },
+      "mai": {
+        "verdict": "fail",
+        "pose_hands_occlusion": "Front-hand configuration broadly retained, but exact fingers/contact remain unverified.",
+        "garment_pattern_text": "Sleeve/chest diamond mesh is visibly coarser/more prominent than the fine reference net, altering high-frequency material appearance. Bead locations also not verified exact.",
+        "material_cut": "Opaque inner layer and sheer outer layer are plausible, but plausible layering does not pass the material/mesh-fidelity requirement. Neck closure orientation remains uncertain.",
+        "display": "실패 · 망사 다이아몬드가 원본보다 굵고 커짐; 구슬/미세 손·목 여밈 미검증"
+      }
+    }
+  }
+}

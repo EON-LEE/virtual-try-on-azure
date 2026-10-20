@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-14",
+  "second_approval_requests": 2,
+  "second_approval_consumed": 2,
+  "lifetime_attempts": 4,
+  "lifetime_outputs": 2,
+  "retries": 0,
+  "reviewer": "Agent visual assessment; independent human confirmation pending",
+  "accepted_outputs": 0,
+  "input_dimensions_and_hashes": [
+    {
+      "role": "person",
+      "sha256": "39a4888466d73e54eb56ae81004c1624f68696e20a76e73eff49bed7ab044b9b",
+      "dimensions": [
+        2785,
+        3496
+      ]
+    },
+    {
+      "role": "garment",
+      "sha256": "6ab8460d2d42c972b1bc5d159e704354da756e8cccbf61781a8e8352d7d5d778",
+      "dimensions": [
+        2060,
+        2312
+      ]
+    }
+  ],
+  "scope_sha256": "8dadb601a5235ff6410e9cb4cf43c36a8e0fcafb422ffc8ba3cb8951980b91b3",
+  "runs": [
+    {
+      "schema_version": 1,
+      "run_id": "5927274610704f27bffe4fa5187daa8b",
+      "model_id": "mai",
+      "case_id": "frontal-shirt",
+      "scope_sha256": "8dadb601a5235ff6410e9cb4cf43c36a8e0fcafb422ffc8ba3cb8951980b91b3",
+      "track": "baseline",
+      "live_inference": true,
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "started_utc": "2026-10-14T05:15:31.612453+00:00",
+      "billed_cost": null,
+      "currency": "USD",
+      "cost_mode": "explicit_unknown_cost",
+      "reserved_cost_bound": null,
+      "usage": {
+        "num_output_tokens": 1026,
+        "num_input_text_tokens": 0,
+        "num_input_image_tokens": 14159
+      },
+      "output_sha256": "42d3e7f86e6613cdefecde708739578e9c8b50e1b430a7296463c4c8c2ee9717",
+      "output_dimensions": [
+        912,
+        1152
+      ],
+      "elapsed_seconds": 29.378,
+      "retail_usage_estimate_usd": "0.15226",
+      "estimate_is_billed_cost": false,
+      "visual_review": {
+        "output_sha256": "42d3e7f86e6613cdefecde708739578e9c8b50e1b430a7296463c4c8c2ee9717",
+        "scores": {
+          "face": 2,
+          "body": 1,
+          "pose": 2,
+          "hands": 1,
+          "background": 2,
+          "garment_color": 2,
+          "garment_pattern": null,
+          "garment_logo": null,
+          "garment_cut": 1,
+          "artifacts": 2
+        },
+        "not_applicable": {
+          "garment_pattern": "No printed pattern in the plain reference shirt.",
+          "garment_logo": "No reference logo or lettering."
+        },
+        "severe_distortion": false,
+        "notes": "Agent visual review, not independent human or biometric assessment. Face and head direction recognizable but softened/re-rendered. Body silhouette and lower torso volume become much fuller; source and garment occlusion prevent anatomical/fit conclusions. Seated pose remains broadly similar, but cuff/hand occlusion changes and small original visible hand patch is lost. Both source inscriptions remain more visibly than Sunburst but scaling/framing and strokes are not pixel-exact. Gathered seam is more explicit than Sunburst; fullness is exaggerated and reference full straight hem is absent/outside framing, so exact cut fidelity fails. Light cloth is rendered sepia under source lighting, not colorimetric fidelity. No fingers visible enough for full anatomy validation."
+      }
+    },
+    {
+      "schema_version": 1,
+      "run_id": "90f0c9d5b25f448c9f44062d28e3c510",
+      "model_id": "sunburst",
+      "case_id": "frontal-shirt",
+      "scope_sha256": "8dadb601a5235ff6410e9cb4cf43c36a8e0fcafb422ffc8ba3cb8951980b91b3",
+      "track": "baseline",
+      "live_inference": true,
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "started_utc": "2026-10-14T05:14:58.362339+00:00",
+      "billed_cost": null,
+      "currency": "USD",
+      "cost_mode": "explicit_unknown_cost",
+      "reserved_cost_bound": null,
+      "usage": {
+        "input_tokens": 3184,
+        "input_tokens_details": {
+          "image_tokens": 2938,
+          "text_tokens": 246
+        },
+        "output_tokens": 408,
+        "output_tokens_details": {
+          "image_tokens": 408,
+          "text_tokens": 0
+        },
+        "total_tokens": 3592
+      },
+      "output_sha256": "fb3a88089580124c2ccd276a85a94ec493f3127746590258dafe9eab1716416e",
+      "output_dimensions": [
+        1120,
+        1405
+      ],
+      "elapsed_seconds": 32.414,
+      "retail_usage_estimate_usd": "0.036974",
+      "estimate_is_billed_cost": false,
+      "visual_review": {
+        "output_sha256": "fb3a88089580124c2ccd276a85a94ec493f3127746590258dafe9eab1716416e",
+        "scores": {
+          "face": 2,
+          "body": 2,
+          "pose": 2,
+          "hands": 1,
+          "background": 1,
+          "garment_color": 2,
+          "garment_pattern": null,
+          "garment_logo": null,
+          "garment_cut": 1,
+          "artifacts": 2
+        },
+        "not_applicable": {
+          "garment_pattern": "Plain shirt has no printed pattern; wrinkles and construction are evaluated under cut.",
+          "garment_logo": "No reference logo or lettering; preservation of source portrait annotations is assessed as background."
+        },
+        "severe_distortion": false,
+        "notes": "Agent visual review, not independent human or biometric assessment. Broad face/hair/expression and seated pose remain recognizable, but facial texture is re-rendered. Left cuff/occlusion differs and the original small visible hand patch disappears. Right-side portrait inscription is removed, although top annotation and sepia background remain. Collar/cuffs/light cloth transferred, but reference transverse gathered seam, placket termination and straight hem are not faithfully reproduced; generated hem is curved/uneven. Clothing volume changes silhouette; cannot infer hidden anatomical shape or physical fit."
+      }
+    }
+  ],
+  "estimated_success_requests_total_usd": "0.189234",
+  "actual_billed_cost": null,
+  "conclusion": "API smoke succeeds for this pair; both outputs fail the preservation/cut rubric. No broad virtual-try-on or physical-fit validation."
+}

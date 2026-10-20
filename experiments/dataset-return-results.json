@@ -1,0 +1,962 @@
+{
+  "scope_sha256": "05fc9b711a6cd8b5b34a0230a6b73ed1199d4f723526d63bda547f232e3ed8a8",
+  "frozen_inputs": [
+    {
+      "id": "new01-hair-stripe",
+      "person_id": "00690_00",
+      "garment_id": "00259_00",
+      "person": {
+        "path": "candidates/image/00690_00.jpg",
+        "sha256": "8f3c191ef35bbba03960123cf63b06b446e0a5b447624880bdaaaf705b29647b",
+        "normalized_png_sha256": "5cee202449ebd08918dd6d89dd2ebca0d300554dc14bce8d85a575a298d2c18d",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00690_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00259_00.jpg",
+        "sha256": "38d0a7b1a6b9c0ba15437ae817f576d0c84f8b9eb075bb1aef0d62cfb02b2e7f",
+        "normalized_png_sha256": "b5b78b351632183ea92ad1d12696a9b077d7c64f21d2fdf7b1b77ae25eba1f20",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00259_00.jpg"
+      }
+    },
+    {
+      "id": "new02-head-wordmark",
+      "person_id": "00624_00",
+      "garment_id": "00055_00",
+      "person": {
+        "path": "candidates/image/00624_00.jpg",
+        "sha256": "798f6efe46614e3725af7d9f6d7b962dda328b261829949928caee7f87a33658",
+        "normalized_png_sha256": "ff6540eae2f732b2b565c427d0fdfd051d9f85315e2c186bd1f31e07d7ccbe89",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00624_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00055_00.jpg",
+        "sha256": "c9c13719456663be040a63711d0ee92c6bac2e259017b072d396d874bdc367ad",
+        "normalized_png_sha256": "97dbb6166082bce76e5f9ea8d573d5814e8222a9898aa2ee7d2f91ea08a086d0",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00055_00.jpg"
+      }
+    },
+    {
+      "id": "new03-folded-microprint",
+      "person_id": "00599_00",
+      "garment_id": "00460_00",
+      "person": {
+        "path": "candidates/image/00599_00.jpg",
+        "sha256": "a26aca06f1c5d82edbc7394480ad5f286ff5c22630ed9e1651af79306c534a5d",
+        "normalized_png_sha256": "7f464dc8db65f4be760f4e7e57d0d031bbea2e97df86c18c68b2c8f3baca75fb",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00599_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00460_00.jpg",
+        "sha256": "28acb342328aaf8e54e0ecaf1c2ed09ed3a97e985f7414eb5d8555e90c050535",
+        "normalized_png_sha256": "af13906ff3bed5532c1b2d02fd30df327f41b41c3d06087724d6f879c88a199d",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00460_00.jpg"
+      }
+    },
+    {
+      "id": "new04-chest-lace",
+      "person_id": "00145_00",
+      "garment_id": "00254_00",
+      "person": {
+        "path": "candidates/image/00145_00.jpg",
+        "sha256": "6ba801d200388887cf525ba33508f3536135b29e209b8b3a114b62fd096de5cb",
+        "normalized_png_sha256": "1b70abbdff7760d757074278a6255aed8e84807f9da793272c3e5afa6844d264",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00145_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00254_00.jpg",
+        "sha256": "8cdfa88f244ee316aad7dc05d03553e32f93cd3679005a0497dc0b6bd9dbda33",
+        "normalized_png_sha256": "fed67d491617a3f778b9001c3729d216c93be6bd80af9d48fb473baef0a52f98",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00254_00.jpg"
+      }
+    },
+    {
+      "id": "new05-wrist-logotext",
+      "person_id": "00064_00",
+      "garment_id": "00641_00",
+      "person": {
+        "path": "candidates/image/00064_00.jpg",
+        "sha256": "e0859dc91ad39102f82e48ebf25cc309f370a81c8bec76251434ecef706a3a18",
+        "normalized_png_sha256": "43acef392e0b3e76dbe0061dca9d60217946a125facad149fbe40a865cc2f6d2",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00064_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00641_00.jpg",
+        "sha256": "f03e18c9d5e9a0f83f69f8e33bdea14e941aad463346fd3def3c123f314e0325",
+        "normalized_png_sha256": "64fbcdec9167701ead9701f88609d22f19d765d07a0afac32479352670216646",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00641_00.jpg"
+      }
+    },
+    {
+      "id": "new06-forearm-floral",
+      "person_id": "00475_00",
+      "garment_id": "00470_00",
+      "person": {
+        "path": "candidates/image/00475_00.jpg",
+        "sha256": "0f1c6261db80940761ec29bd3162e1ae7de2b284554752a94e0e0d7e27f7be08",
+        "normalized_png_sha256": "95512321f6071fff81bbd23273e194c84fbb8e5e35685b3bce8395b1ae7df7aa",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00475_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00470_00.jpg",
+        "sha256": "b9d10eb367818c666c73b3ab42e1a62c51b3a0bea2b2284dd0a675980fb87a5b",
+        "normalized_png_sha256": "51d0c948028b52f5858694093f2329d4fc5a74bfa21c7dbd1da30a4f1a19fe10",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00470_00.jpg"
+      }
+    },
+    {
+      "id": "new07-hands-planttext",
+      "person_id": "00654_00",
+      "garment_id": "00396_00",
+      "person": {
+        "path": "candidates/image/00654_00.jpg",
+        "sha256": "53573a7f252a57be3b01863507f8208538becfe3102b0c7c23041da2a7b9a1aa",
+        "normalized_png_sha256": "acc7689186bfe16d74906890db4a37261398cb36d8b80678099a998fc8b19767",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00654_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00396_00.jpg",
+        "sha256": "b75a1a6c84fd0d507c7881a6197c974ef02d236ca543d35a765ebddf73d7427d",
+        "normalized_png_sha256": "cdb338193e9d91b0b9f855f2a60ad1736e467b37fce8d9d2fa3a29ddf41740f0",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00396_00.jpg"
+      }
+    },
+    {
+      "id": "new08-angle-polo",
+      "person_id": "00428_00",
+      "garment_id": "00617_00",
+      "person": {
+        "path": "candidates/image/00428_00.jpg",
+        "sha256": "1a1f4e48275a238972477ace42bb7e732f1459e119f9bbc1de4e091ead62072c",
+        "normalized_png_sha256": "36964b9e1d771d0a033020f894792a70a67b8757445ef94edb1a6345df4ec4e5",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00428_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00617_00.jpg",
+        "sha256": "3fa7b97ab34e72464087855d040a13daf026fb1b5387a181bb9a1a183431145e",
+        "normalized_png_sha256": "14c8d71a2a32da8b1b055ac87b6890eb8189c655689ee1ade1b05307c36d7e70",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00617_00.jpg"
+      }
+    },
+    {
+      "id": "new09-outward-word",
+      "person_id": "00468_00",
+      "garment_id": "00484_00",
+      "person": {
+        "path": "candidates/image/00468_00.jpg",
+        "sha256": "71b1659e7a5b1e7f125784c84bded7661143dbfc2b04c350d61a21e2bebac0b1",
+        "normalized_png_sha256": "1de32156a4345fcbef44a389493fd8540c197e10771e1165404ceb90b42c2a56",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00468_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00484_00.jpg",
+        "sha256": "f793dd4f03283a46cb7729eb1692bf43751592153610e34e23851d1cad70e323",
+        "normalized_png_sha256": "a074cda078b16f16bf3bb32b34cbf08bd0749c884bf6091c171012055e72b6d8",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00484_00.jpg"
+      }
+    },
+    {
+      "id": "new10-waist-eyelet",
+      "person_id": "00713_00",
+      "garment_id": "00709_00",
+      "person": {
+        "path": "candidates/image/00713_00.jpg",
+        "sha256": "b0ad1ff2c23560e3bfb6f4a1d0bdd53188668ab611dfb7990dc2fb282c18e13a",
+        "normalized_png_sha256": "618b4eba657b12750550090730e1dfae0b66e9c619bdbe2c6ac620a631ecb6ef",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00713_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00709_00.jpg",
+        "sha256": "96967f7ee2ce8e7dd6531315c2d67ec487f1f4530bf093504b055eb529b4c600",
+        "normalized_png_sha256": "00d41cfee0d98ab33620bb06b161182b03f880e8a1e34cd292e1fcb76904ffc8",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00709_00.jpg"
+      }
+    },
+    {
+      "id": "new11-back-graphic",
+      "person_id": "00462_00",
+      "garment_id": "00504_00",
+      "person": {
+        "path": "candidates/image/00462_00.jpg",
+        "sha256": "8d5c1f4facc58ab64d363a03f44600cb07ec86990a2ede6b77b4994735f592d0",
+        "normalized_png_sha256": "e8c0c5e01a1531e2a2753c1cd90662b3c10a78057e35a039e1e2b4d64460c95e",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00462_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00504_00.jpg",
+        "sha256": "5dcf654a3f491d44b80c0a283ac0fb9fcf461c6c726588ad2c718d7430c398cb",
+        "normalized_png_sha256": "b0c1d820bf9524ac3bdfb370bfac99f4a163652de1295a4d74a262b722c966da",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00504_00.jpg"
+      }
+    },
+    {
+      "id": "new12-front-sheer",
+      "person_id": "00069_00",
+      "garment_id": "00261_00",
+      "person": {
+        "path": "candidates/image/00069_00.jpg",
+        "sha256": "b350da7b1741cbb6680d0a5b3d8098ed76d14ff92de6e3802d30a7ee685d7570",
+        "normalized_png_sha256": "604f47836c01bd2fdc4fecacba1953caab94719911a5070da4130f19ae2a341a",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/image/00069_00.jpg"
+      },
+      "garment": {
+        "path": "candidates/cloth/00261_00.jpg",
+        "sha256": "6e67ab01433fc88bd62e5d500aedeaebb3cc8a53c8a4497392cef7218bf4d2c3",
+        "normalized_png_sha256": "d23c6d248f1be8cfbd74bd4e38e41a882e9b217f6cbe6d791882d1032deb689e",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "source_url": "https://huggingface.co/datasets/TryOnVirtual/VITON-HD-TEST/resolve/fbec00f2f68cacbcdd7e1dee047405e7319226c6/cloth/00261_00.jpg"
+      }
+    }
+  ],
+  "attempts": 24,
+  "successful_outputs": 24,
+  "failed_attempts": 0,
+  "submitted_unresolved": 0,
+  "retries": 0,
+  "conditional_usd_estimate_successful_usage_only": 1.007004,
+  "estimate_source": "Azure Retail Prices API rates verified 2026-10-14, azure-evidence.md. USD/1M text5/image-input8/Sunburst-output30/MAI-output38. Conditional list estimate, not invoice; failed-request costs unknown.",
+  "actual_billing": null,
+  "records": [
+    {
+      "case_id": "new03-folded-microprint",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 24.187,
+      "output_sha256": "54e0c985c52bc5a9c398fe35fe92806ac161d783df1c0579e8aed36dcac22c65",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:00:19 GMT",
+        "x-request-id": "21135c41-64cf-4fac-bbaf-2f820ef38822",
+        "apim-request-id": "c43ce103-a4c8-4584-9d18-bfe65efa324b"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 386,
+      "conditional_usd_estimate": 0.025098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new05-wrist-logotext",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 22.567,
+      "output_sha256": "346b1a3e0502a0f33cca65335a90882723153f630c6747194cd0a65614766cc5",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:04:21 GMT",
+        "x-request-id": "d1f18c76-3f11-40e5-b952-642aebb5d264",
+        "apim-request-id": "cbf619b0-a48c-4012-9707-e72f5d2fcef1"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new03-folded-microprint",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 26.473,
+      "output_sha256": "0213af47ac0372551c972a9bd287ea144f37d6402195ecff8f2426bf4c4618c2",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:01:10 GMT",
+        "x-request-id": "f6c03496-a638-4314-8322-c0c4fe5099e9",
+        "apim-request-id": "1e49d119-a824-4473-a644-3ba4793b041b"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new12-front-sheer",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 30.558,
+      "output_sha256": "6134f148bc4eb7b1a3d7e718cb4159a02784aa6f1a685764de34dfb55dc27919",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:15:24 GMT",
+        "x-request-id": "0aec21cd-1780-4875-b981-89b86d788827",
+        "apim-request-id": "94e267b2-3469-4522-b3ab-6ae4d9dfd6d1"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 386,
+      "conditional_usd_estimate": 0.025098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new05-wrist-logotext",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 22.411,
+      "output_sha256": "375dc6be228ac89ccd27584df35f1836c435821e86295eccfe194f188dc87099",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:03:35 GMT",
+        "x-request-id": "0454c744-362c-4660-8766-1282e719b2e3",
+        "apim-request-id": "2e595f12-81c3-4c0f-bd0b-d7fbb8474879"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 386,
+      "conditional_usd_estimate": 0.025098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new07-hands-planttext",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 25.749,
+      "output_sha256": "faa251cbd9f0aa7f5f5b56fcc1594c0398c5bfc97d36c2b172d16b90e4b66727",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:07:27 GMT",
+        "x-request-id": "4814cb0f-4bd4-40dd-b8d5-3f00bdd413e4",
+        "apim-request-id": "6174fc8d-df6a-411e-8138-a0477d2501ec"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 686,
+      "conditional_usd_estimate": 0.034098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new08-angle-polo",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 24.203,
+      "output_sha256": "1e774e6208431c7ff7b86d442b8c7291a81e1becb69b9fc86c45541e0d2e1bd0",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:10:07 GMT",
+        "x-request-id": "154f3bca-03bf-46ac-8ade-5e098e8836a7",
+        "apim-request-id": "13458a90-0c6d-4747-aef5-f79659971ba4"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new02-head-wordmark",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 22.649,
+      "output_sha256": "ae03703e915ca9c45c01ae0d1b830ce6d75764603dc1c6693e6ee99f4d43ffa6",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 01:59:29 GMT",
+        "x-request-id": "3d68260c-1dd7-485b-b326-09bb0160de7e",
+        "apim-request-id": "0518367e-16e6-4d4a-bfa9-7615da0d1732"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new04-chest-lace",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 23.133,
+      "output_sha256": "e6ce79014dec62294af451ad52129df586dc84bcf79c52f43591a3d68aa71b45",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:01:57 GMT",
+        "x-request-id": "e96d6a6f-7827-4937-97af-1c68f057ad9e",
+        "apim-request-id": "dca657f9-a087-4760-9af8-90fa56d1eafb"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 172,
+      "conditional_usd_estimate": 0.018678,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new12-front-sheer",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 23.242,
+      "output_sha256": "e8ed01900a24d9aefe054d751de753fbf3763e6e85769a1b4c3f46af585ab2f9",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:16:24 GMT",
+        "x-request-id": "b7c11e70-7215-4133-aaa1-00dadf8cb045",
+        "apim-request-id": "b9557ac0-bede-4f6c-b0df-1f60975c9fa1"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new10-waist-eyelet",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 33.193,
+      "output_sha256": "cea53784e700cc5d3e3ef671c0d7c1326c3739aaddfbbf8f61977b1942834a79",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:12:15 GMT",
+        "x-request-id": "966561c4-2d3f-4516-a02f-6920f370f1b8",
+        "apim-request-id": "fe193a85-8138-470f-bff3-0d4387f3d5c6"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1544,
+      "conditional_usd_estimate": 0.059838,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new11-back-graphic",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 18.32,
+      "output_sha256": "ab89948f42bcf8311b96e81f3d4d50ed929b84888107a4b39d01d5ea737b8779",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:13:50 GMT",
+        "x-request-id": "bb10fb49-47cc-4862-95a2-ebd13551ac1a",
+        "apim-request-id": "a0722791-f813-4b08-a6e9-184698084112"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 172,
+      "conditional_usd_estimate": 0.018678,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new09-outward-word",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 21.009,
+      "output_sha256": "a529ee028724fb7da47b67bd85a7b885c09b4c4ad2fd211cc543f3a9cacf0df8",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:10:41 GMT",
+        "x-request-id": "53009431-cee7-4c41-ba7f-43b435d47838",
+        "apim-request-id": "d874369c-b281-441e-9a0f-cc4b704a6c27"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 386,
+      "conditional_usd_estimate": 0.025098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new02-head-wordmark",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 18.833,
+      "output_sha256": "a4616c30149ea4ed7db941361e91a80b2b0ff969a0673baf5d6d45c8cc2ded6a",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 01:58:43 GMT",
+        "x-request-id": "9d0eae8b-3a7c-4e5c-828b-834ed21ff51a",
+        "apim-request-id": "7f2f02a7-ea14-4a32-8cf1-f5f07eb69663"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 172,
+      "conditional_usd_estimate": 0.018678,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new01-hair-stripe",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 26.313,
+      "output_sha256": "593c3cc4837e1e737573b5fa51083a9c346cec2a2a1db8566424c0b06db388d0",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 01:57:58 GMT",
+        "x-request-id": "14d8e1e0-6de2-4fc8-8c21-5384c592cf28",
+        "apim-request-id": "667fc58d-f052-4c43-9c8f-e67c06f9e2ed"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new11-back-graphic",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 27.556,
+      "output_sha256": "77b5ff180ba53f52a036c31cc465d6de88996a60b61689f7b6824bd11d9291dc",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:14:54 GMT",
+        "x-request-id": "e4aa84e1-ef57-4f81-baca-780452c2ffb9",
+        "apim-request-id": "5021c4e7-e4cd-40a1-b973-3d3d61edaacf"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new07-hands-planttext",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 22.921,
+      "output_sha256": "911f3d48a172c189ddb02e1adab0b8c63b4227814709a850a8e990284507dd7d",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:08:31 GMT",
+        "x-request-id": "a1918645-a7e3-4c7a-a3a3-f3db8a1a9a95",
+        "apim-request-id": "34cd4bd8-f613-4ba3-9e9f-1a4874c7b8b7"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new08-angle-polo",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 23.879,
+      "output_sha256": "abb932cc17301867acc46e3977bab388d82dd93e28c8593df58327be40442c8a",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:09:08 GMT",
+        "x-request-id": "552a6411-7300-4be5-b3c8-b2be1c696e42",
+        "apim-request-id": "d67aa53e-ea53-42c7-a600-e3b06649af3b"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 686,
+      "conditional_usd_estimate": 0.034098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new06-forearm-floral",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 25.321,
+      "output_sha256": "d5dc0e74e15d7dda197d77f78a4de8ec473f218b4f0d4e1b47245169cfd88154",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:06:54 GMT",
+        "x-request-id": "aa13c597-9e2e-4d4d-a350-5e71d7a5ab92",
+        "apim-request-id": "c9f6d91a-b6ff-4394-a1c9-f945a4822841"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new01-hair-stripe",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 21.787,
+      "output_sha256": "70085e6e84d7d768824a0ec2158fb7a97a9adae6b6f96daed496ac7de8ade66b",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 01:57:08 GMT",
+        "x-request-id": "7f3674bc-7946-44a3-8812-91af28273462",
+        "apim-request-id": "f9a5aa5e-0701-491d-8893-49dd1853d00c"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 386,
+      "conditional_usd_estimate": 0.025098,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new10-waist-eyelet",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 24.545,
+      "output_sha256": "ca7fef3d2b410967053f51ba176f0d18020c2b2a27df34ee45c3fd08b5faedfe",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:13:17 GMT",
+        "x-request-id": "c91bb011-398d-4846-9db9-ef17720b7f49",
+        "apim-request-id": "3f8e7d69-6ad2-454e-aa7d-409f9c8a4f5b"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new09-outward-word",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 24.47,
+      "output_sha256": "a7614071102b15ae40c94af0f10c8cc91b7b173a5f44a3be03c24c569e603ffd",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:11:41 GMT",
+        "x-request-id": "c1ae5016-518a-41c6-b4f6-f0e71a449f0c",
+        "apim-request-id": "7ab3a95c-d4e6-4bec-bb02-133966562533"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new06-forearm-floral",
+      "model_id": "sunburst",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 74.837,
+      "output_sha256": "b3a1bb9e1880c7d3c64a2d7c15c121848190a6817dadf9024886ee4b923035e6",
+      "output_dimensions": [
+        1086,
+        1448
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:05:50 GMT",
+        "x-request-id": "8e798e27-85ca-4315-8198-638ce0cc32f6",
+        "apim-request-id": "c7ae247e-c756-43d2-bbd1-cc4e9bb6ba68"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 246,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1544,
+      "conditional_usd_estimate": 0.059838,
+      "actual_billing": null
+    },
+    {
+      "case_id": "new04-chest-lace",
+      "model_id": "mai",
+      "status": "succeeded",
+      "attempts": 1,
+      "retries": 0,
+      "http_status": 200,
+      "elapsed_seconds": 24.928,
+      "output_sha256": "160526fc08b796e479f4cf230ea1fdcdcd957c8a9aafe946ee7f6a7cf6e8face",
+      "output_dimensions": [
+        880,
+        1184
+      ],
+      "response_metadata": {
+        "http_status": 200,
+        "date": "Thu, 15 Oct 2026 02:02:46 GMT",
+        "x-request-id": "d44bf5ed-c045-4590-b3fa-df7c8a9e2eb3",
+        "apim-request-id": "9281048c-0531-4b24-a658-55781d212f0a"
+      },
+      "provider_error_code": null,
+      "text_input_tokens": 440,
+      "image_input_tokens": 1536,
+      "image_output_tokens": 1017,
+      "conditional_usd_estimate": 0.053134,
+      "actual_billing": null
+    }
+  ],
+  "model_measurements": {
+    "sunburst": {
+      "attempts": 12,
+      "latency_min_seconds": 18.32,
+      "latency_median_seconds": 23.506,
+      "latency_max_seconds": 74.837,
+      "minimum_start_gap_seconds": 94.069712,
+      "conditional_usd_estimate": 0.369396
+    },
+    "mai": {
+      "attempts": 12,
+      "latency_min_seconds": 22.567,
+      "latency_median_seconds": 24.5075,
+      "latency_max_seconds": 27.556,
+      "minimum_start_gap_seconds": 94.257875,
+      "conditional_usd_estimate": 0.637608
+    }
+  },
+  "strict_visual_review_counts": {
+    "pass": 0,
+    "fail": 5,
+    "not_established": 19
+  }
+}

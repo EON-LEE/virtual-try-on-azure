@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "verified_date": "2026-10-14",
+  "authorization_scope": "Dedicated resource group, two AIServices S0 resources and exact capacity-one GlobalStandard model deployments only",
+  "inference_authorized": false,
+  "inference_calls": 12,
+  "inference_authorization_note": "All user-approved pilot batches are exhausted; no further inference is authorized.",
+  "resource_group": "rg-virtual-try-on",
+  "models": [
+    {
+      "id": "sunburst",
+      "resource": "vto-sunburst-eus2-b0af194e",
+      "region": "eastus2",
+      "deployment": "tryon-sunburst",
+      "catalog_model": "gpt-image-2.5-sunburst",
+      "model_version": "2026-09-08",
+      "format": "OpenAI",
+      "sku": "GlobalStandard",
+      "capacity": 1,
+      "resource_state": "Succeeded",
+      "deployment_state": "Succeeded",
+      "endpoint": "https://vto-sunburst-eus2-b0af194e.openai.azure.com/",
+      "candidate_api_version": "2025-04-01-preview",
+      "api_compatibility_tested": true,
+      "api_compatibility_observation": "Lifetime: three valid PNGs, two HTTP 401 PermissionDenied responses, and one HTTP 429 RateLimitReached response. Compatibility was observed on successful calls; reliability is not established.",
+      "quota_current": 1,
+      "quota_limit": 2
+    },
+    {
+      "id": "mai",
+      "resource": "vto-mai26-eus-b0af194e",
+      "region": "eastus",
+      "deployment": "tryon-mai26",
+      "catalog_model": "MAI-Image-2.6",
+      "model_version": "2026-07-31",
+      "format": "Microsoft",
+      "sku": "GlobalStandard",
+      "capacity": 1,
+      "resource_state": "Succeeded",
+      "deployment_state": "Succeeded",
+      "endpoint": "https://vto-mai26-eus-b0af194e.services.ai.azure.com/",
+      "api_compatibility_tested": true,
+      "api_compatibility_observation": "Lifetime: four valid PNGs and two HTTP 401 PermissionDenied responses. Compatibility was observed on successful calls; reliability is not established.",
+      "quota_current": 1,
+      "quota_limit": 6
+    }
+  ]
+}
