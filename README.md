@@ -1,24 +1,24 @@
-# virtual-try-on-azure
+# Virtual Try-On
 
-Azure-only virtual try-on studio for **upper-only, lower-only, or upper+lower
-full-set clothing**. Upload a person photo and the required garment references,
-then explicitly select GPT Image 2.5 Sunburst,
-MAI, or both. Only checked models run; changing the result view does not call
-a model. No user-written prompt is required.
+Azure-only clothing preview with explicit **upper, lower, or upper+lower**
+selection and **Sunburst, MAI Image 2.6 basic, or both**. Only selected models
+run. Changing inputs or viewing results does not submit a paid request.
 
-**Status:** local application/API/browser flows are implemented. Dedicated Azure
-model resources and deployments were provisioned successfully on 2026-10-14.
-App hosting has not been deployed. The experiment harness observed one HTTP 200
-image edit per model after RBAC propagation; the application credential path has
-not been live-tested. The initial two outputs failed the agent's visual
-preservation review; only two outputs in a later four-case pilot passed its
-rubric. These observations do not establish service quality or garment accuracy.
-No sample illustration or test fixture is presented as a generated try-on result.
+The application is hosted at
+<https://vto-studio-b0af194e.purpleground-f12dc511.eastus2.azurecontainerapps.io/>.
+Hosted managed-identity generation passed technical checks for all three modes
+on both models. This establishes functionality, **not exact preservation of
+face, pose, color, pattern, lettering or garment construction**, and not
+physical fit or size prediction. See [verification history](docs/history/application-development.md#hosted-verification).
 
-## Local run
+The intentionally public demo login is **test / test**, not private or production
+access control. The approved hosted demo uses unlimited total calls; anyone with
+these credentials can incur charges. Local defaults remain inference-disabled.
+See [operations](docs/operations.md) before changing any paid-call setting.
 
-Install Node 24 or later. In PowerShell, use `npm.cmd` if the execution policy
-blocks the `npm.ps1` wrapper; no policy change is necessary.
+## Local development
+
+Use Node 24 or later. PowerShell can use `npm.cmd` without changing execution policy.
 
 ```powershell
 npm.cmd ci --ignore-scripts
@@ -26,557 +26,129 @@ Copy-Item .env.example .env
 npm.cmd start
 ```
 
-Open `http://127.0.0.1:3000`. The default UI previews local files and explicitly
-shows that Azure generation is disconnected. There is no mock mode in the
-application. `ENABLE_AZURE_INFERENCE=false` prevents all inference even if keys
-are present. Do not enable it without explicit account and cost approval.
+Open `http://127.0.0.1:3000`. Local uploads can be previewed without generation.
+There is no production mock mode, automatic retry or external-model fallback.
+Do not enable inference without explicit account and cost approval.
 
-After generation approval, set these values in the ignored `.env` or hosting secrets:
+## Input and API contract
 
-| Model | Required settings |
-| --- | --- |
-| Sunburst | `AZURE_SUNBURST_ENDPOINT` (resource root `https://NAME.openai.azure.com`), `AZURE_SUNBURST_DEPLOYMENT`, `AZURE_SUNBURST_API_VERSION`, selected authentication mode below |
-| MAI | `AZURE_MAI_ENDPOINT` (resource root `https://NAME.services.ai.azure.com`), `AZURE_MAI_DEPLOYMENT`, `AZURE_MAI_MODEL=MAI-Image-2.6`, selected authentication mode below |
-| Paid-call gate | `ENABLE_AZURE_INFERENCE=true`, only after authorization |
-
-### Provisioned model configuration
-
-The experiment track reported the following control-plane deployments as
-`Succeeded` in resource group `rg-virtual-try-on`. These are secret-free resource
-coordinates, not proof of a successful image edit. `.env.example` contains the
-matching endpoint/deployment values, blank API keys and inference disabled.
-
-| Model | Resource / region | Deployment | Model version | SKU / capacity |
-| --- | --- | --- | --- | --- |
-| Sunburst | `vto-sunburst-eus2-b0af194e` / `eastus2` | `tryon-sunburst` | `gpt-image-2.5-sunburst`, `2026-09-08` | `GlobalStandard` / 1 |
-| MAI basic | `vto-mai26-eus-b0af194e` / `eastus` | `tryon-mai26` | `MAI-Image-2.6`, `2026-07-31` | `GlobalStandard` / 1 |
-
-Use `https://vto-sunburst-eus2-b0af194e.openai.azure.com` for Sunburst and
-`https://vto-mai26-eus-b0af194e.services.ai.azure.com` for MAI. These origins
-were reported from Azure's service-specific `properties.endpoints`; the generic
-`cognitiveservices.azure.com` endpoint is not compatible with these adapters.
-The **model version is not the HTTP API version**. Provisioning success does
-not validate the configured Sunburst `2025-04-01-preview` edits contract.
-Both resources have `disableLocalAuth=true`; API-key mode cannot authenticate
-to them. The first approved research smoke call to each model returned HTTP 401,
-with no outputs and no retries. Control-plane Owner access did not provide the
-required inference DataActions. The experiment track subsequently reported
-resource-scoped OpenAI User (Sunburst) and Cognitive Services User (MAI)
-assignments for the approved admin principal. A separately approved second smoke
-run then returned HTTP 200 for each model using fresh Cognitive Services bearer
-tokens. This verifies the harness routes/authentication for those deployments,
-not the application's AzureCliCredential execution path or general model quality.
-Those historical permission changes did not authorize additional generation or app hosting.
-The later hosted verification and current paid-demo policy are recorded below.
-
-### Observed smoke results (2026-10-14)
-
-The experiment track reported the same normalized person/garment inputs and
-`upper-body-v1` prompt for its second smoke run:
-
-| Model | HTTP / output | Harness duration | Agent visual review |
-| --- | --- | --- | --- |
-| Sunburst | 200 / PNG 1120 x 1405 | 32.414 s | Not accepted: hand occlusion changed, original right-side signature removed, shirt gathering/seams/hem differed |
-| MAI basic | 200 / PNG 912 x 1152 | 29.378 s | Not accepted: hand occlusion changed, torso silhouette expanded, hem not preserved |
-
-The garment changed, but **0 of 2 outputs passed this agent review**. Output
-resolution/aspect ratio did not exactly match the original. This single pair is
-not a benchmark, independent quality assessment or proof of face/pose/logo
-preservation or physical fit. At that checkpoint, no additional app calls or hosting were approved.
-Across both smoke runs: four total calls (two 401, two 200), zero automatic
-retries; both call authorizations are exhausted.
-
-Evidence was published by the experiment track in
-[commit ec07e79](https://github.com/EON-LEE/virtual-try-on-azure/commit/ec07e79),
-including `experiments/second-smoke-results.json` and
-`experiments/second-smoke-review.md`. The reported usage-based retail estimates
-were USD 0.036974 (Sunburst) and USD 0.152260 (MAI); **actual billing is unknown**.
-These are not fixed prices or approval for more calls. Private research images
-are not embedded in the application or this document.
-
-The later VITON-HD pilot used four unpaired cases: eight approved attempts,
-five valid PNGs, three failures and no retries. Only stripe/Sunburst and
-lettered-print/MAI passed the agent's visual pilot rubric, not a ground-truth or
-service-quality assessment. Graphic/MAI invented a **BOSS wordmark absent from
-the garment reference**; both floral outputs failed to preserve the collar/
-placket. Models can invent lettering or brands, not just change patterns.
-Compare every result with both source images; garment accuracy is not guaranteed.
-Two attempts returned 401 and one returned 429; exact causes remain unresolved.
-The conditional usage-based estimate for five successful outputs was USD
-0.209598; actual billing is unknown, and failed calls are not assumed free.
-Evidence: [commit a63a9ad](https://github.com/EON-LEE/virtual-try-on-azure/commit/a63a9ad),
-`experiments/viton-hd-batch-review.md`. Totals at that pilot checkpoint were twelve attempts and
-seven outputs; these are not current lifetime usage or the current demo policy.
-
-### Authentication modes
-
-`AZURE_AUTH_MODE=key` preserves the API-key integration for resources where
-local authentication is allowed. It requires the selected model's
-`AZURE_SUNBURST_API_KEY` or `AZURE_MAI_API_KEY`. It never falls back to Entra.
-
-`AZURE_AUTH_MODE=entra-cli` uses only the official `AzureCliCredential`, with
-explicit `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID` and
-`AZURE_EXPECTED_PRINCIPAL_ID` (the approved admin user's object ID). Set these
-UUIDs privately in `.env`; the example leaves identity values blank and
-inference disabled. Enabled inference refuses incomplete identity configuration.
-Run the backend in the same OS/CLI environment containing the existing approved
-admin authentication. A WSL CLI cache is not automatically visible to the Windows
-backend; do not compensate by changing the shared login or default subscription.
-
-Before acquiring or refreshing a token, the backend reads
-`az account show --subscription <explicit-id>` and checks subscription, tenant,
-Enabled state and user credential type. `AzureCliCredential` is pinned to that
-subscription/tenant. The SDK-acquired token's tenant, principal, Cognitive
-Services audience and expiration must match before sending any image request.
-JWT claim inspection is an identity guard, not independent signature validation;
-Azure validates the token. Any mismatch or CLI/SDK failure returns a sanitized
-error before inference, without switching accounts or falling back to keys.
-
-The official `getBearerTokenProvider` builds the bearer header for
-`https://cognitiveservices.azure.com/.default`. The backend caches the validated
-token in process memory and synchronously refreshes within two minutes of
-expiration, coalescing concurrent refreshes. A refresh failure blocks the request
-rather than using the helper's background-refresh behavior or retrying silently.
-No bearer token reaches the browser, `.env`, application logs or committed files.
-Reusing a cached verified token does not follow later shared CLI identity changes;
-refresh verifies the pinned identity again. Readiness means configuration is
-present, not that credentials/RBAC have been live-validated. Disabled inference
-does not run the account check or acquire a token. Tests use stub credentials and
-stub HTTP only; no live authentication or inference is performed by the tests.
-
-References:
-[AzureCliCredential options](https://learn.microsoft.com/en-us/javascript/api/@azure/identity/azureclicredentialoptions)
-and [Azure Identity bearer token helper](https://learn.microsoft.com/en-us/javascript/api/@azure/identity/?view=azure-node-latest).
-
-`AZURE_AUTH_MODE=managed-identity` is the explicit hosted connection. It uses
-`ManagedIdentityCredential` pinned to `AZURE_MANAGED_IDENTITY_CLIENT_ID`, not a
-default credential chain or personal CLI cache. `AZURE_TENANT_ID` and
-`AZURE_EXPECTED_PRINCIPAL_ID` pin the managed identity's token claims with the
-same audience/expiry guards and process-only cache. CLI checks apply only to
-`entra-cli`. No key fallback or image retry occurs. The deployment template
-supplies all three IDs from the user-assigned identity, and grants only the
-approved resource-scoped inference roles. Hosted managed-identity authentication
-and both edits routes passed six approved image calls across all three modes.
-Disabled inference acquires no model token.
-
-MAI Image 2.6 basic is the **user-confirmed quality-first variant** and is shown
-as Preview. Flash and other variants are rejected rather than substituted.
-Changing a deployment name does not prove that it contains the intended model:
-the operator must verify its actual model/version in Azure. Resource endpoint
-validation only permits the supported Azure domains; there is no external fallback.
-
-Non-loopback binding requires an HTTPS `APP_ORIGIN`. The demo login is
-**username `test`, password `test`**, verified by the server before issuing an
-HttpOnly, Secure (HTTPS), SameSite=Strict session cookie. No invitation token or
-local secret-file reading is required. The old token-login request is rejected.
-These intentionally public, weak credentials are a demo convenience, **not
-private access or production security**; do not reuse them for a real service.
-Login requests are rate limited. The current user-approved paid demo uses
-`DEMO_INFERENCE_MODE=unlimited`: login is enough to generate, including after
-a cold start. There is **no total-call cap, automatic expiry or guaranteed cost
-ceiling**. Anyone with these public credentials can incur charges. The operator
-secret is only for the optional bounded mode, never the login form.
-
-## Editing contract and limitations
-
-`src/prompt.js` exports the five-line `upper-body-v1` fixed instruction shared
-with the experiment track. Image 1 is the person/base photograph; image 2 is
-the garment reference. The backend asks to preserve face, body, pose, hands,
-background and garment details. These are instructions, **not guarantees**.
-This preview does not measure physical fit or size.
-
-The original baseline remains unchanged for legacy requests with `person` and
-`garment` and no `mode`. The live UI explicitly uses these new contracts:
-
-| `mode` | Required image fields (order sent) | Server-owned prompt version |
+| Mode | Ordered image fields | Fixed server prompt |
 | --- | --- | --- |
 | `upper` | `person`, `upper` | `upper-only-v2` |
 | `lower` | `person`, `lower` | `lower-only-v1` |
 | `full` | `person`, `upper`, `lower` | `upper-lower-set-v1` |
+| Legacy, no `mode` | `person`, `garment` | `upper-body-v1` |
 
-`src/modes.js` preserves the non-target clothing, shoes/accessories, skin/hair,
-body/pose/hands, background, white balance and exposure in each instruction.
-Full set means separate upper and lower garments, not a dress or shoes. Missing,
-extra or duplicate references are rejected, not inferred. Use a full-body image
-showing waist, legs, feet and occlusion for lower/full tests. Three images are
-within the documented GPT Image family maximum of 16 and MAI maximum of five,
-but **lower/full edits have not been live-tested** on these deployments.
-The new prompts are not equivalent to the previous upper-body-v1 experiments.
+Full set means separate upper and lower garments, not a dress or shoes.
+Missing, duplicate or extra references are rejected. Lower/full require a
+suitable full-body upload. No free-text prompt is accepted.
+Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096px per side and
+20 megapixels. Sharp applies EXIF orientation and strips metadata by PNG
+re-encoding without resizing. Both selected models receive the same buffers.
 
-The studio shows person, garment reference(s) and the selected model's result;
-selecting both models expands the workspace to four columns, with Sunburst then
-MAI. Images use `object-fit: contain` without cropping to hide
-differences; click to enlarge. Result cells show actual state/errors/duration.
-New live outputs receive no pre-existing agent verdict or fake automatic score.
-Manual verdicts/notes are local browser memory only and reset on input changes,
-new generation, clearing or refresh. Compare skin/hair color, protected
-non-target areas and garment color/pattern/texture/logos/cut explicitly.
-Manual review is collapsed below each result so it does not reduce image space.
-The studio workflow is person (upload or sample), garment (upload or sample),
-model selection, then create. After login, samples are loaded from the same-origin
-`/api/samples/manifest`; selection uses the actual image bytes as the
-request input, never a fake output, and does not call Azure until submission.
-Sample sources/licenses are recorded in the manifest and shown in photo help.
-The replacement VITON-HD pack contains six people with varied arm poses and
-eight upper garments (stripe, text/logo, print, lace, floral, polo and sheer).
-All people support **upper mode only**: feet and complete lower-body clothing
-are not visible. Lower/full-set modes retain uploads, but hide the upper-only
-person gallery and request a full-body photo; there are no fabricated lower
-samples. The server rejects known sample hashes for these modes even if renamed.
-This is a known-sample guard, not full-body detection for arbitrary uploads.
-People and clothes use disjoint source IDs, and nothing is auto-selected as
-a trivial matched-clothing default. All 14 original and normalized hashes were
-checked against 77 excluded hashes; discarded photographs were not restored.
+Sunburst uses the dated Azure deployment `images/edits` route with repeated
+`image[]`, `n=1`; MAI uses `/mai/v1/images/edits` with repeated `image` and
+`web_grounding=false`. No mask, fidelity, size, quality, seed or aspect-ratio
+option is guessed. Exactly one base64 image is accepted; returned image URLs
+are not fetched.
 
-Image files are in ignored `sample-images/`, outside `public/` **and the public
-Git repository**. Only manifest/source/IDs/hashes/notices are committed. The
-private ACR build receives a separately verified image pack. Every manifest/image endpoint
-requires a current session and returns `Cache-Control: no-store`; unauthenticated
-requests receive 401, public static image paths 404. The image is not made private
-by the intentionally public test/test credentials. Anyone who logs in can view
-it. This weak access gate neither waives license restrictions nor guarantees
-confidentiality or strong protection.
+## Research samples and privacy
 
-Use is limited to **noncommercial research demos**, per the official
-[VITON-HD README](https://github.com/shadow2496/VITON-HD) and
+The gallery has six upper-only VITON-HD people and eight upper garments.
+Person and garment source IDs are disjoint; nothing is auto-selected.
+Lower/full hide the upper-only person gallery and require uploads. Known sample
+hashes are also rejected server-side for unsupported modes; this is not
+full-body detection for arbitrary uploads.
+
+Only metadata, hashes and notices are committed. JPEGs stay in ignored
+`sample-images/` and enter only the private build pack. Manifest and image
+endpoints require a current session and return `no-store`; public static image
+paths return 404. Public demo credentials do not make these photos confidential.
+
+Use is limited to **noncommercial research demos** under the official
+[VITON-HD terms](https://github.com/shadow2496/VITON-HD) and
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
-Sources, changes and license obligations are available through the footer's
-`사진 출처` link to `/samples/NOTICES.txt`, including the CVPR 2021 paper citation.
-The original JPEG bytes are unchanged; layout thumbnails are scaled by CSS.
-Inference normalization and generated outputs are modifications, not original
-photographs. Retain citation/license/change notices when sharing adaptations.
-Mirror bytes have not been independently compared with the official archive;
-individual releases, photographer/catalog rights and age records were not
-independently verified. No brand endorsement is claimed.
+Keep the paper citation, license and change notices in
+[NOTICES](public/samples/NOTICES.txt) when sharing adaptations.
+Mirror bytes have not been compared with the official archive; individual
+releases, photographer/catalog rights and age records were not independently
+verified. No endorsement is claimed.
 
-To acquire the reviewed inputs for a noncommercial research deployment, read
-the upstream terms and `public/samples/NOTICES.txt`, then run
-`node scripts/prepare-samples.js`. It uses the pinned mirror revision and exact
-SHA-256 values in `samples/manifest.json`, rejects excluded original/normalized
-hashes and does not retry failed downloads. It never runs automatically during
-application startup or CI. Do not commit `sample-images/` or publish it as a
-build artifact. For a clean image build, archive the tracked Dockerfile/package/
-`src`/`public`/`samples` files, then copy only the 14 verified JPEGs into
-`.deploy-context/sample-images/` before building with the existing private ACR.
-The Dockerfile copies this pack into the container, not a public static folder.
+After reviewing those terms, the approved sample preparation command is
+`node scripts\prepare-samples.js`. It checks pinned source hashes and 77 excluded
+image/artifact hashes, without inference or download retries. It never runs
+automatically in startup or CI. Do not restore discarded photos or commit the pack.
 
-`npm test` and browser tests use isolated synthetic photos when the licensed
-pack is absent. The original-photo integrity and actual-photo multipart checks
-are explicitly skipped in that checkout, not reported as passed. Run the same
-tests with the prepared local pack to validate all 14 real photos. Production
-never creates synthetic inputs or falls back to them.
+Uploads/results remain in process memory, not application disk or logs.
+Results expire ten minutes after completion; sessions expire after thirty
+minutes. One active job is allowed **globally**, with two submissions per minute
+and up to eight retained jobs. Clearing deletes session-owned jobs and browser
+blobs but cannot guarantee cancellation of accepted Azure work. Request-ID
+deduplication lasts only while a job is retained, not across restart or deletion.
+Azure processing/retention is separate; Global deployments need not process in
+the resource region. Azure-only does not mean Korea-only.
 
-The demo workspace removes marketing heroes, numbered steps and English
-section slogans. Direct public-page observations informed upload/sample choices
-and large image comparison, not copied brand code or assets:
-[Vidnoz](https://www.vidnoz.com/ai-clothes-changer.html) (working upload and outfit
-chooser), [Fotor](https://www.fotor.com/features/ai-change-clothes/) (upload,
-examples and before/after), [FASHN](https://fashn.ai/virtual-try-on) (public
-person/product/create explanation), [FitRoom](https://fitroom.app/ko) (public
-upload/comparison), and [virtual-try-on.org](https://virtual-try-on.org/)
-(public landing comparison only). Authenticated product screens were not
-inspected; unavailable/404/blocked pages were not treated as reference evidence.
-
-Inputs are single-frame PNG/JPEG, at most 10 MiB each, 4096 pixels per side and
-20 megapixels. Sharp applies EXIF orientation and removes metadata by PNG
-re-encoding without resizing. Both selected models receive the same normalized
-buffers, person first and garment second. PNG encoder differences mean a
-cross-tool experiment must reuse the exact prepared bytes, not just equivalent
-pixels, for a strict paired comparison.
-
-| Adapter | Request contract |
-| --- | --- |
-| Sunburst | Azure dated deployment `images/edits`, repeated `image[]`, `model`, fixed `prompt`, `n=1` |
-| MAI Image 2.6 | Azure `/mai/v1/images/edits`, repeated `image`, `model`, fixed `prompt`, `web_grounding=false` |
-
-No mask, fidelity, size, quality, seed or aspect-ratio fields are guessed or
-sent. MAI's documented Image 2.6 edits control `web_grounding=false` explicitly
-disables additional Bing context. `2025-04-01-preview` comes from the official GPT Image family example and
-is configurable. The second approved harness smoke observed HTTP 200 for this
-exact dated Sunburst route; this does not establish compatibility for every
-deployment/version or validate the application's credential path.
-Provider response must contain one base64 image; arbitrary returned URLs are
-not fetched. Requests time out after 180 seconds, with no paid retry or fallback.
-Azure may continue processing and billing after a timeout or client cancellation.
-
-Reference documentation, reviewed 2026-10-14:
-[GPT Image](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/dall-e)
-and [MAI Image](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-mai-image).
-Availability, quota, pricing, model/version and regional processing must still
-be checked in the approved subscription before a live call.
-
-## Privacy and lifecycle
-
-Photos and results are not written to disk, logged, or committed. Original
-browser previews remain local until generation is submitted with photo-use
-consent. Backend inputs live only while processing; results expire from server
-memory ten minutes after completion. A session expires after thirty minutes.
-Clearing the UI deletes that session's server jobs and browser blob previews;
-it cannot guarantee cancellation of already accepted Azure work.
-
-Job ownership is bound to the session cookie. Same-origin host/header checks,
-bounded uploads, decoder limits, at most eight retained jobs, one active job per
-session, and request-ID deduplication limit accidental duplicate submissions.
-Deduplication lasts only while the job is retained; this is not an Azure billing
-idempotency guarantee. Secrets and raw Azure errors are never returned to clients.
-Server restarts/revisions lose in-memory jobs and sessions.
-
-Azure data processing/retention is separate from application retention. Global
-deployments may process outside the resource region; Azure-only does not mean
-Korea-only processing. Do not use sensitive photos without appropriate consent.
-
-## Checks
+## Checks and code layout
 
 ```powershell
-npm.cmd test
 npm.cmd run check
+npm.cmd test
 npx.cmd playwright install chromium
 npm.cmd run test:e2e
+python -m pip install -r experiments\requirements.txt
+python -m unittest discover -s experiments -p 'test_*.py'
 ```
 
-If downloading Chromium is blocked but Microsoft Edge is installed:
+If Chromium download is unavailable and Edge is installed, set
+`$env:PLAYWRIGHT_CHANNEL = 'msedge'` before browser tests.
+Tests use injected providers and synthetic photos, not paid inference or
+quality claims. Real-photo integrity/multipart checks explicitly skip when the
+ignored pack is absent. Production never synthesizes fallback inputs.
+CI checks JavaScript, Node/browser/Python tests, Docker build and Bicep compilation;
+it does not acquire research photos, deploy or call models.
 
-```powershell
-$env:PLAYWRIGHT_CHANNEL = 'msedge'
-npm.cmd run test:e2e
-```
-
-API tests inject a synthetic image provider and assert selection, form fields,
-metadata stripping, isolation, deduplication, expiry, quota failure and no retry.
-Browser tests launch `e2e/server.js` with clearly test-only colored PNG responses.
-These check UI wiring, **not real model fidelity**. Normal `npm start` never loads
-that fixture. CI also builds the container and compiles Bicep; it does not deploy.
-
-## Approved demo hosting configuration
-
-`Dockerfile` runs as a non-root user. The approved `infra/main.bicep` creates
-an eastus2 Consumption Container Apps environment/app (0.5 vCPU, 1 GiB),
-dedicated eastus ACR Basic registry (admin keys disabled), and eastus user-assigned
-managed identity. The initial eastus environment failed with regional capacity
-exhaustion; the approved single eastus2 fallback succeeded. The failed eastus
-environment was not deleted. Exactly three role assignments are scoped to the Sunburst resource
-(OpenAI User), MAI resource (Cognitive Services User) and registry (AcrPull).
-Existing model resources/local-auth settings are not changed. HTTPS external
-ingress exposes the static login; sample images, uploads, jobs and
-result images require the server-issued demo login session cookie. The public
-test/test account is not per-user enterprise SSO or a private access boundary.
-
-Single revision/max replica 1 preserves session ownership; min replica 0
-reduces idle compute but introduces cold starts and loss of in-memory sessions/
-jobs on restart/scale-down. Registry storage has ongoing cost, even with
-inference disabled; Consumption compute/requests and image build may also incur
-charges. No fixed monthly estimate or free-service claim is made.
-
-The image contains Dockerfile/package manifests, `src/`, `public/` and sample
-metadata from a clean tracked commit, plus only the 14 hash-verified research
-JPEGs from the ignored pack. Never include private reports, other dataset
-images, uploads, `.env`, CLI caches or access secrets in build context. Private registry
-pull is handled by the assigned managed identity, not registry passwords.
-No model deployment or Fabric is created.
-
-### Paid demo modes
-
-Both modes require `ENABLE_AZURE_INFERENCE=true`, configured model credentials
-and explicit account/cost approval. The default remains inference-disabled.
-
-**Current approved user demo:** `DEMO_INFERENCE_MODE=unlimited`. It does not use
-the attempt cap, expiry, operator nonce or per-boot activation. The deployment
-stores this mode in the Container App environment; a min0 cold start remains
-ready after ordinary test/test login. Sessions and result images are still
-temporary and are lost on restart. No persistent helper, min1 replica, new
-storage or extra role is needed. Public weak credentials plus unlimited paid
-calls create abuse/cost risk, not a private or cost-capped service.
-
-Both modes retain one active job globally, two submissions/minute, request-size
-limits, 180-second provider timeout, explicit model selection and no automatic
-retry. Frequency/concurrency protection is **not** a total-use or monetary cap.
-
-To stop new paid requests on the existing deployment:
-
-```powershell
-wsl.exe -d Ubuntu --exec /home/eonlee/.local/bin/az containerapp update --subscription b0af194e-77a5-4471-bb43-67e78295b5c8 --resource-group rg-virtual-try-on --name vto-studio-b0af194e --set-env-vars ENABLE_AZURE_INFERENCE=false --query properties.latestRevisionName -o tsv
-```
-
-This creates a disabled revision; also keep `enableInference=false` in the next
-deployment parameters to avoid re-enabling it. Accepted work may still incur
-charges after cancellation, timeout or disabling. Check Azure usage; do not
-assume failed attempts are free.
-
-**Optional bounded technical verification:** `DEMO_INFERENCE_MODE=bounded`.
-Hosted inference in this mode requires all of:
-`ENABLE_AZURE_INFERENCE=true`, `DEMO_MAX_MODEL_ATTEMPTS` (1-100), and future
-`DEMO_INFERENCE_EXPIRES_AT` (ISO timestamp), **and one operator activation for
-the current process boot**. Zero allowance closes jobs, including
-local jobs; examples/hosting deploy default false/zero. One global active job,
-two submissions/minute, 30-second bounded uploads (max three 10 MiB images),
-180-second provider timeout and session/request-ID guards limit accidental abuse.
-An explicit two-model comparison reserves two attempts; failures/cancellations
-do not refund attempts. Clearing photos/sessions cannot reset the counter or
-free an active slot before provider completion. Reservations avoid races.
-
-In bounded mode, every process starts with its paid gate closed, even when environment settings
-permit inference. Restart, revision rollout and min0 cold start do **not**
-automatically replenish an enabled allowance: the new boot must be explicitly
-activated by the operator after authorization. Activation requires its current
-random boot nonce, a positive allowance within the configured cap, and a future
-expiry no later than the configured expiry. A boot can activate only once;
-exhaustion/expiry cannot be recharged or reopened on that boot.
-
-`DEMO_OPERATOR_TOKEN` is a separate 32+ character operator credential, unrelated
-to the demo login. Only an operator can POST `/api/operator/state` to obtain the
-boot nonce, then POST `/api/operator/activate` with JSON
-`{ "nonce": "...", "allowance": 2, "expiresAt": "approved ISO timestamp" }`.
-Both endpoints require `x-studio-request: 1` and `x-operator-token` headers.
-URL query parameters are rejected. Secrets are compared in constant time after
-hashing; operator requests have a process-wide eight-per-minute limit.
-Ordinary demo credentials/session cookies cannot obtain the nonce or activate.
-For an approved technical smoke, operators can set `sessionOnly: true` on the
-activation request and send their current studio session cookie. Only that
-session can spend its allowance; another public test/test login cannot consume
-the verification budget. This option does not authorize additional user calls.
-Do not activate a bounded deployment without a paid-generation approval.
-
-After login, the browser verifies that the session cookie was actually retained.
-The Virtual Try-On demo waits up to 120 seconds per login/startup request so
-min0 startup is not cut off by the ordinary 30-second API timeout. Login shows
-a busy button, ignores duplicate submissions, and opens the studio only after
-its sample manifest loads. A timeout shows a Korean message and keeps inputs
-for a manual retry; neither login nor paid image requests retry automatically.
-An earlier startup config response cannot overwrite a newer login state.
-Generation submission also allows 120 seconds for a cold start, without
-automatically resubmitting. The collapsed `실행 기록` shows timestamps, model,
-stage, safe error code and correlation ID; it never contains photos, session
-cookies, credentials or raw Azure response bodies. Server JSON logs correlate
-input processing, job ID, identity acquisition, model request and terminal
-status. A whole-job 210-second deadline also covers stalled identity acquisition.
-Expired sessions, lost jobs and polling failures stop the busy display and
-report an unknown outcome instead of claiming that an Azure request was cancelled
-or free. Paid requests are never retried. Static responses remain `no-store`;
-newly opened pages compare a client fingerprint with config and show a manual
-refresh notice when versions differ. An already-open older script cannot be
-patched in place or used to recover a job lost with a process restart.
-If an embedded browser blocks it, the login screen asks the user to retry in a
-standalone browser tab; cookie policy is not weakened. Session expiry returns to
-login. Logout also succeeds when a restart has already discarded the session,
-so a stale studio cannot trap the user behind a logout error.
-Configuration and post-generation refresh reflect actual availability
-without hiding finished images. A bounded health keepalive is used only
-during an approved live smoke and stops when that script exits; no always-on
-helper or automatic budget refill is provided.
-
-**This is not durable billing enforcement or a monetary cap.** Counters and
-operator rate limits are process-local, and an explicitly authorized new boot
-can receive a new allowance. Single revision/max replica1 is required; do not
-scale out or activate multiple revisions. Monitor usage, use a short approved
-window for bounded verification. Azure may still bill accepted work
-after expiry, timeout or cancellation. No storage or extra cloud roles were added.
-
-Compile without resource changes:
-
-```powershell
-az bicep build --file infra\main.bicep --stdout > $null
-# Prepare the ignored licensed pack first for an actual photo-enabled image.
-node scripts\prepare-samples.js
-docker build -t try-on-studio:local .
-```
-
-An operator must approve the account, subscription, location, hosting/model
-costs and model deployments before executing a deployment. Use the existing
-approved Azure identity with explicit `--subscription`; never change a shared
-login or default. Supply secure Bicep parameters from a private, ignored file or
-secure automation input rather than exposing secrets in command history.
-Deploy the foundation first (`deployApp=false`), build the tracked clean image
-into its registry, then deploy with `deployApp=true` and an immutable commit tag.
-Use the same private secure-parameter file across both deployments and do not
-print it. Keep `enableInference=false`, `maxModelAttempts=0`. The deployment
-operator stores the separate operator secret in ACL-restricted,
-ignored `.local-deploy\demo-operator-token.txt`; `scripts/prepare-deployment.js` preserves
-existing values and writes secure parameters without printing secrets. On Windows
-the directory must have an operator-only inherited ACL before running that script.
-Never share the operator secret in chat/logs/Git or with demo users.
-Verify `/healthz`, unauthenticated API rejection, test/test login/logout and mode controls without any
-image calls. Template compilation is not proof of live authentication/quality.
-
-### Hosted verification
-
-The demo is hosted at
-<https://vto-studio-b0af194e.purpleground-f12dc511.eastus2.azurecontainerapps.io>.
-At that verification checkpoint, fresh Edge login, the previous ten stock samples,
-three modes, real managed-identity
-edits, result enlargement and PNG downloads passed the approved six-attempt
-hosted verification. All six succeeded, with zero retries or browser errors:
-
-| Mode | Sunburst | MAI |
-| --- | --- | --- |
-| Upper | 28.602 s | 26.127 s |
-| Lower | 22.231 s | 20.928 s |
-| Full set | 19.686 s | 26.671 s |
-
-These are technical successes, **not fidelity acceptance**. Visual inspection
-shows garment changes, but color, trim and fit differ; exact face/pose/pattern
-preservation is not established. The six-attempt verification ended closed
-with zero remaining attempts and its temporary keepalive stopped. The user's
-subsequent explicit unlimited-demo request supersedes that bounded user policy;
-the old verification record must never be rerun.
-
-`node scripts/check-hosted.js <HTTPS origin>` is for a **disabled bounded**
-deployment only. It verifies
-health, demo login/session controls, disabled submission and closed operator
-state without activating or sending any image request to a provider.
-
-## Accounts
-
-| Purpose | Account |
+| Location | Responsibility |
 | --- | --- |
-| Local development and the shared Copilot/`gh` session | `eonlee_microsoft` (EMU) |
-| Authorized writes to this personal repository | `EON-LEE` |
+| `src/` | Native HTTP API, explicit Azure identity, input validation and memory-only jobs |
+| `public/` | Vanilla browser workspace, input previews and execution records |
+| `test/`, `e2e/` | Offline server/browser regression |
+| `scripts/` | Explicit non-paid checks and private build preparation |
+| `infra/` | Approved hosting template; no automatic deployment |
+| `experiments/` | Separate research tools, exhausted approvals and hash-bound evaluations |
+| `docs/operations.md` | Current authentication, hosting, timeout and cost controls |
+| `docs/history/` | Superseded application observations, not instructions |
 
-Keep the shared login unchanged. Do not run `gh auth switch`, `gh auth logout`,
-`gh auth setup-git`, or change global Git credential settings for a session.
-If authentication is missing, stop and coordinate with the user before logging in.
-Never print, persist, or commit tokens.
+See the [experiment guide](experiments/README.md) for its distinct approval
+policy and historical evaluation criteria.
 
-## Git workflow
+## Git accounts and workflow
 
-1. Work on the session's feature branch, not in the main checkout.
-2. Review the diff and run the checks relevant to the change.
-3. Commit only the intended files with a short, descriptive message.
-4. Push the feature branch using the existing URL-scoped `EON-LEE` Git configuration.
-5. Merge only when the user authorizes it. Prefer a pull request and squash merge
-   for application changes. For an explicitly authorized initial setup, a
-   non-force fast-forward push of the feature commit to `main` is sufficient.
-6. Confirm the remote contains the expected commit and the working tree is clean.
+Keep local development and shared `gh` login on **eonlee_microsoft** (EMU).
+Use the existing URL-scoped **EON-LEE** Git credential for ordinary `git fetch`
+and `git push`. Git already includes `~/.gitconfig-eonlee-auth`; including it
+again duplicates Authorization headers and causes HTTP 400.
 
-Git already loads the URL-scoped authentication header from
-`~/.gitconfig-eonlee-auth` for this repository. Use ordinary `git fetch` and
-`git push`; do not add a second `include.path` for that file. Including it twice
-produces a duplicate `Authorization` header and an HTTP 400 error.
+Work only in the assigned feature worktree. Stage intended files, run relevant
+checks, commit concisely and push the feature branch. Merge only with user
+authorization; prefer a reviewed PR. Never force-push or bypass protection.
+Do not switch/log out shared accounts or change global credentials.
 
-The following PowerShell example checks the command-scoped GitHub write identity
-and pushes the current branch through the existing Git configuration. It requires
-an `EON-LEE` credential in the `gh` keyring. It leaves both the shared login and
-the existing authentication file unchanged.
+For authorized GitHub API/PR/merge commands, use the existing keyring credential
+only in the command process. Never print or persist it:
 
 ```powershell
 $previousToken = $env:GH_TOKEN
 try {
-    $authConfig = Join-Path $HOME '.gitconfig-eonlee-auth'
-    if (-not (Test-Path $authConfig)) {
-        throw 'Existing EON-LEE Git authentication file is unavailable.'
-    }
     $token = gh auth token --hostname github.com --user EON-LEE
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($token)) {
-        throw 'EON-LEE credentials are unavailable. Do not change the shared login.'
+        throw 'Existing EON-LEE credential unavailable; do not change shared login.'
     }
     $env:GH_TOKEN = $token
     $login = gh api user --jq .login
     if ($LASTEXITCODE -ne 0 -or $login -ne 'EON-LEE') {
         throw 'Unexpected GitHub write identity.'
     }
-    git push --set-upstream origin HEAD
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Feature branch push failed.'
-    }
+    gh repo view EON-LEE/virtual-try-on-azure
 }
 finally {
     $env:GH_TOKEN = $previousToken
@@ -584,6 +156,5 @@ finally {
 }
 ```
 
-Use the same command-scoped identity for authorized PR and merge operations.
-If permissions or branch protection block a write, report the error; do not
-switch the shared account, force-push, or bypass protection.
+If authentication or branch protection blocks a write, stop and report it.
+Do not change shared authentication or substitute a different PR creation path.
