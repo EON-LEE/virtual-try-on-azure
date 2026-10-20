@@ -422,7 +422,7 @@ class ExperimentsTest(unittest.TestCase):
                           URLError("secret signed URL")):
             with self.assertRaises(h.ExperimentError):
                 self.run_mock(exception=exception)
-        records = list((self.root / "runs").glob("*\\result.json"))
+        records = list((self.root / "runs").glob("*/result.json"))
         self.assertEqual(len(records), 2)
         for record in records:
             text = record.read_text()
@@ -447,7 +447,7 @@ class ExperimentsTest(unittest.TestCase):
     def test_bad_output_explicit_failure(self):
         with self.assertRaises(h.ExperimentError):
             self.run_mock(payload=b'{"data":[{"url":"https://untrusted.test/x"}]}')
-        self.assertFalse(list((self.root / "runs").glob("*\\output.png")))
+        self.assertFalse(list((self.root / "runs").glob("*/output.png")))
         self.assertEqual(evaluate.summarize(self.root / "runs", {})["quality_conclusion"],
                          "no live outputs")
 
