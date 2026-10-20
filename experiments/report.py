@@ -1,11 +1,10 @@
 """Render only the restart state and explicitly reviewed new-source previews."""
 
 import argparse
-import base64
-import hashlib
 import html
 import json
 from pathlib import Path
+from report_assets import image_uri, verified_bytes
 
 
 ROOT = Path(__file__).resolve().parent
@@ -47,12 +46,10 @@ def generate(output, state_path=ROOT / "restart-state.json", asset_root=ROOT):
             if not source.is_relative_to(preview_root):
                 raise ValueError("Preview must be under local/new-source-review.")
             if source.exists():
-                data = source.read_bytes()
-                if hashlib.sha256(data).hexdigest() != candidate["preview_sha256"]:
-                    raise ValueError("New-source preview hash mismatch.")
+                data = verified_bytes(source, candidate["preview_sha256"])
                 if not data.startswith(b"\x89PNG\r\n\x1a\n"):
                     raise ValueError("New-source preview must be PNG.")
-                uri = "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+                uri = image_uri(data)
                 previews.append(
                     '<tr><td><button class="zoom" aria-label="새 출처 사진 확대"><img src="'
                     + uri + '" alt="' + html.escape(candidate["title"], quote=True)

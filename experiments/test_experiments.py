@@ -118,6 +118,14 @@ class ExperimentsTest(unittest.TestCase):
         comparison.generate(self.root)
         self.assertIn("401 권한 오류", (self.root / "hardcase-grid.html").read_text(encoding="utf-8"))
         self.assertNotIn("No output image was returned", page)
+        record.update(status="succeeded", output_sha256="")
+        h.write_json(result, record)
+        with self.assertRaisesRegex(ValueError, "hash"):
+            comparison.generate(self.root)
+        record["output_sha256"] = None
+        h.write_json(result, record)
+        with self.assertRaisesRegex(ValueError, "hash"):
+            comparison.generate(self.root)
 
     def test_restart_report_never_reads_or_embeds_historical_images(self):
         state = h.read_json(h.ROOT / "restart-state.json")
@@ -302,7 +310,8 @@ class ExperimentsTest(unittest.TestCase):
         path = folder / "runs" / "unknown"
         path.mkdir(parents=True)
         h.write_json(folder / "config.json", self.config)
-        h.write_json(path / "result.json", {"status": "submitted", "attempts": 1})
+        h.write_json(path / "result.json", {"case_id": self.config["cases"][0]["id"],
+                                           "model_id": "sunburst", "status": "submitted", "attempts": 1})
         with patch.object(dataset_batch, "FOLDER", folder), \
                 patch.object(dataset_batch, "APPROVAL", folder / "approval.json"), \
                 patch.object(h, "build_plan", return_value=(self.plan, self.inputs)), \

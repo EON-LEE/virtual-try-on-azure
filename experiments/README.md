@@ -46,6 +46,7 @@ it performs no inference. It does not download missing files.
 | `harness.py` | Offline plan and guarded single-request executor. Current live/acquire paths are closed. |
 | `evaluate.py` | Submitted result JSONs, matching output bytes and hash-bound manual reviews; keeps failures/unreviewed attempts in denominator. |
 | `comparison.py` | Existing `selected-inputs.json`, local originals and run outputs; creates a private four-column grid. Never use it to recover disposed photos. |
+| `report_assets.py` | Shared offline hash verification, original-byte/crop encoding and duplicate-checked result loading. Does not acquire images or call models. |
 | `report.py` | Registered dataset report, or historical paused-state preview. Requires the corresponding retained local manifest/assets. |
 | `dataset_batch.py` | Historical exact 12-case/24-attempt executor, reconciliation, summary and report. Not a new batch template or renewed allowance. |
 | `select_dataset_batch.py` | Historical pinned candidate acquisition; not an offline check. Do not rerun to restore disposed photos. |
