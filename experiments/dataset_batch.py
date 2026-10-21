@@ -3,7 +3,6 @@
 import argparse
 import base64
 import html
-import io
 import json
 import os
 import subprocess
@@ -13,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import harness as h
+from report_assets import image_uri, result_records, verified_bytes
 from PIL import Image, ImageDraw
 
 
@@ -103,7 +103,10 @@ def fresh_token():
 
 
 def records():
-    return [h.read_json(p) | {"folder": str(p.parent)} for p in sorted((FOLDER / "runs").glob("*/result.json"))]
+    try:
+        return result_records(FOLDER / "runs")
+    except ValueError as error:
+        raise h.ExperimentError(str(error)) from error
 
 
 def sheets():
@@ -129,8 +132,9 @@ def sheets():
 
 
 def summarize():
+    snapshot = records()
     rows = []
-    for record in records():
+    for record in snapshot:
         usage = record.get("usage", {})
         text = usage.get("num_input_text_tokens") if record["model_id"] == "mai" else usage.get("input_tokens_details", {}).get("text_tokens")
         image = usage.get("num_input_image_tokens") if record["model_id"] == "mai" else usage.get("input_tokens_details", {}).get("image_tokens")
@@ -160,7 +164,7 @@ def summarize():
                "actual_billing": None, "records": rows}
     summary["model_measurements"] = {}
     for model in ("sunburst", "mai"):
-        group = [r for r in records() if r["model_id"] == model]
+        group = [r for r in snapshot if r["model_id"] == model]
         durations = [r["elapsed_seconds"] for r in group if r.get("elapsed_seconds") is not None]
         starts = sorted(datetime.fromisoformat(r["started_utc"]) for r in group)
         summary["model_measurements"][model] = {
@@ -278,18 +282,11 @@ def render():
             raise h.ExperimentError("Review has an unexpected model/nested case.")
 
     def image(path, label, expected_hash, crop=None):
-        data = Path(path).read_bytes()
-        if h.digest(data) != expected_hash:
-            raise h.ExperimentError("Report image hash does not match frozen input/result record.")
-        if crop:
-            with Image.open(io.BytesIO(data)) as original:
-                region = original.crop(tuple(round(v * (original.width if i % 2 == 0 else original.height))
-                                             for i, v in enumerate(crop)))
-                buffer = io.BytesIO()
-                region.save(buffer, format="PNG")
-                data = buffer.getvalue()
-        mime = "png" if data.startswith(b"\x89PNG") else "jpeg"
-        return '<button class="zoom"><img alt="' + html.escape(label, quote=True) + '" src="data:image/' + mime + ';base64,' + base64.b64encode(data).decode() + '"></button>'
+        try:
+            uri = image_uri(verified_bytes(path, expected_hash), crop)
+        except ValueError as error:
+            raise h.ExperimentError(str(error)) from error
+        return '<button class="zoom"><img alt="' + html.escape(label, quote=True) + '" src="' + uri + '"></button>'
 
     rows = []
     for case in manifest["cases"]:

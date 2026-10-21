@@ -8,7 +8,7 @@
     "start": "node --env-file-if-exists=.env src/server.js",
     "test": "node --test test/*.test.js",
     "test:e2e": "playwright test",
-    "check": "node --check src/server.js && node --check public/app.js"
+    "check": "node scripts/check-syntax.js"
   },
   "dependencies": { "@azure/identity": "^4.13.0", "sharp": "^0.34.4" },
   "devDependencies": { "@playwright/test": "^1.56.0" }

@@ -1,56 +1,29 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { loadConfig, publicModels, selectModels } from './config.js';
+import { loadConfig, publicModels } from './config.js';
 import { AppError } from './errors.js';
-import { MAX_REQUEST_BYTES, sanitizeImage } from './images.js';
 import { JobStore, publicJob } from './jobs.js';
-import { modeContract } from './modes.js';
+import { json, jsonBody, secretMatches } from './http.js';
+import { SessionStore, sessionCookie } from './sessions.js';
+import { prepareUpload } from './upload.js';
+import { logEvent } from './logging.js';
+import { publicDirectory as publicDir, staticFiles, clientVersion } from './assets.js';
 import defaultSamples from '../samples/manifest.json' with { type: 'json' };
 
-const publicDir = new URL('../public/', import.meta.url);
 const samplesDir = new URL('../sample-images/', import.meta.url);
-const staticFiles = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/styles.css': ['styles.css', 'text/css; charset=utf-8'] };
-const SESSION_TTL = 30 * 60 * 1000;
-const clientVersion = createHash('sha256').update(await readFile(new URL('app.js', publicDir))).digest('hex').slice(0, 12);
-
-async function bodyBytes(req, limit) {
-  const length = Number(req.headers['content-length']);
-  if (Number.isFinite(length) && length > limit) throw new AppError(413, 'upload-too-large', 'Request is too large.');
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > limit) throw new AppError(413, 'upload-too-large', 'Request is too large.');
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
-}
-
-function json(res, status, value, headers = {}) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', ...headers });
-  res.end(JSON.stringify(value));
-}
 
 export function createServer(config = loadConfig(), {
   jobs, logger = console, samples = defaultSamples, sampleDirectory = samplesDir, loginAttemptsPerMinute = 20
 } = {}) {
   jobs ??= new JobStore({ logger });
-  const sessions = new Map();
+  const sessions = new SessionStore(jobs, { loginAttemptsPerMinute });
   let submissions = 0;
-  let loginAttempts = 0;
-  let loginWindow = Date.now();
   let operatorAttempts = 0;
   let operatorWindow = Date.now();
   const prune = () => {
     jobs.prune();
-    for (const [id, session] of sessions) {
-      if (session.expiresAt <= Date.now()) {
-        jobs.clearOwner(id);
-        sessions.delete(id);
-      }
-    }
+    sessions.prune();
   };
   const interval = setInterval(prune, 30_000).unref();
   const server = http.createServer(async (req, res) => {
@@ -61,7 +34,7 @@ export function createServer(config = loadConfig(), {
     res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
     const secure = config.origin.startsWith('https://');
     if (secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
-    const cookie = value => `studio=${value}; Path=/; HttpOnly; SameSite=Strict; ${secure ? 'Secure; ' : ''}Max-Age=${value ? SESSION_TTL / 1000 : 0}`;
+    const cookie = value => sessionCookie(value, secure);
     try {
       if (req.method === 'GET' && req.url === '/healthz') return json(res, 200, { status: 'ok' });
       const host = req.headers.host;
@@ -84,8 +57,8 @@ export function createServer(config = loadConfig(), {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         return res.end(await readFile(new URL('samples/NOTICES.txt', publicDir)));
       }
-      if (req.method === 'GET' && staticFiles[path]) {
-        const [name, type] = staticFiles[path];
+      if (req.method === 'GET' && staticFiles.has(path)) {
+        const [name, type] = staticFiles.get(path);
         res.setHeader('Content-Type', type);
         const content = await readFile(new URL(name, publicDir));
         return res.end(name === 'index.html' ? content.toString().replace('</head>', `<meta name="studio-version" content="${clientVersion}"></head>`) : content);
@@ -99,20 +72,14 @@ export function createServer(config = loadConfig(), {
         if (Date.now() - operatorWindow > 60_000) { operatorAttempts = 0; operatorWindow = Date.now(); }
         if (++operatorAttempts > 8) throw new AppError(429, 'operator-rate-limit', 'Too many operator requests. Wait one minute.');
         const supplied = req.headers['x-operator-token'];
-        const digest = value => createHash('sha256').update(value).digest();
-        if (typeof supplied !== 'string' || !timingSafeEqual(digest(supplied), digest(config.operatorToken))) {
+        if (!secretMatches(supplied, config.operatorToken)) {
           throw new AppError(401, 'operator-unauthorized', 'Separate operator authorization is required.');
         }
         if (path === '/api/operator/state') return json(res, 200, jobs.gate.state());
         if (path === '/api/operator/activate') {
-          let data;
-          try { data = JSON.parse((await bodyBytes(req, 2048)).toString()); } catch (cause) {
-            if (cause instanceof AppError) throw cause;
-            throw new AppError(400, 'invalid-activation', 'Invalid activation request.');
-          }
-          if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppError(400, 'invalid-activation', 'Invalid activation request.');
+          const data = await jsonBody(req, 'invalid-activation', 'Invalid activation request.');
           const owner = data.sessionOnly ? sessionId : null;
-          if (data.sessionOnly && (!sessions.has(owner) || sessions.get(owner).expiresAt <= Date.now())) {
+          if (data.sessionOnly && (!sessions.get(owner) || sessions.get(owner).expiresAt <= Date.now())) {
             throw new AppError(401, 'operator-session-required', 'A current demo session is required for session-only activation.');
           }
           jobs.gate.activate(data, config, owner);
@@ -121,26 +88,11 @@ export function createServer(config = loadConfig(), {
         throw new AppError(404, 'not-found', 'Not found.');
       }
       prune();
-      let session = sessions.get(sessionId);
+      const session = sessions.get(sessionId);
       if (path === '/api/session' && req.method === 'POST') {
-        if (Date.now() - loginWindow > 60_000) { loginAttempts = 0; loginWindow = Date.now(); }
-        if (++loginAttempts > loginAttemptsPerMinute) throw new AppError(429, 'login-rate-limit', 'Too many access attempts. Wait one minute.');
-        let data;
-        try { data = JSON.parse((await bodyBytes(req, 2048)).toString()); } catch (error) {
-          if (error instanceof AppError) throw error;
-          throw new AppError(400, 'invalid-request', 'Invalid access request.');
-        }
-        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppError(400, 'invalid-request', 'Invalid access request.');
-        const digest = value => createHash('sha256').update(value).digest();
-        const usernameMatches = typeof data.username === 'string' && timingSafeEqual(digest(data.username), digest('test'));
-        const passwordMatches = typeof data.password === 'string' && timingSafeEqual(digest(data.password), digest('test'));
-        if (!usernameMatches || !passwordMatches || Object.keys(data).some(key => !['username', 'password'].includes(key))) {
-          throw new AppError(401, 'unauthorized', '아이디 또는 비밀번호를 확인해 주세요.');
-        }
-        if (sessionId && session) { jobs.clearOwner(sessionId); sessions.delete(sessionId); }
-        if (sessions.size >= 256) throw new AppError(503, 'session-capacity', 'Studio session capacity reached.');
-        const id = randomBytes(32).toString('hex');
-        sessions.set(id, { expiresAt: Date.now() + SESSION_TTL });
+        sessions.reserveLogin();
+        const data = await jsonBody(req, 'invalid-request', 'Invalid access request.');
+        const id = sessions.login(data, sessionId);
         return json(res, 200, { authenticated: true }, { 'Set-Cookie': cookie(id) });
       }
       if (path === '/api/config' && req.method === 'GET') {
@@ -150,10 +102,7 @@ export function createServer(config = loadConfig(), {
           maxImageMiB: 10, retentionMinutes: 10 });
       }
       if (path === '/api/session' && req.method === 'DELETE') {
-        if (session) {
-          jobs.clearOwner(sessionId);
-          sessions.delete(sessionId);
-        }
+        sessions.delete(sessionId);
         return json(res, 200, { cleared: true }, { 'Set-Cookie': cookie('') });
       }
       if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
@@ -174,45 +123,10 @@ export function createServer(config = loadConfig(), {
         try {
           const requestId = req.headers['x-request-id'];
           if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,64}$/.test(requestId)) throw new AppError(400, 'invalid-request-id', 'A unique request ID is required.');
-          logger.info?.(JSON.stringify({ event: 'studio-request', timestamp: Date.now(), requestId, stage: 'input-processing', status: 'running' }));
-          if (!req.headers['content-type']?.startsWith('multipart/form-data;')) throw new AppError(400, 'invalid-upload', 'Use multipart form data.');
-          const bytes = await bodyBytes(req, MAX_REQUEST_BYTES);
-          let form;
-          try {
-            form = await new Request('http://localhost', { method: 'POST', headers: { 'content-type': req.headers['content-type'] }, body: bytes }).formData();
-          } catch {
-            throw new AppError(400, 'invalid-upload', 'Invalid multipart upload.');
-          }
-          if (form.getAll('mode').length > 1) throw new AppError(400, 'invalid-mode', 'Provide one clothing mode.');
-          const mode = form.has('mode') ? form.get('mode') : 'baseline';
-          if (form.has('mode') && mode === 'baseline') throw new AppError(400, 'invalid-mode', 'Select upper, lower or full.');
-          const contract = modeContract(mode);
-          const required = ['person', ...contract.fields, 'models', 'consent'];
-          const allowed = form.has('mode') ? [...required, 'mode'] : required;
-          if ([...form.keys()].some(key => !allowed.includes(key)) ||
-              required.some(key => form.getAll(key).length !== 1)) {
-            throw new AppError(400, 'invalid-upload', 'Provide exactly one person, garment, model selection and consent.');
-          }
-          if (form.get('consent') !== 'true') throw new AppError(400, 'consent-required', 'Photo transmission consent is required.');
-          let selected;
-          try { selected = JSON.parse(form.get('models')); } catch {
-            throw new AppError(400, 'invalid-models', 'Invalid model selection.');
-          }
-          const personInput = form.get('person');
-          if (personInput instanceof File) {
-            const hash = createHash('sha256').update(Buffer.from(await personInput.arrayBuffer())).digest('hex');
-            const sample = samples.items.find(item => item.category === 'person' && item.sha256 === hash);
-            if (sample?.supportsModes && !sample.supportsModes.includes(mode === 'baseline' ? 'upper' : mode)) {
-              throw new AppError(400, 'sample-mode-mismatch', '이 샘플은 상의용입니다. 전신 사진을 선택해 주세요.');
-            }
-          }
-          const models = selectModels(selected, config);
-          const person = await sanitizeImage(personInput, 'person');
-          const garment = await sanitizeImage(form.get(contract.fields[0]), contract.fields[0]);
-          const lowerGarment = mode === 'full' ? await sanitizeImage(form.get('lower'), 'lower') : undefined;
-          const fingerprint = createHash('sha256').update(JSON.stringify([mode, models])).update(person).update(garment).update(lowerGarment || '').digest('hex');
+          logEvent(logger, 'info', 'studio-request', { timestamp: Date.now(), requestId, stage: 'input-processing', status: 'running' });
+          const { mode, models, person, garment, lowerGarment, fingerprint } = await prepareUpload(req, config, samples);
           const job = jobs.create(sessionId, requestId, fingerprint, models, config, person, garment, { mode, lowerGarment });
-          logger.info?.(JSON.stringify({ event: 'studio-request', timestamp: Date.now(), requestId, jobId: job.id, stage: 'accepted', status: 'running' }));
+          logEvent(logger, 'info', 'studio-request', { timestamp: Date.now(), requestId, jobId: job.id, stage: 'accepted', status: 'running' });
           return json(res, 202, publicJob(job));
         } finally {
           submissions--;
@@ -237,11 +151,11 @@ export function createServer(config = loadConfig(), {
     } catch (error) {
       const known = error instanceof AppError;
       const requestId = req.headers['x-request-id'];
-      if (req.url?.startsWith('/api/jobs')) logger.error(JSON.stringify({ event: 'studio-request',
+      if (req.url?.startsWith('/api/jobs')) logEvent(logger, 'error', 'studio-request', {
         timestamp: Date.now(), stage: 'request', status: 'failed', code: known ? error.code : 'internal-error',
         httpStatus: known ? error.status : 500,
         ...(typeof requestId === 'string' && /^[a-zA-Z0-9-]{16,64}$/.test(requestId) ? { requestId } : {})
-      }));
+      });
       if (!known) logger.error('studio-request-failed', { code: 'internal-error' });
       if (!res.headersSent && !res.destroyed) {
         json(res, known ? error.status : 500, { error: { code: known ? error.code : 'internal-error', message: known ? error.message : 'An internal error occurred.' } });

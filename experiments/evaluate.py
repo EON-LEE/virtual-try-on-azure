@@ -33,7 +33,10 @@ def validate_review(review, result):
 
 
 def summarize(root, reviews):
-    runs = sorted(Path(root).glob("*\\result.json"))
+    root = Path(root)
+    if not root.is_dir():
+        raise ExperimentError("Run directory does not exist; provide retained local records.")
+    runs = sorted(root.glob("*/result.json"))
     groups = {}
     seen = set()
     for path in runs:

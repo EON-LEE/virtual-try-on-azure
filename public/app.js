@@ -1,44 +1,17 @@
+import { createApi, errorMessage, messages } from './network.js';
+import { createExecutionLog, stages } from './execution.js';
+import { inputPreview, imagePreview } from './images.js';
+import { loadSampleGallery } from './samples.js';
+
 const $ = id => document.getElementById(id);
 const roles = ['person', 'upper', 'lower'];
 const models = ['sunburst', 'mai'];
 const labels = { sunburst: 'Sunburst', mai: 'MAI Image 2.6' };
-const messages = {
-  'model-unavailable': '현재 생성을 사용할 수 없습니다.',
-  'demo-budget-closed': '현재 생성을 사용할 수 없습니다.',
-  'login-rate-limit': '로그인 시도가 많습니다. 잠시 후 다시 시도해 주세요.',
-  'demo-rate-limit': '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
-  busy: '다른 사진을 처리 중입니다. 잠시 후 다시 시도해 주세요.',
-  'azure-400': '사진을 처리하지 못했습니다. 다른 사진을 선택해 주세요.',
-  'azure-401': '모델에 연결하지 못했습니다.',
-  'azure-403': '모델을 사용할 권한이 없습니다.',
-  'azure-404': '모델을 사용할 수 없습니다.',
-  'azure-429': '모델의 요청 한도에 도달했습니다.',
-  'azure-connection': '모델 응답을 받지 못했습니다. 전송된 요청은 과금될 수 있습니다.',
-  'invalid-provider-response': '모델의 결과를 불러오지 못했습니다.',
-  'invalid-provider-image': '모델의 결과 사진을 읽지 못했습니다.',
-  'invalid-image': '사진을 읽을 수 없습니다. PNG/JPEG, 장당 10 MiB, 한 변 4096px 이하로 선택해 주세요.',
-  'generation-failed': '사진을 생성하지 못했습니다.'
-};
-messages['generation-timeout'] = messages['azure-timeout'] = '처리 시간이 초과됐습니다. 완료 여부와 과금은 확인되지 않았습니다.';
-messages['job-not-found'] = '실행 기록이 만료됐거나 서버가 다시 시작됐습니다. 완료 여부는 확인되지 않았습니다.';
-const stages = { submitted: '전송', accepted: '접수', 'input-processing': '입력 처리', identity: '모델 인증',
-  'model-request': '모델 요청', 'result-preparation': '결과 준비', completed: '완료', polling: '상태 확인' };
 const clientVersion = document.querySelector('meta[name="studio-version"]')?.content || 'local';
 $('client-version').textContent = `· ${clientVersion}`;
 let executionStarted = 0;
-const seenEvents = new Set();
-function recordExecution({ timestamp = Date.now(), model = '', stage, status: resultStatus, code = '', jobId = '', requestId = '', providerStatus, retryAfterSeconds }) {
-  const entry = document.createElement('li');
-  entry.textContent = `${new Date(timestamp).toLocaleTimeString('ko-KR')} · ${model || '요청'} · ${stages[stage] || stage} · ${{ running: '진행', succeeded: '성공', failed: '실패' }[resultStatus] || resultStatus}${code ? ` · ${code}` : ''}${providerStatus ? ` · HTTP ${providerStatus}` : ''}${retryAfterSeconds !== undefined ? ` · ${retryAfterSeconds}초 후 재시도 가능` : ''}${jobId || requestId ? ` · 참조 ${jobId || requestId}` : ''}`;
-  $('execution-log').append(entry);
-  while ($('execution-log').children.length > 50) $('execution-log').firstElementChild.remove();
-}
-function receiveEvents(job) {
-  for (const event of job.events || []) {
-    const key = JSON.stringify(event);
-    if (!seenEvents.has(key)) { seenEvents.add(key); recordExecution(event); }
-  }
-}
+const execution = createExecutionLog($('execution-log'));
+const recordExecution = execution.record;
 const modeFields = { upper: ['upper'], lower: ['lower'], full: ['upper', 'lower'] };
 const state = { config: null, files: {}, urls: {}, sampleIds: {}, samples: [], results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
 const selected = () => models.filter(id => $(`select-${id}`).checked);
@@ -46,25 +19,14 @@ const required = () => ['person', ...modeFields[$('mode').value]];
 const error = message => { $('error').textContent = message; $('error').hidden = !message; };
 const status = message => { $('status').textContent = message; };
 
-async function api(path, options = {}, timeoutMs = 30_000) {
-  const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
-  const response = await fetch(path, { ...options, headers: { 'x-studio-request': '1', ...options.headers }, signal });
-  const data = await response.json();
-  if (!response.ok) {
-    const cause = new Error(messages[data.error?.code] || data.error?.message || `요청 실패 (${response.status})`);
-    cause.status = response.status;
-    cause.code = data.error?.code;
-    if (response.status === 401 && !(path === '/api/session' && options.method === 'POST')) {
-      state.config = null;
-      $('workspace').hidden = true;
-      $('unlock').hidden = false;
-      $('login-error').textContent = '로그인이 만료됐습니다. 다시 로그인해 주세요.';
-      $('login-error').hidden = false;
-    }
-    throw cause;
-  }
-  return data;
-}
+const network = createApi(() => {
+  state.config = null;
+  $('workspace').hidden = true;
+  $('unlock').hidden = false;
+  $('login-error').textContent = '로그인이 만료됐습니다. 다시 로그인해 주세요.';
+  $('login-error').hidden = false;
+});
+const api = network.json;
 
 function controls() {
   const personSample = state.samples.find(item => item.id === state.sampleIds.person);
@@ -206,12 +168,7 @@ async function chooseFile(role, file, sampleId = null) {
       delete state.sampleIds[role];
       render();
       if (file) {
-        if (!['image/png', 'image/jpeg'].includes(file.type) || !file.size || file.size > 10 * 1024 * 1024) throw new Error('PNG/JPEG 사진을 장당 10 MiB 이하로 선택하세요.');
-        newUrl = URL.createObjectURL(file);
-        const image = new Image();
-        image.src = newUrl;
-        await image.decode();
-        if (image.naturalWidth > 4096 || image.naturalHeight > 4096 || image.naturalWidth * image.naturalHeight > 20_000_000) throw new Error('한 변 4096px 이하, 20메가픽셀 이하 사진을 사용하세요.');
+        newUrl = (await inputPreview(file)).url;
         if (current !== revisions[role] || epoch !== state.epoch) return;
         state.files[role] = file;
         state.urls[role] = newUrl;
@@ -233,50 +190,7 @@ for (const role of roles) {
 }
 
 async function loadSamples(timeoutMs = 30_000) {
-  const manifest = await api('/api/samples/manifest', {}, timeoutMs);
-  if (!Array.isArray(manifest.items)) throw new Error('샘플 목록을 확인해 주세요.');
-  for (const role of roles) $(`${role}-samples`).replaceChildren();
-  $('sample-credits').replaceChildren();
-  for (const item of manifest.items) {
-    if (!roles.includes(item.category) || !/^\/api\/samples\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/.test(item.src)) throw new Error('샘플 목록을 확인해 주세요.');
-    const button = document.createElement('button');
-    button.type = 'button'; button.className = 'sample'; button.dataset.id = item.id; button.dataset.label = item.label;
-    button.title = item.notes || item.label;
-    button.setAttribute('aria-label', `${item.label} 선택`); button.setAttribute('aria-pressed', 'false');
-    const image = document.createElement('img');
-    image.src = item.src; image.alt = ''; image.loading = 'lazy';
-    button.append(image);
-    button.addEventListener('click', async () => {
-      if (state.busy) return;
-      button.disabled = true;
-      const epoch = state.epoch;
-      const revision = ++revisions[item.category];
-      state.loading++; controls();
-      try {
-        const result = await fetch(item.src, { signal: AbortSignal.timeout(30_000) });
-        if (!result.ok) throw new Error('샘플 사진을 불러오지 못했습니다.');
-        const blob = await result.blob();
-        if (epoch !== state.epoch || revision !== revisions[item.category]) return;
-        $(item.category).value = '';
-        await chooseFile(item.category, new File([blob], item.src.split('/').pop(), { type: blob.type }), item.id);
-      } catch (cause) { error(cause.message); } finally { button.disabled = false; state.loading--; controls(); }
-    });
-    $(`${item.category}-samples`).append(button);
-    if (item.attribution) {
-      const credit = document.createElement('p'); credit.textContent = item.attribution;
-      for (const [value, label] of [[item.sourceUrl, '원본'], [item.licenseUrl, item.license]]) {
-        if (!value) continue;
-        if (new URL(value).protocol !== 'https:') throw new Error('샘플 출처를 확인해 주세요.');
-        const link = document.createElement('a'); link.href = value; link.textContent = ` · ${label}`;
-        link.target = '_blank'; link.rel = 'noopener noreferrer'; credit.append(link);
-      }
-      if (item.changes) credit.append(document.createTextNode(` · ${item.changes}`));
-      if (item.notes) credit.append(document.createTextNode(` · ${item.notes}`));
-      $('sample-credits').append(credit);
-    }
-  }
-  state.samples = manifest.items;
-  controls();
+  await loadSampleGallery({ $, roles, state, revisions, network, controls, chooseFile, error }, timeoutMs);
 }
 
 $('mode').addEventListener('change', async () => {
@@ -293,20 +207,16 @@ $('consent').addEventListener('change', controls);
 
 async function applyJob(job, epoch) {
   state.job = job;
-  receiveEvents(job);
+  execution.receive(job);
   for (const [id, result] of Object.entries(job.results)) {
     let url = state.results[id]?.url, dimensions = state.results[id]?.dimensions;
     if (result.status === 'succeeded' && !url) {
-      const response = await fetch(result.imageUrl, { signal: AbortSignal.any([state.controller.signal, AbortSignal.timeout(30_000)]) });
-      if (!response.ok) throw new Error('결과 사진이 만료되었거나 가져오지 못했습니다.');
-      const blob = await response.blob();
+      const blob = await network.blob(result.imageUrl, { signal: state.controller.signal });
       if (epoch !== state.epoch) return;
-      url = URL.createObjectURL(blob);
-      const image = new Image();
-      image.src = url;
-      try { await image.decode(); } catch (cause) { URL.revokeObjectURL(url); throw cause; }
+      const preview = await imagePreview(blob);
+      url = preview.url;
       if (epoch !== state.epoch) { URL.revokeObjectURL(url); return; }
-      dimensions = `${image.naturalWidth} × ${image.naturalHeight}`;
+      dimensions = `${preview.width} × ${preview.height}`;
     }
     state.results[id] = { ...result, url, dimensions };
   }
@@ -324,7 +234,7 @@ $('try-on-form').addEventListener('submit', async event => {
   state.controller = new AbortController();
   state.busy = true; error(''); controls();
   executionStarted = Date.now();
-  seenEvents.clear();
+  execution.reset();
   const requestId = crypto.randomUUID();
   recordExecution({ stage: 'submitted', status: 'running', requestId });
   const elapsedTimer = setInterval(() => {
@@ -360,7 +270,7 @@ $('try-on-form').addEventListener('submit', async event => {
     if (epoch === state.epoch) status(job.status === 'succeeded' ? '완성했어요. 사진을 눌러 크게 확인하세요.' : '생성하지 못한 결과가 있습니다. 오류를 확인해 주세요.');
   } catch (cause) {
     if (epoch !== state.epoch) return;
-    const message = messages[cause.code] || (cause.name === 'TimeoutError' ? '서버 응답 시간이 초과됐습니다.' : cause instanceof TypeError ? '서버에 연결하지 못했습니다.' : cause.message);
+    const message = errorMessage(cause);
     error(`${message}${!cause.status || cause.status >= 500 && cause.code !== 'model-unavailable' ? ' 완료 여부는 확인되지 않았으며, 전송된 요청은 과금될 수 있습니다.' : ''} 자동 재시도하지 않았습니다.`);
     recordExecution({ stage: 'polling', status: 'failed', code: cause.code || (cause.name === 'TimeoutError' ? 'request-timeout' : 'network-error'), requestId, jobId: state.job?.id });
     status('결과를 확인하지 못했습니다.');

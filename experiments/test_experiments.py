@@ -21,6 +21,13 @@ import dataset_batch
 
 
 class ExperimentsTest(unittest.TestCase):
+    def test_evaluation_requires_existing_directory_but_allows_empty_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(evaluate.summarize(root, {})["quality_conclusion"], "no live outputs")
+            with self.assertRaisesRegex(h.ExperimentError, "directory does not exist"):
+                evaluate.summarize(root / "missing", {})
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -111,6 +118,14 @@ class ExperimentsTest(unittest.TestCase):
         comparison.generate(self.root)
         self.assertIn("401 권한 오류", (self.root / "hardcase-grid.html").read_text(encoding="utf-8"))
         self.assertNotIn("No output image was returned", page)
+        record.update(status="succeeded", output_sha256="")
+        h.write_json(result, record)
+        with self.assertRaisesRegex(ValueError, "hash"):
+            comparison.generate(self.root)
+        record["output_sha256"] = None
+        h.write_json(result, record)
+        with self.assertRaisesRegex(ValueError, "hash"):
+            comparison.generate(self.root)
 
     def test_restart_report_never_reads_or_embeds_historical_images(self):
         state = h.read_json(h.ROOT / "restart-state.json")
@@ -295,7 +310,8 @@ class ExperimentsTest(unittest.TestCase):
         path = folder / "runs" / "unknown"
         path.mkdir(parents=True)
         h.write_json(folder / "config.json", self.config)
-        h.write_json(path / "result.json", {"status": "submitted", "attempts": 1})
+        h.write_json(path / "result.json", {"case_id": self.config["cases"][0]["id"],
+                                           "model_id": "sunburst", "status": "submitted", "attempts": 1})
         with patch.object(dataset_batch, "FOLDER", folder), \
                 patch.object(dataset_batch, "APPROVAL", folder / "approval.json"), \
                 patch.object(h, "build_plan", return_value=(self.plan, self.inputs)), \
@@ -406,7 +422,7 @@ class ExperimentsTest(unittest.TestCase):
                           URLError("secret signed URL")):
             with self.assertRaises(h.ExperimentError):
                 self.run_mock(exception=exception)
-        records = list((self.root / "runs").glob("*\\result.json"))
+        records = list((self.root / "runs").glob("*/result.json"))
         self.assertEqual(len(records), 2)
         for record in records:
             text = record.read_text()
@@ -431,7 +447,7 @@ class ExperimentsTest(unittest.TestCase):
     def test_bad_output_explicit_failure(self):
         with self.assertRaises(h.ExperimentError):
             self.run_mock(payload=b'{"data":[{"url":"https://untrusted.test/x"}]}')
-        self.assertFalse(list((self.root / "runs").glob("*\\output.png")))
+        self.assertFalse(list((self.root / "runs").glob("*/output.png")))
         self.assertEqual(evaluate.summarize(self.root / "runs", {})["quality_conclusion"],
                          "no live outputs")
 
@@ -530,6 +546,7 @@ class ExperimentsTest(unittest.TestCase):
         self.assertFalse(evaluate.validate_review(review, result))
 
     def test_report_no_live_no_success_claim(self):
+        (self.root / "empty").mkdir()
         report = evaluate.summarize(self.root / "empty", {})
         self.assertEqual(report["quality_conclusion"], "no live outputs")
         self.assertFalse(report["fit_size_claim"])

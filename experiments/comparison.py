@@ -1,13 +1,13 @@
 """Build a private, self-contained comparison grid from persisted run results."""
 
 import argparse
-import base64
-import hashlib
 import html
+import io
 import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+from report_assets import image_uri, result_records, verified_bytes
 
 
 STYLE = """
@@ -41,12 +41,9 @@ def generate(root):
     root = Path(root)
     cases = json.loads((root / "selected-inputs.json").read_text(encoding="utf-8"))["cases"]
     results = {}
-    for path in sorted((root / "runs").glob("*/result.json")):
-        record = json.loads(path.read_text(encoding="utf-8"))
+    for record in result_records(root / "runs"):
         key = (record["case_id"], record["model_id"])
-        if key in results:
-            raise ValueError("Duplicate model/case result; select one exact batch.")
-        results[key] = (record, path.parent)
+        results[key] = (record, Path(record["folder"]))
     headers = ("Person", "Garment", "Sunburst", "MAI")
     sheet = Image.new("RGB", (2000, 54 + 700 * len(cases)), "white")
     draw = ImageDraw.Draw(sheet)
@@ -56,23 +53,23 @@ def generate(root):
     rows = []
     for row_index, (case_id, case) in enumerate(cases.items()):
         cells = []
-        paths = [(root / case[role]["local_path"], "") for role in ("person", "garment")]
+        paths = [(root / case[role]["local_path"], "", None) for role in ("person", "garment")]
         for model in ("sunburst", "mai"):
             result = results.get((case_id, model))
             if result is None:
-                paths.append((None, "결과 없음"))
+                paths.append((None, "결과 없음", None))
                 continue
             record, folder = result
             if record["status"] != "succeeded":
                 status = record.get("http_status")
                 label = {401: "401 권한 오류", 429: "429 호출 제한"}.get(status, "생성 실패")
-                paths.append((None, label))
+                paths.append((None, label, None))
                 continue
             output = folder / "output.png"
-            if hashlib.sha256(output.read_bytes()).hexdigest() != record["output_sha256"]:
-                raise ValueError("Output hash does not match the persisted result.")
-            paths.append((output, f'{record["elapsed_seconds"]:.1f}s'))
-        for column, (path, label) in enumerate(paths):
+            if not isinstance(record.get("output_sha256"), str):
+                raise ValueError("Successful output requires its persisted hash.")
+            paths.append((output, f'{record["elapsed_seconds"]:.1f}s', record["output_sha256"]))
+        for column, (path, label, expected_hash) in enumerate(paths):
             x, y = column * 500, 54 + row_index * 700
             draw.rectangle((x, y, x + 499, y + 699), outline="#ccd2d9")
             draw.text((x + 12, y + 8), case_id, font=font, fill="black")
@@ -83,15 +80,14 @@ def generate(root):
                 # The JPEG labels remain ASCII so the bundled default font is portable.
                 draw.text((x + 12, y + 50), "No output", font=font, fill="black")
             else:
-                with Image.open(path) as image:
-                    mime = Image.MIME[image.format]
+                data = verified_bytes(path, expected_hash) if expected_hash is not None else path.read_bytes()
+                with Image.open(io.BytesIO(data)) as image:
                     preview = image.convert("RGB")
                     preview.thumbnail((484, 650), Image.Resampling.LANCZOS)
                 sheet.paste(preview, (x + (500 - preview.width) // 2,
                                       y + 40 + (650 - preview.height) // 2))
-                source = base64.b64encode(path.read_bytes()).decode("ascii")
                 cells.append(f'<td><div class="case">{caption}</div>'
-                             f'<img alt="{alt}" src="data:{mime};base64,{source}"></td>')
+                             f'<img alt="{alt}" src="{image_uri(data)}"></td>')
         rows.append("<tr>" + "".join(cells) + "</tr>")
     page = ('<!doctype html><html lang="ko"><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
