@@ -5,7 +5,9 @@ import { loadConfig, publicModels } from './config.js';
 import { AppError } from './errors.js';
 import { JobStore, publicJob } from './jobs.js';
 import { json, jsonBody, secretMatches } from './http.js';
-import { SessionStore, sessionCookie } from './sessions.js';
+import { SessionStore, sessionCookie, loginSource } from './sessions.js';
+import { MAX_INPUT_EDGE, labelDownload } from './images.js';
+import { loadSamples } from './samples.js';
 import { prepareUpload } from './upload.js';
 import { logEvent } from './logging.js';
 import { publicDirectory as publicDir, staticFiles, clientVersion } from './assets.js';
@@ -17,7 +19,8 @@ export function createServer(config = loadConfig(), {
   jobs, logger = console, samples = defaultSamples, sampleDirectory = samplesDir, loginAttemptsPerMinute = 20
 } = {}) {
   jobs ??= new JobStore({ logger });
-  const sessions = new SessionStore(jobs, { loginAttemptsPerMinute });
+  const sessions = new SessionStore(jobs, { loginAttemptsPerMinute, credentials: config.access.credentials });
+  const sampleCatalog = loadSamples(samples, sampleDirectory, config.researchSamples, logger);
   let submissions = 0;
   let operatorAttempts = 0;
   let operatorWindow = Date.now();
@@ -90,7 +93,7 @@ export function createServer(config = loadConfig(), {
       prune();
       const session = sessions.get(sessionId);
       if (path === '/api/session' && req.method === 'POST') {
-        sessions.reserveLogin();
+        sessions.reserveLogin(loginSource(req, config.access.trustContainerAppsProxy));
         const data = await jsonBody(req, 'invalid-request', 'Invalid access request.');
         const id = sessions.login(data, sessionId);
         return json(res, 200, { authenticated: true }, { 'Set-Cookie': cookie(id) });
@@ -99,7 +102,7 @@ export function createServer(config = loadConfig(), {
         const open = config.limits.mode === 'unlimited' || jobs.gate.isOpenFor(sessionId);
         return json(res, 200, { authenticated: Boolean(session), clientVersion,
           models: publicModels(config).map(model => model.ready && !open ? { ...model, ready: false, reason: 'demo-budget-closed' } : model),
-          maxImageMiB: 10, retentionMinutes: 10 });
+          maxImageMiB: 10, maxInputEdge: MAX_INPUT_EDGE, retentionMinutes: 10 });
       }
       if (path === '/api/session' && req.method === 'DELETE') {
         sessions.delete(sessionId);
@@ -107,15 +110,21 @@ export function createServer(config = loadConfig(), {
       }
       if (!session) throw new AppError(401, 'unauthorized', '다시 로그인해 주세요.');
       if (path === '/api/samples/manifest' && req.method === 'GET') {
-        return json(res, 200, samples);
+        return json(res, 200, await sampleCatalog);
       }
       if (path.startsWith('/api/samples/') && req.method === 'GET') {
-        const sample = samples.items.find(item => item.src === path);
+        const sample = (await sampleCatalog).items.find(item => item.src === path);
         if (!sample || !/^[a-zA-Z0-9_-]+\.jpg$/.test(sample.filename)) {
           throw new AppError(404, 'sample-not-found', '샘플을 찾을 수 없습니다.');
         }
+        let image;
+        try { image = await readFile(new URL(sample.filename, sampleDirectory)); }
+        catch (cause) {
+          if (cause.code !== 'ENOENT') throw cause;
+          throw new AppError(404, 'sample-not-found', '샘플을 찾을 수 없습니다. 사용 권한이 있는 사진을 업로드하세요.');
+        }
         res.setHeader('Content-Type', 'image/jpeg');
-        return res.end(await readFile(new URL(sample.filename, sampleDirectory)));
+        return res.end(image);
       }
       if (path === '/api/jobs' && req.method === 'POST') {
         if (submissions >= 1) throw new AppError(429, 'busy', 'Studio is processing another upload. Try again later.');
@@ -132,7 +141,7 @@ export function createServer(config = loadConfig(), {
           submissions--;
         }
       }
-      const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/images\/(sunburst|mai))?$/.exec(path);
+      const match = /^\/api\/jobs\/([a-f0-9-]{36})(?:\/images\/(sunburst|mai)(\/download)?)?$/.exec(path);
       if (match) {
         const job = jobs.get(match[1], sessionId);
         if (req.method === 'DELETE' && !match[2]) {
@@ -143,8 +152,10 @@ export function createServer(config = loadConfig(), {
           if (!match[2]) return json(res, 200, publicJob(job));
           const image = job.results[match[2]]?.image;
           if (!image) throw new AppError(404, 'image-not-found', 'This model has no completed image.');
+          const output = match[3] ? await labelDownload(image) : image;
           res.setHeader('Content-Type', 'image/png');
-          return res.end(image);
+          if (match[3]) res.setHeader('Content-Disposition', `attachment; filename="try-on-${match[2]}-ai.png"`);
+          return res.end(output);
         }
       }
       throw new AppError(404, 'not-found', 'Not found.');

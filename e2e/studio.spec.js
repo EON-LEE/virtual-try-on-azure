@@ -4,13 +4,14 @@ import { readFile } from 'node:fs/promises';
 import manifest from '../samples/manifest.json' with { type: 'json' };
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { demoCredentials } from '../test/fixtures.js';
 
 async function prepare(page, mode = 'upper') {
   const buffer = await sharp({ create: { width: 32, height: 48, channels: 3, background: '#abcdef' } }).png().toBuffer();
   const file = { name: 'synthetic-test.png', mimeType: 'image/png', buffer };
   await page.goto('/');
   await page.locator('#username').fill('test');
-  await page.locator('#password').fill('test');
+  await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#unlock-form button').click();
   await expect(page.locator('#workspace')).toBeVisible();
   await page.locator(`[name="clothing-mode"][value="${mode}"]`).check();
@@ -68,6 +69,104 @@ test('both models cost two calls; full mode requires both references', async ({ 
   await expect(page.locator('#sunburst-result')).toBeVisible();
   await expect(page.locator('#mai-result')).toBeVisible();
   await page.locator('#clear').click();
+});
+
+test('comparison, image-free review export and labeled download never resubmit generation', async ({ page }, testInfo) => {
+  await prepare(page);
+  let submissions = 0;
+  page.on('request', request => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/jobs')) submissions++;
+  });
+  await page.locator('#select-mai').check();
+  await page.locator('#generate').click();
+  await expect(page.locator('#status')).toContainText('완성');
+  await expect(page.locator('#mai-disclosure')).toContainText('AI 생성');
+  const slider = page.locator('#mai-compare');
+  await slider.focus();
+  await page.keyboard.press('End');
+  await expect(slider).toHaveValue('100');
+  await expect(slider).toHaveAttribute('aria-valuetext', '원본 100% 표시');
+  expect(await page.locator('#mai-original').evaluate(image => getComputedStyle(image).clipPath)).toBe('inset(0px 0% 0px 0px)');
+  await page.keyboard.press('Home');
+  await expect(slider).toHaveValue('0');
+  expect(await page.locator('#mai-result').evaluate(image => getComputedStyle(image).objectFit)).toBe('contain');
+  expect(await page.locator('[data-zoom="mai-result"]').evaluate(stage => stage.style.aspectRatio)).toBe('32 / 48');
+  await page.locator('.result-cell').last().locator('summary').click();
+  await page.locator('#mai-verdict').selectOption({ label: '수정 필요' });
+  await page.locator('#mai-notes').fill('로고 확인 필요');
+  await page.locator('#select-sunburst').check();
+  await expect(page.locator('#mai-notes')).toHaveValue('로고 확인 필요');
+  const reportDownload = page.waitForEvent('download');
+  await page.locator('#export-review').click();
+  const report = JSON.parse(await readFile(await (await reportDownload).path(), 'utf8'));
+  expect(report.summary).toEqual({ selected: 1, succeeded: 1, accepted: 0 });
+  expect(report.results[0].verdict).toBe('수정 필요');
+  expect(report.results[0].notes).toBe('로고 확인 필요');
+  expect(JSON.stringify(report)).not.toMatch(/blob:|data:image|imageUrl|synthetic-test\.png/);
+  const imageDownload = page.waitForEvent('download');
+  await page.locator('#mai-download').click();
+  const downloaded = await imageDownload;
+  expect(downloaded.suggestedFilename()).toBe('try-on-mai-ai.png');
+  const metadata = await sharp(await readFile(await downloaded.path())).metadata();
+  expect(metadata.width).toBe(640);
+  expect(metadata.height).toBe(904);
+  expect(submissions).toBe(1);
+  await slider.evaluate(input => { input.value = '50'; input.dispatchEvent(new Event('input')); });
+  await page.screenshot({ path: testInfo.outputPath('review-workspace.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('review-mobile.png'), fullPage: true });
+  await page.locator('#clear').click();
+  await expect(page.locator('#export-review')).toBeDisabled();
+  await expect(page.locator('#mai-original')).toBeHidden();
+  await expect(page.locator('#mai-disclosure')).toBeHidden();
+  await expect(page.locator('#mai-notes')).toHaveValue('');
+});
+
+test('absent samples still allow the upload-only review flow', async ({ page }) => {
+  await page.route('**/api/samples/manifest', route => route.fulfill({
+    json: { available: false, reason: 'research-samples-disabled', items: [] }
+  }));
+  await prepare(page);
+  await expect(page.locator('.sample')).toHaveCount(0);
+  await expect(page.locator('#sample-status')).toContainText('사용 권한');
+  await page.locator('#select-sunburst').check();
+  await page.locator('#generate').click();
+  await expect(page.locator('#status')).toContainText('완성');
+  await expect(page.locator('#export-review')).toBeEnabled();
+  await page.locator('#clear').click();
+});
+
+test('failed download explains expiry and never downloads an unlabeled replacement', async ({ page }) => {
+  await prepare(page);
+  await page.locator('#select-mai').check();
+  await page.locator('#generate').click();
+  await expect(page.locator('#mai-result')).toBeVisible();
+  let downloads = 0;
+  page.on('download', () => downloads++);
+  await page.route('**/api/jobs/*/images/*/download', route => route.fulfill({
+    status: 404, json: { error: { code: 'job-not-found', message: 'Result expired.' } }
+  }));
+  await page.locator('#mai-download').click();
+  await expect(page.locator('#error')).toContainText('다운로드 실패');
+  expect(downloads).toBe(0);
+  await page.locator('#clear').click();
+});
+
+test('expired access clears photos and review notes before another login', async ({ page }) => {
+  await prepare(page);
+  await page.locator('#select-mai').check();
+  await page.locator('#generate').click();
+  await expect(page.locator('#mai-result')).toBeVisible();
+  await page.locator('.result-cell').last().locator('summary').click();
+  await page.locator('#mai-notes').fill('private review note');
+  await page.context().clearCookies();
+  await page.locator('#mai-download').click();
+  await expect(page.locator('#unlock')).toBeVisible();
+  await expect(page.locator('#before')).not.toHaveAttribute('src', /blob:/);
+  await expect(page.locator('#mai-result')).not.toHaveAttribute('src', /blob:/);
+  await expect(page.locator('#mai-notes')).toHaveValue('');
+  await expect(page.locator('#export-review')).toBeDisabled();
 });
 
 for (const failure of ['network', '401', '404', '500']) {
@@ -204,7 +303,7 @@ test('login is separate, keyboard accessible and logout invalidates the session'
   await page.locator('#password').fill('wrong');
   await page.locator('#password').press('Enter');
   await expect(page.locator('#login-error')).toContainText('확인');
-  await page.locator('#password').fill('test');
+  await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#workspace')).toBeVisible();
   await expect(page.locator('.brand')).toHaveText('Virtual Try-On');
@@ -225,7 +324,7 @@ test('a rejected session cookie stays on login and explains how to recover', asy
     await route.fulfill({ status: response.status(), headers, body: await response.body() });
   });
   await page.goto('/');
-  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#unlock')).toBeVisible();
   await expect(page.locator('#workspace')).toBeHidden();
@@ -242,7 +341,7 @@ test('login waits beyond 30 seconds, prevents duplicate submissions and loads sa
     await route.continue();
   });
   await page.goto('/');
-  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#unlock-form button')).toHaveText('연결 중…');
   await expect(page.locator('#unlock-form button')).toBeDisabled();
@@ -271,11 +370,11 @@ test('login timeout is Korean, keeps inputs for a manual retry and never retries
     await route.continue();
   });
   await page.goto('/');
-  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#login-error')).toContainText('로그인 버튼을 다시');
   await expect(page.locator('#unlock-form button')).toBeEnabled();
-  await expect(page.locator('#password')).toHaveValue('test');
+  await expect(page.locator('#password')).toHaveValue(demoCredentials.password);
   expect(submissions).toBe(1);
   await page.locator('#unlock-form button').click();
   await expect(page.locator('#workspace')).toBeVisible();
@@ -293,7 +392,7 @@ test('a late startup config cannot overwrite a completed login', async ({ page }
     await route.fulfill({ response });
   });
   await page.goto('/');
-  await page.locator('#username').fill('test'); await page.locator('#password').fill('test');
+  await page.locator('#username').fill('test'); await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#workspace')).toBeVisible();
   release();
@@ -322,7 +421,7 @@ test('sample galleries use fetched bytes, require each full-set reference and ne
   page.on('request', request => { if (request.url().endsWith('/api/jobs') && request.method() === 'POST') requests++; });
   await page.goto('/');
   await page.locator('#username').fill('test');
-  await page.locator('#password').fill('test');
+  await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#person-samples button')).toHaveCount(2);
   await page.locator('#person-samples button').first().click();
@@ -420,7 +519,7 @@ test('the VITON-HD gallery sends the actual unpaired JPEG files only when genera
   await page.goto('/');
   await expect(page.locator('.sample')).toHaveCount(0);
   await page.locator('#username').fill('test');
-  await page.locator('#password').fill('test');
+  await page.locator('#password').fill(demoCredentials.password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#person-samples .sample')).toHaveCount(6);
   await expect(page.locator('#upper-samples .sample')).toHaveCount(8);

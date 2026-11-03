@@ -12,6 +12,15 @@ param deployApp bool = false
 @secure()
 @minLength(32)
 param operatorToken string
+@minLength(1)
+@maxLength(128)
+param demoUsername string
+@secure()
+@minLength(32)
+@maxLength(128)
+param demoPassword string
+@description('Noncommercial research only, after reviewing sample rights and building the research target.')
+param enableResearchSamples bool = false
 @description('A separate generation approval is required; hosting deploy leaves false.')
 param enableInference bool = false
 @allowed(['bounded', 'unlimited'])
@@ -83,6 +92,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
       activeRevisionsMode: 'Single'
       secrets: [
         { name: 'studio-operator-token', value: operatorToken }
+        { name: 'studio-demo-password', value: demoPassword }
       ]
       registries: [{ server: registry.properties.loginServer, identity: identity.id }]
       ingress: { external: true, allowInsecure: false, targetPort: 3000, transport: 'http' }
@@ -98,6 +108,10 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'PORT', value: '3000' }
             { name: 'APP_ORIGIN', value: 'https://${appName}.${environment.properties.defaultDomain}' }
             { name: 'DEMO_OPERATOR_TOKEN', secretRef: 'studio-operator-token' }
+            { name: 'DEMO_USERNAME', value: demoUsername }
+            { name: 'DEMO_PASSWORD', secretRef: 'studio-demo-password' }
+            { name: 'DEMO_TRUST_CONTAINER_APPS_PROXY', value: 'true' }
+            { name: 'ENABLE_RESEARCH_SAMPLES', value: enableResearchSamples ? 'true' : 'false' }
             { name: 'ENABLE_AZURE_INFERENCE', value: enableInference ? 'true' : 'false' }
             { name: 'DEMO_INFERENCE_MODE', value: inferenceMode }
             { name: 'DEMO_MAX_MODEL_ATTEMPTS', value: string(maxModelAttempts) }

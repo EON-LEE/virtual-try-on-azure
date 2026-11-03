@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
 export const publicDirectory = new URL('../public/', import.meta.url);
-const javascript = ['app.js', 'network.js', 'execution.js', 'images.js', 'samples.js'];
+const javascript = ['app.js', 'network.js', 'execution.js', 'images.js', 'samples.js', 'review.js'];
 export const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],

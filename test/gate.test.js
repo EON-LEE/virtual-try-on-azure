@@ -4,10 +4,12 @@ import { InferenceGate } from '../src/gate.js';
 import { JobStore } from '../src/jobs.js';
 import { loadConfig } from '../src/config.js';
 import { createServer } from '../src/server.js';
+import { demoEnv, demoCredentials } from './fixtures.js';
 
 const invite = 'invitation-secret-test-only-'.repeat(2);
 const operator = 'operator-secret-test-only-'.repeat(2);
 const settings = {
+  ...demoEnv,
   ENABLE_AZURE_INFERENCE: 'true', APP_ACCESS_TOKEN: invite, DEMO_OPERATOR_TOKEN: operator,
   DEMO_MAX_MODEL_ATTEMPTS: '2', DEMO_INFERENCE_EXPIRES_AT: '2099-01-01T00:00:00Z',
   AZURE_MAI_ENDPOINT: 'https://test.services.ai.azure.com', AZURE_MAI_DEPLOYMENT: 'test', AZURE_MAI_API_KEY: 'test-only',
@@ -59,7 +61,7 @@ test('ordinary login is ready without operator activation in explicit unlimited 
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
   const origin = `http://127.0.0.1:${server.address().port}`;
   const headers = { origin, 'x-studio-request': '1', 'content-type': 'application/json' };
-  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' }) });
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify(demoCredentials) });
   const cookie = login.headers.get('set-cookie').split(';')[0];
   const publicConfig = await (await fetch(`${origin}/api/config`, { headers: { cookie } })).json();
   assert.equal(publicConfig.authenticated, true);
@@ -144,7 +146,7 @@ test('session-only activation needs a live cookie and config readiness matches i
   const origin = `http://127.0.0.1:${server.address().port}`;
   const headers = { origin, 'x-studio-request': '1', 'content-type': 'application/json' };
   const login = async () => (await fetch(`${origin}/api/session`, {
-    method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' })
+    method: 'POST', headers, body: JSON.stringify(demoCredentials)
   })).headers.get('set-cookie').split(';')[0];
   const owner = await login(), another = await login();
   const operatorHeaders = { ...headers, 'x-operator-token': operator };
@@ -174,7 +176,7 @@ test('operator endpoint hides nonce from demo sessions and demo password cannot 
   const headers = { 'x-studio-request': '1', 'content-type': 'application/json', origin };
   const ordinary = await fetch(`${origin}/api/config`);
   assert.doesNotMatch(await ordinary.text(), /nonce|operator|remaining/);
-  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' }) });
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify(demoCredentials) });
   const cookie = login.headers.get('set-cookie').split(';')[0];
   assert.equal((await fetch(`${origin}/api/operator/state`, { method: 'POST', headers: { ...headers, cookie }, body: '{}' })).status, 401);
   const nonceRequest = secret => fetch(`${origin}/api/operator/state`, { method: 'POST', headers: { ...headers, ...(secret ? { 'x-operator-token': secret } : {}) }, body: '{}' });

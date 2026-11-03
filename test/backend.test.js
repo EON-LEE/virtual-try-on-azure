@@ -9,10 +9,11 @@ import { TRY_ON_PROMPT } from '../src/prompt.js';
 import { createServer } from '../src/server.js';
 import { readFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
-import { activateForTest, loginForTest } from './fixtures.js';
+import { activateForTest, loginForTest, demoEnv, demoCredentials } from './fixtures.js';
 
 const png = () => sharp({ create: { width: 16, height: 24, channels: 3, background: '#abcdef' } }).png().toBuffer();
 const configured = () => loadConfig({
+  ...demoEnv,
   ENABLE_AZURE_INFERENCE: 'true',
   DEMO_MAX_MODEL_ATTEMPTS: '20', DEMO_INFERENCE_EXPIRES_AT: '2099-01-01T00:00:00Z',
   AZURE_SUNBURST_ENDPOINT: 'https://test.openai.azure.com',
@@ -169,14 +170,25 @@ test('HTTP upload-to-result flow enforces consent, origin, session and exact sel
   assert.equal(result.headers.get('cache-control'), 'no-store');
   assert.equal(result.headers.get('content-type'), 'image/png');
   assert.equal((await fetch(`${origin}${state.results.sunburst.imageUrl}`)).status, 401);
+  const downloadUrl = `${origin}${state.results.sunburst.imageUrl}/download`;
+  assert.equal((await fetch(downloadUrl)).status, 401);
+  const download = await fetch(downloadUrl, { headers: { cookie } });
+  assert.equal(download.status, 200);
+  assert.match(download.headers.get('content-disposition'), /try-on-sunburst-ai\.png/);
+  const downloadMeta = await sharp(Buffer.from(await download.arrayBuffer())).metadata();
+  assert.equal(downloadMeta.width, 16);
+  assert.ok(downloadMeta.height > 24);
+  const otherCookie = await loginForTest(origin);
+  assert.equal((await fetch(downloadUrl, { headers: { cookie: otherCookie } })).status, 404);
   assert.equal((await fetch(`${origin}/api/jobs`, { method: 'POST', headers, body: form() })).status, 202);
   assert.deepEqual(calls, ['sunburst']);
   await fetch(`${origin}/api/jobs/${job.id}`, { method: 'DELETE', headers });
   assert.equal((await fetch(`${origin}/api/jobs/${job.id}`, { headers: { cookie } })).status, 404);
+  assert.equal((await fetch(downloadUrl, { headers: { cookie } })).status, 404);
 });
 
 test('demo username/password is server-verified; no token login or key leaks; disabled calls never execute', async t => {
-  const config = loadConfig({ APP_ACCESS_TOKEN: 'test-access-token', AZURE_SUNBURST_API_KEY: 'private-test-key' });
+  const config = loadConfig({ ...demoEnv, APP_ACCESS_TOKEN: 'test-access-token', AZURE_SUNBURST_API_KEY: 'private-test-key' });
   let calls = 0;
   const jobs = new JobStore({ provider: async () => { calls++; throw new Error('should not run'); } });
   const server = createServer(config, { jobs });
@@ -192,7 +204,7 @@ test('demo username/password is server-verified; no token login or key leaks; di
   assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: 'null' })).status, 400);
   assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ token: 'wrong' }) })).status, 401);
   assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'wrong' }) })).status, 401);
-  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify({ username: 'test', password: 'test' }) });
+  const login = await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify(demoCredentials) });
   assert.equal(login.status, 200);
   const cookieHeader = login.headers.get('set-cookie');
   assert.match(cookieHeader, /HttpOnly/);
@@ -211,7 +223,7 @@ test('demo username/password is server-verified; no token login or key leaks; di
   await fetch(`${origin}/api/session`, { method: 'DELETE', headers: { cookie, 'x-studio-request': '1' } });
   assert.equal((await (await fetch(`${origin}/api/config`, { headers: { cookie } })).json()).authenticated, false);
   for (let i = 0; i < 20; i++) await fetch(`${origin}/api/session`, { method: 'POST', headers, body: '{"username":"wrong","password":"wrong"}' });
-  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: '{"username":"test","password":"test"}' })).status, 429);
+  assert.equal((await fetch(`${origin}/api/session`, { method: 'POST', headers, body: JSON.stringify(demoCredentials) })).status, 429);
 });
 
 test('image size/frame limits, malicious payloads and multiple provider images fail explicitly', async () => {

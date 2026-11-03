@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 import sharp from 'sharp';
 
 const origin = process.argv[2];
+const username = process.env.DEMO_USERNAME, password = process.env.DEMO_PASSWORD;
+if (!username || !password) throw new Error('Supply DEMO_USERNAME and DEMO_PASSWORD through the process environment.');
 const url = new URL(origin);
 assert.ok(url.protocol === 'https:' || url.hostname === '127.0.0.1');
 const directory = resolve('.local-deploy', 'studio-preview');
@@ -32,14 +34,15 @@ try {
   await expect(page.locator('#unlock')).toBeVisible();
   await expect(page.locator('#unlock img, #unlock a')).toHaveCount(0);
   await page.screenshot({ path: resolve(directory, 'login-desktop.png'), fullPage: true });
-  await page.locator('#username').fill('test');
+  await page.locator('#username').fill(username);
   await page.locator('#password').fill('wrong');
   await page.locator('#password').press('Enter');
   await expect(page.locator('#login-error')).toContainText('확인');
-  await page.locator('#password').fill('test');
+  await page.locator('#password').fill(password);
   await page.locator('#password').press('Enter');
   await expect(page.locator('#workspace')).toBeVisible();
-  await expect(page.locator('.sample')).toHaveCount(14);
+  const samples = await (await page.request.get(`${origin}/api/samples/manifest`)).json();
+  await expect(page.locator('.sample')).toHaveCount(samples.items.length);
   await expect(page.locator('#connection')).toContainText('피팅 준비 완료');
   const config = await (await page.request.get(`${origin}/api/config`)).json();
   assert.ok(config.authenticated && config.models.every(model => model.ready));
@@ -54,14 +57,9 @@ try {
       await expect(page.locator('#person-samples')).toBeHidden();
       await expect(page.locator('#person-guidance')).toContainText('전신 사진을 업로드');
       if (mode === 'lower') await expect(page.locator('#generate')).toBeDisabled();
-      await page.locator('#person').setInputFiles(upload);
-      await page.locator('#lower').setInputFiles(upload);
     }
-    for (const [role, id] of [...(mode === 'upper' ? [['person', 'viton-person-00690_00']] : []),
-      ...(mode !== 'lower' ? [['upper', 'viton-upper-00259_00']] : [])]) {
-      const button = page.locator(`#${role}-samples [data-id="${id}"]`);
-      await button.click();
-      await expect(button).toHaveAttribute('aria-pressed', 'true');
+    for (const role of ['person', ...(mode !== 'lower' ? ['upper'] : []), ...(mode !== 'upper' ? ['lower'] : [])]) {
+      await page.locator(`#${role}`).setInputFiles(upload);
     }
     await page.locator('#select-sunburst').check();
     await page.locator('#select-mai').uncheck();
@@ -74,9 +72,6 @@ try {
     await expect(page.locator('#generate')).toBeEnabled();
   }
   await page.locator('[name="clothing-mode"][value="upper"]').check();
-  const person = page.locator('#person-samples [data-id="viton-person-00690_00"]');
-  await person.click();
-  await expect(person).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#generate')).toBeEnabled();
   await page.locator('#before').evaluate(image => image.decode());
   await page.screenshot({ path: resolve(directory, 'studio-desktop.png'), fullPage: true });
@@ -91,7 +86,7 @@ try {
   await page.screenshot({ path: resolve(directory, 'login-mobile.png'), fullPage: true });
   assert.equal(submissions, 0);
   assert.deepEqual(failures, []);
-  console.log(JSON.stringify({ health: 200, freshLogin: true, ordinarySessionReady: true, samples: 14,
+  console.log(JSON.stringify({ health: 200, freshLogin: true, ordinarySessionReady: true, samples: samples.items.length,
     modes: 3, independentModels: true, secureCookie: true, logout: true, newImageCalls: 0, browserErrors: failures,
     screenshots: directory }));
 } finally {

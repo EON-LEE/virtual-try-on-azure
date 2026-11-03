@@ -1,10 +1,16 @@
 import { errorMessage } from './network.js';
 
 export async function loadSampleGallery({ $, roles, state, revisions, network, controls, chooseFile, error }, timeoutMs) {
+  const epoch = state.epoch;
   const manifest = await network.json('/api/samples/manifest', {}, timeoutMs);
+  if (epoch !== state.epoch) return;
   if (!Array.isArray(manifest.items)) throw new Error('샘플 목록을 확인해 주세요.');
   for (const role of roles) $(`${role}-samples`).replaceChildren();
   $('sample-credits').replaceChildren();
+  $('sample-status').hidden = manifest.items.length > 0;
+  $('sample-status').textContent = manifest.reason === 'research-samples-disabled'
+    ? '연구용 샘플은 꺼져 있습니다. 사용 권한과 모델 동의가 확인된 사진을 업로드하세요.'
+    : '샘플 팩을 사용할 수 없습니다. 사용 권한이 있는 사진을 업로드하세요.';
   for (const item of manifest.items) {
     if (!roles.includes(item.category) || !/^\/api\/samples\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/.test(item.src)) throw new Error('샘플 목록을 확인해 주세요.');
     const button = document.createElement('button');
@@ -44,5 +50,6 @@ export async function loadSampleGallery({ $, roles, state, revisions, network, c
     }
   }
   state.samples = manifest.items;
+  state.samplesLoaded = true;
   controls();
 }

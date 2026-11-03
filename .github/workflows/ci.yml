@@ -26,5 +26,19 @@ jobs:
       - run: python -m unittest discover -s experiments -p 'test_*.py'
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - run: mkdir -p sample-images && docker build -t try-on-studio:test .
+      - run: docker build --target customer -t try-on-studio:test .
+      - name: Verify photo-free image and rasterized AI label
+        run: |
+          docker run --rm --entrypoint node try-on-studio:test --input-type=module -e '
+            import assert from "node:assert/strict";
+            import { existsSync } from "node:fs";
+            import sharp from "sharp";
+            import { labelDownload } from "./src/images.js";
+            assert.equal(existsSync("sample-images"), false);
+            const input = await sharp({ create: { width: 640, height: 850, channels: 3, background: "#aabbcc" } }).png().toBuffer();
+            const output = await labelDownload(input);
+            const footer = await sharp(output).extract({ left: 0, top: 850, width: 640, height: 48 }).removeAlpha().raw().toBuffer();
+            assert.deepEqual([...footer.subarray(0, 3)], [32, 34, 42]);
+            assert.ok(footer.includes(255), "AI text must render with the packaged font");
+          '
       - run: az bicep build --file infra/main.bicep --stdout > /dev/null

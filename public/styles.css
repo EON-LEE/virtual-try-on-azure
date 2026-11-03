@@ -72,8 +72,15 @@ h1,h2,h3,p{margin:0}
 .case-cell{min-width:0}
 .case-cell h3{font-size:11px;font-weight:600;margin-bottom:9px;color:var(--muted)}
 .case-cell h3 strong{font-weight:600}
+.review-guidance{font-size:11px;color:var(--muted);margin:0 0 14px;max-width:90ch}
+.ai-badge{display:inline-block;background:#eae5ff;color:#47378e;border-radius:4px;padding:2px 5px;font-size:10px}
+.comparison-control{display:grid;gap:3px;margin-top:8px;font-size:11px;color:var(--muted)}
+.comparison-control input{width:100%;margin:4px 0;accent-color:var(--accent)}
+.comparison-control span{font-size:10px}
 .stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:3/4;padding:0;border:1px solid var(--line);border-radius:9px;background:#eeeff3;overflow:hidden}
 .stage img{display:block;width:100%;height:100%;object-fit:contain}
+.comparison-stage .comparison-original{position:absolute;inset:0;background:#f1f1f3;clip-path:inset(0 calc(100% - var(--comparison-position,50%)) 0 0)}
+.comparison-stage:has(.comparison-original:not([hidden]))::before{content:"";position:absolute;left:var(--comparison-position,50%);top:0;bottom:0;width:2px;background:#6754ca;z-index:1;pointer-events:none}
 .stage:has(img:not([hidden])){cursor:zoom-in;background:#f1f1f3}
 .stage:has(img:not([hidden])):hover{border-color:#a69adf}
 .stage:has(img:not([hidden]))::after{content:"↗";position:absolute;bottom:9px;right:9px;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#fffffff0;color:var(--ink);opacity:0}

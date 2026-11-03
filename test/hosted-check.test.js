@@ -2,12 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkHosted } from '../scripts/check-hosted.js';
 import manifest from '../samples/manifest.json' with { type: 'json' };
+import { demoCredentials } from './fixtures.js';
 
 for (const expected of ['disabled', 'ready']) {
   test(`hosted ${expected} check cannot activate or submit inference and uses per-request signals`, async () => {
     const signals = new Set();
     const mutations = [];
     const summary = await checkHosted('https://example.test', expected, {
+      credentials: demoCredentials,
       fetchImpl: async (url, options) => {
         assert.ok(!signals.has(options.signal));
         signals.add(options.signal);
@@ -15,9 +17,12 @@ for (const expected of ['disabled', 'ready']) {
         if (options.method) {
           mutations.push([path, options.method]);
           assert.equal(path, '/api/session');
-          if (options.method === 'POST') return Response.json({}, {
+          if (options.method === 'POST') {
+            assert.deepEqual(JSON.parse(options.body), demoCredentials);
+            return Response.json({}, {
             headers: { 'set-cookie': 'studio=fixture; HttpOnly; Secure; SameSite=Strict' }
           });
+          }
           assert.equal(options.method, 'DELETE');
           return Response.json({});
         }
@@ -28,12 +33,14 @@ for (const expected of ['disabled', 'ready']) {
           { ready: expected === 'ready', reason: expected === 'disabled' ? 'inference-disabled' : null }
         ] });
         if (!authenticated) return new Response(null, { status: 401 });
-        if (path === '/api/samples/manifest') return Response.json(manifest);
+        if (path === '/api/samples/manifest') return Response.json(expected === 'disabled'
+          ? { available: false, reason: 'research-samples-disabled', items: [] } : manifest);
         assert.ok(manifest.items.some(item => item.src === path));
         return new Response('synthetic-photo', { headers: { 'cache-control': 'no-store' } });
       }
     });
     assert.equal(summary.imageCalls, 0);
+    if (expected === 'disabled') assert.deepEqual(summary.sampleCounts, { person: 0, upper: 0, lower: 0 });
     assert.deepEqual(mutations, [['/api/session', 'POST'], ['/api/session', 'DELETE']]);
   });
 }

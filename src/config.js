@@ -33,6 +33,22 @@ export function loadConfig(env = process.env) {
       (!local && !origin.startsWith('https://')))) {
     throw new Error('APP_ORIGIN must be a canonical origin, HTTPS for public hosting.');
   }
+  const username = env.DEMO_USERNAME || '';
+  const password = env.DEMO_PASSWORD || '';
+  if ((username || password) && (!username.trim() || username.length > 128 ||
+      password.trim().length < 32 || password.length > 128)) {
+    throw new Error('Set DEMO_USERNAME (1-128 characters) and DEMO_PASSWORD (32-128 characters) together.');
+  }
+  const credentials = username && password ? { username, password } : null;
+  if ((!local || origin.startsWith('https://')) && !credentials) {
+    throw new Error('Hosted access requires DEMO_USERNAME and DEMO_PASSWORD.');
+  }
+  if (password && password === operatorToken) throw new Error('Demo and operator credentials must be different.');
+  for (const name of ['ENABLE_RESEARCH_SAMPLES', 'DEMO_TRUST_CONTAINER_APPS_PROXY']) {
+    if (env[name] && !['true', 'false'].includes(env[name])) throw new Error(`${name} must be true or false.`);
+  }
+  const access = { credentials, trustContainerAppsProxy: env.DEMO_TRUST_CONTAINER_APPS_PROXY === 'true' };
+  const researchSamples = env.ENABLE_RESEARCH_SAMPLES === 'true';
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT.');
   const enabled = env.ENABLE_AZURE_INFERENCE === 'true';
@@ -87,7 +103,8 @@ export function loadConfig(env = process.env) {
       (auth.mode === 'key' ? model.key : identityConfigured));
     model.reason = !enabled ? 'inference-disabled' : model.ready ? null : 'not-configured';
   }
-  return { host, port, operatorToken, origin, models, auth, limits: { mode: inferenceMode, attemptLimit, expiresAt } };
+  return { host, port, operatorToken, origin, models, auth, access, researchSamples,
+    limits: { mode: inferenceMode, attemptLimit, expiresAt } };
 }
 
 export function selectModels(value, config) {

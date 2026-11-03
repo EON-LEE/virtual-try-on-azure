@@ -2,6 +2,7 @@ import { createApi, errorMessage, messages } from './network.js';
 import { createExecutionLog, stages } from './execution.js';
 import { inputPreview, imagePreview } from './images.js';
 import { loadSampleGallery } from './samples.js';
+import { reviewReport, saveBlob } from './review.js';
 
 const $ = id => document.getElementById(id);
 const roles = ['person', 'upper', 'lower'];
@@ -13,14 +14,17 @@ let executionStarted = 0;
 const execution = createExecutionLog($('execution-log'));
 const recordExecution = execution.record;
 const modeFields = { upper: ['upper'], lower: ['lower'], full: ['upper', 'lower'] };
-const state = { config: null, files: {}, urls: {}, sampleIds: {}, samples: [], results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
+const state = { config: null, files: {}, urls: {}, dimensions: {}, sampleIds: {}, samples: [], samplesLoaded: false, results: {}, job: null, busy: false, loading: 0, epoch: 0, controller: null, expiry: null };
 const selected = () => models.filter(id => $(`select-${id}`).checked);
 const required = () => ['person', ...modeFields[$('mode').value]];
 const error = message => { $('error').textContent = message; $('error').hidden = !message; };
 const status = message => { $('status').textContent = message; };
 
 const network = createApi(() => {
+  initialization++;
   state.config = null;
+  clearLocalState(true);
+  recordExecution({ stage: 'polling', status: 'failed', code: 'session-expired' });
   $('workspace').hidden = true;
   $('unlock').hidden = false;
   $('login-error').textContent = '로그인이 만료됐습니다. 다시 로그인해 주세요.';
@@ -40,6 +44,7 @@ function controls() {
   $('generate').textContent = state.busy ? '만드는 중…' : '만들기';
   $('call-note').textContent = selected().length ? `선택한 모델 ${selected().length}개 · ${selected().length}회 생성` : '모델을 선택해 주세요.';
   $('clear').disabled = !state.config?.authenticated;
+  $('export-review').disabled = state.busy || !state.job || state.job.status === 'running';
   const ids = selected();
   let visibleResults = 0;
   models.forEach(id => {
@@ -90,7 +95,7 @@ async function initialize(timeoutMs = 30_000) {
   for (const model of state.config.models) {
     $(`select-${model.id}`).disabled = false;
   }
-  if (state.config.authenticated && !state.samples.length) await loadSamples(timeoutMs);
+  if (state.config.authenticated && !state.samplesLoaded) await loadSamples(timeoutMs);
   if (current !== initialization) return;
   $('unlock').hidden = state.config.authenticated;
   $('workspace').hidden = !state.config.authenticated;
@@ -111,6 +116,8 @@ function clearResults() {
     $(`${id}-verdict`).value = '';
     $(`${id}-notes`).value = '';
     $(`${id}-review`).closest('details').open = false;
+    $(`${id}-compare`).value = '50';
+    comparisonPosition(id);
   }
   render();
 }
@@ -139,9 +146,17 @@ function render() {
       ? `${(result.durationMs / 1000).toFixed(1)}초`
       : result?.status === 'failed' ? '생성 실패' : '';
     $(`${id}-download`).hidden = !result?.url;
-    if (result?.url) $(`${id}-download`).href = result.url;
+    if (result?.url) $(`${id}-download`).href = `${result.imageUrl}/download`;
     else $(`${id}-download`).removeAttribute('href');
     $(`${id}-review`).disabled = !result?.url;
+    $(`${id}-disclosure`).hidden = !result?.url;
+    $(`${id}-comparison`).hidden = !result?.url;
+    const original = $(`${id}-original`);
+    original.hidden = !result?.url || !state.urls.person;
+    if (!original.hidden) original.src = state.urls.person;
+    else original.removeAttribute('src');
+    const dimensions = state.dimensions.person;
+    image.closest('.stage').style.aspectRatio = dimensions ? `${dimensions.width} / ${dimensions.height}` : '';
   }
   controls();
 }
@@ -164,14 +179,16 @@ async function chooseFile(role, file, sampleId = null) {
       if (current !== revisions[role] || epoch !== state.epoch) return;
       clearResults();
       if (state.urls[role]) URL.revokeObjectURL(state.urls[role]);
-      delete state.files[role]; delete state.urls[role];
+      delete state.files[role]; delete state.urls[role]; delete state.dimensions[role];
       delete state.sampleIds[role];
       render();
       if (file) {
-        newUrl = (await inputPreview(file)).url;
+        const preview = await inputPreview(file);
+        newUrl = preview.url;
         if (current !== revisions[role] || epoch !== state.epoch) return;
         state.files[role] = file;
         state.urls[role] = newUrl;
+        state.dimensions[role] = { width: preview.width, height: preview.height };
         if (sampleId) state.sampleIds[role] = sampleId;
         newUrl = null;
       }
@@ -204,6 +221,39 @@ document.querySelectorAll('[name="clothing-mode"]').forEach(input => input.addEv
 }));
 for (const id of models) $(`select-${id}`).addEventListener('change', controls);
 $('consent').addEventListener('change', controls);
+
+function comparisonPosition(id) {
+  const value = $(`${id}-compare`).value;
+  $(`${id}-result`).closest('.stage').style.setProperty('--comparison-position', `${value}%`);
+  $(`${id}-compare`).setAttribute('aria-valuetext', `원본 ${value}% 표시`);
+}
+for (const id of models) {
+  $(`${id}-compare`).addEventListener('input', () => comparisonPosition(id));
+  comparisonPosition(id);
+  $(`${id}-download`).addEventListener('click', async event => {
+    event.preventDefault();
+    const epoch = state.epoch, jobId = state.job?.id;
+    error('');
+    try {
+      const blob = await network.blob($(`${id}-download`).getAttribute('href'));
+      if (epoch !== state.epoch || jobId !== state.job?.id) return;
+      saveBlob(blob, `try-on-${id}-ai.png`);
+    } catch (cause) {
+      if (epoch === state.epoch) error(`다운로드 실패: ${errorMessage(cause)}`);
+    }
+  });
+}
+$('export-review').addEventListener('click', () => {
+  error('');
+  try {
+    const decisions = Object.fromEntries(models.map(id => [id, {
+      verdict: $(`${id}-verdict`).value, notes: $(`${id}-notes`).value
+    }]));
+    const report = reviewReport(state.job, decisions, clientVersion);
+    saveBlob(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }), `try-on-review-${state.job.id}.json`);
+    status('사진 없는 판정 JSON을 내보냈습니다. 메모에 개인정보가 없는지 확인하세요.');
+  } catch (cause) { error(cause.message); }
+});
 
 async function applyJob(job, epoch) {
   state.job = job;
@@ -292,26 +342,34 @@ $('try-on-form').addEventListener('submit', async event => {
   }
 });
 
+function clearLocalState(logout) {
+  state.epoch++; state.controller?.abort(); state.busy = false; state.job = null;
+  clearResults();
+  for (const role of roles) {
+    if (state.urls[role]) URL.revokeObjectURL(state.urls[role]);
+    $(role).value = '';
+  }
+  state.files = {}; state.urls = {}; state.dimensions = {}; state.sampleIds = {}; $('consent').checked = false;
+  if (logout) {
+    state.samples = [];
+    state.samplesLoaded = false;
+    for (const role of roles) $(`${role}-samples`).replaceChildren();
+    $('sample-credits').replaceChildren();
+    $('execution-log').replaceChildren();
+    execution.reset();
+  }
+  document.querySelectorAll('.sample').forEach(button => button.setAttribute('aria-pressed', 'false'));
+  models.forEach(id => { $(`select-${id}`).checked = false; });
+  render();
+}
+
 async function clearStudio(logout = false) {
   error('');
   try {
     if (logout) await api('/api/session', { method: 'DELETE' });
     else await discard();
-    state.epoch++; state.controller?.abort(); state.busy = false; state.job = null;
-    clearResults();
-    for (const role of roles) {
-      if (state.urls[role]) URL.revokeObjectURL(state.urls[role]);
-      $(role).value = '';
-    }
-    state.files = {}; state.urls = {}; state.sampleIds = {}; $('consent').checked = false;
-    if (logout) {
-      state.samples = [];
-      for (const role of roles) $(`${role}-samples`).replaceChildren();
-      $('sample-credits').replaceChildren();
-    }
-    document.querySelectorAll('.sample').forEach(button => button.setAttribute('aria-pressed', 'false'));
-    models.forEach(id => { $(`select-${id}`).checked = false; });
-    render(); await initialize();
+    clearLocalState(logout);
+    await initialize();
     status('사진과 결과를 비웠습니다.');
   } catch (cause) { error(`비우기 실패: ${cause.message}`); }
 }
@@ -341,6 +399,7 @@ $('unlock-form').addEventListener('submit', async event => {
     $('unlock').hidden = false;
     $('login-error').textContent = cause.name === 'TimeoutError'
       ? '서버 연결이 지연되고 있습니다. 로그인 버튼을 다시 눌러 주세요.'
+      : cause.code === 'login-not-configured' ? cause.message
       : cause instanceof TypeError || cause.status >= 500
         ? '서버에 연결하지 못했습니다. 잠시 후 다시 로그인해 주세요.'
         : cause.message;

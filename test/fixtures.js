@@ -6,6 +6,9 @@ import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import manifest from '../samples/manifest.json' with { type: 'json' };
 
+export const demoCredentials = { username: 'test', password: 'offline-demo-password-for-tests-only' };
+export const demoEnv = { DEMO_USERNAME: demoCredentials.username, DEMO_PASSWORD: demoCredentials.password };
+
 export async function syntheticSamples() {
   const directory = await mkdtemp(join(tmpdir(), 'vto-synthetic-samples-'));
   const bytes = await sharp({ create: { width: 32, height: 48, channels: 3, background: '#b9bdd1' } }).jpeg().toBuffer();
@@ -27,7 +30,7 @@ export function activateForTest(store, config) {
 export async function loginForTest(origin) {
   const response = await fetch(`${origin}/api/session`, { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-studio-request': '1', origin },
-    body: JSON.stringify({ username: 'test', password: 'test' }) });
+    body: JSON.stringify(demoCredentials) });
   if (!response.ok) throw new Error('Fixture login failed.');
   return response.headers.get('set-cookie').split(';')[0];
 }

@@ -9,7 +9,7 @@ import manifest from '../samples/manifest.json' with { type: 'json' };
 import excluded from '../samples/excluded-hashes.json' with { type: 'json' };
 import { sanitizeImage } from '../src/images.js';
 import { existsSync } from 'node:fs';
-import { syntheticSamples } from './fixtures.js';
+import { syntheticSamples, demoEnv, demoCredentials } from './fixtures.js';
 
 test('research samples have six upper-only people and eight unpaired tops, with attribution and no disposed hashes', async () => {
   const ids = new Set();
@@ -53,7 +53,7 @@ test('local research photo bytes match the retained manifest and no original or 
 test('sample image and manifest require login; static URLs and unlisted files never serve photographs', async t => {
   const fixture = await syntheticSamples();
   t.after(fixture.close);
-  const server = createServer(loadConfig({}), fixture);
+  const server = createServer(loadConfig({ ...demoEnv, ENABLE_RESEARCH_SAMPLES: 'true' }), fixture);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -61,7 +61,7 @@ test('sample image and manifest require login; static URLs and unlisted files ne
   assert.equal((await fetch(`${origin}${manifest.items[0].src}`)).status, 401);
   const login = await fetch(`${origin}/api/session`, { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-studio-request': '1' },
-    body: '{"username":"test","password":"test"}' });
+    body: JSON.stringify(demoCredentials) });
   const cookie = login.headers.get('set-cookie').split(';')[0];
   const headers = { cookie };
   const manifestResponse = await fetch(`${origin}/api/samples/manifest`, { headers });
@@ -93,13 +93,13 @@ test('sample image and manifest require login; static URLs and unlisted files ne
 test('known upper-only sample bytes cannot bypass lower/full restrictions by upload', async t => {
   const fixture = await syntheticSamples();
   t.after(fixture.close);
-  const server = createServer(loadConfig({}), fixture);
+  const server = createServer(loadConfig(demoEnv), fixture);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
   const origin = `http://127.0.0.1:${server.address().port}`;
   const login = await fetch(`${origin}/api/session`, { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-studio-request': '1' },
-    body: '{"username":"test","password":"test"}' });
+    body: JSON.stringify(demoCredentials) });
   const cookie = login.headers.get('set-cookie').split(';')[0];
   const seated = fixture.bytes;
   for (const mode of ['lower', 'full']) {
